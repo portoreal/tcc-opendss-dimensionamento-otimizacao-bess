@@ -1,0 +1,14 @@
+# --- Python: artefatos regeneráveis ---
+__pycache__/
+*.pyc
+*.pyo
+venv/
+tcc_opendss/venv/
+
+# --- Empacotamento executável (o .exe distribui-se na página de
+#     Releases, não no repositório) ---
+exe_empacotado/
+
+# --- Saídas temporárias ---
+*.log
+tmp/
