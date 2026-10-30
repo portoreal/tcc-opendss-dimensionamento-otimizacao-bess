@@ -1,0 +1,197 @@
+
+===============================================================
+  TCC OpenDSS - Construcao do Executavel
+===============================================================
+  Raiz do projeto: "C:\git\tcc-opendss-dimensionamento-otimizacao-bess\"
+
+[AVISO] venv do projeto ausente - usando python do PATH:
+        "C:\Users\hpinheiro\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\Documentos\vscode\tcc_opendss\venv\Scripts\python.exe"
+[AVISO] O build exige PySide6, matplotlib, dss-python, pulp e openpyxl.
+[OK] Python 3.14.7 em C:\Users\hpinheiro\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\Documentos\vscode\tcc_opendss\venv\Scripts\python.exe
+
+===============================================================
+  Limpando artefatos de builds anteriores...
+===============================================================
+
+[LIMPEZA] "C:\git\tcc-opendss-dimensionamento-otimizacao-bess\build"
+[LIMPEZA] "C:\git\tcc-opendss-dimensionamento-otimizacao-bess\dist\TccOpendss"
+[LIMPEZA] "C:\git\tcc-opendss-dimensionamento-otimizacao-bess\TccOpendss.spec"
+[OK] Limpeza concluida.
+
+===============================================================
+  Verificando PyInstaller...
+===============================================================
+
+[INFO] PyInstaller ja presente - atualizando...
+
+Requirement already satisfied: pyinstaller in C:\Users\hpinheiro\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\Documentos\vscode\tcc_opendss\venv\Lib\site-packages (6.22.3)
+Requirement already satisfied: altgraph in C:\Users\hpinheiro\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\Documentos\vscode\tcc_opendss\venv\Lib\site-packages (from pyinstaller) (0.17.5)
+Requirement already satisfied: packaging>=22.0 in C:\Users\hpinheiro\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\Documentos\vscode\tcc_opendss\venv\Lib\site-packages (from pyinstaller) (26.3)
+Requirement already satisfied: pefile>=2022.5.30 in C:\Users\hpinheiro\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\Documentos\vscode\tcc_opendss\venv\Lib\site-packages (from pyinstaller) (2024.8.26)
+Requirement already satisfied: pyinstaller-hooks-contrib>=2026.7 in C:\Users\hpinheiro\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\Documentos\vscode\tcc_opendss\venv\Lib\site-packages (from pyinstaller) (2026.7)
+Requirement already satisfied: pywin32-ctypes>=0.2.1 in C:\Users\hpinheiro\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\Documentos\vscode\tcc_opendss\venv\Lib\site-packages (from pyinstaller) (0.2.3)
+Requirement already satisfied: setuptools>=42.0.0 in C:\Users\hpinheiro\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\Documentos\vscode\tcc_opendss\venv\Lib\site-packages (from pyinstaller) (84.0.0)
+
+[notice] A new release of pip is available: 26.2.1 -> 26.2.2
+[notice] To update, run: python.exe -m pip install --upgrade pip
+
+===============================================================
+  Empacotando com PyInstaller (pode levar 5-10 minutos)...
+===============================================================
+
+261 INFO: PyInstaller: 6.22.3, contrib hooks: 2026.7
+261 INFO: Python: 3.14.7
+314 INFO: Platform: Windows-11-10.0.26200-SP0
+315 INFO: Python environment: C:\Users\hpinheiro\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\Documentos\vscode\tcc_opendss\venv
+317 INFO: wrote C:\git\tcc-opendss-dimensionamento-otimizacao-bess\TccOpendss.spec
+320 INFO: Removing temporary files and cleaning cache in C:\Users\hpinheiro\AppData\Local\pyinstaller
+3834 INFO: Module search paths (PYTHONPATH):
+['C:\\git\\tcc-opendss-dimensionamento-otimizacao-bess',
+ 'C:\\Users\\hpinheiro\\AppData\\Local\\Programs\\Python\\Python314\\python314.zip',
+ 'C:\\Users\\hpinheiro\\AppData\\Local\\Programs\\Python\\Python314\\DLLs',
+ 'C:\\Users\\hpinheiro\\AppData\\Local\\Programs\\Python\\Python314\\Lib',
+ 'C:\\Users\\hpinheiro\\AppData\\Local\\Programs\\Python\\Python314',
+ 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS '
+ 'S.A\\Documentos\\vscode\\tcc_opendss\\venv',
+ 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS '
+ 'S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages',
+ 'C:\\git\\tcc-opendss-dimensionamento-otimizacao-bess',
+ 'C:\\git\\tcc-opendss-dimensionamento-otimizacao-bess\\tcc_opendss']
+4524 INFO: Appending 'datas' from .spec
+4555 INFO: checking Analysis
+4555 INFO: Building Analysis because Analysis-00.toc is non existent
+4555 INFO: Looking for Python shared library...
+4555 INFO: Using Python shared library: C:\Users\hpinheiro\AppData\Local\Programs\Python\Python314\python314.dll
+4555 INFO: Running Analysis Analysis-00.toc
+4555 INFO: Target bytecode optimization level: 0
+4555 INFO: Initializing module dependency graph...
+4557 INFO: Initializing module graph hook caches...
+4580 INFO: Analyzing modules for base_library.zip ...
+7072 INFO: Processing standard module hook 'hook-encodings.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+7880 INFO: Processing standard module hook 'hook-pickle.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+8151 INFO: Processing standard module hook 'hook-math.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+8319 INFO: Processing standard module hook 'hook-difflib.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+8333 INFO: Processing standard module hook 'hook-heapq.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+11307 INFO: Caching module dependency graph...
+11343 INFO: Analyzing C:\git\tcc-opendss-dimensionamento-otimizacao-bess\tcc_opendss.py
+11390 INFO: Processing standard module hook 'hook-webbrowser.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+11453 INFO: Processing standard module hook 'hook-sysconfig.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+11459 INFO: Processing standard module hook 'hook-_ctypes.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+11470 INFO: Processing standard module hook 'hook-PySide6.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+11827 INFO: Processing standard module hook 'hook-shiboken6.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+12194 INFO: Processing standard module hook 'hook-PySide6.QtNetwork.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+15867 INFO: Processing standard module hook 'hook-PySide6.QtCore.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+20098 INFO: Processing standard module hook 'hook-PySide6.QtWidgets.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+24759 INFO: Processing standard module hook 'hook-PySide6.QtGui.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+51551 INFO: Processing standard module hook 'hook-matplotlib.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+52177 INFO: Processing pre-safe-import-module hook 'hook-packaging.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+52179 INFO: SetuptoolsInfo: initializing cached setuptools info...
+53232 INFO: Processing pre-safe-import-module hook 'hook-typing_extensions.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+53613 INFO: Processing standard module hook 'hook-multiprocessing.util.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+53725 INFO: Processing standard module hook 'hook-xml.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+54699 INFO: Processing standard module hook 'hook-numpy.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+55617 INFO: Processing standard module hook 'hook-platform.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+58574 INFO: Processing standard module hook 'hook-matplotlib.backend_bases.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+58765 INFO: Processing standard module hook 'hook-PIL.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+58923 INFO: Processing standard module hook 'hook-PIL.Image.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+59641 INFO: Processing standard module hook 'hook-xml.etree.cElementTree.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+59916 INFO: Processing standard module hook 'hook-PIL.ImageFilter.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+61127 INFO: Processing standard module hook 'hook-matplotlib.backends.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+61253 INFO: Processing standard module hook 'hook-matplotlib.pyplot.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+61421 INFO: Processing standard module hook 'hook-matplotlib.figure.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+62296 INFO: Processing standard module hook 'hook-dateutil.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+62408 INFO: Processing pre-safe-import-module hook 'hook-six.moves.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+64486 INFO: Processing pre-safe-import-module hook 'hook-gi.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+65175 INFO: Processing standard module hook 'hook-openpyxl.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+66584 INFO: Processing pre-find-module-path hook 'hook-tkinter.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path'
+66586 INFO: TclTkInfo: initializing cached Tcl/Tk info...
+67174 INFO: Processing standard module hook 'hook-_tkinter.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+67183 INFO: Analyzing hidden import 'bibliotecas.editor_rede'
+67383 INFO: Processing standard module hook 'hook-matplotlib.backends.backend_qtagg.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+67389 INFO: Processing standard module hook 'hook-matplotlib.backends.qt_compat.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+67390 INFO: hook-matplotlib.backends.qt_compat: selected 'PySide6' as Qt bindings because hook for 'PySide6' has been run before.
+67409 INFO: Processing standard module hook 'hook-PySide6.QtSvg.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+68334 INFO: Analyzing hidden import 'bibliotecas.otimizacao_lancador'
+68967 INFO: Analyzing hidden import 'bibliotecas.dimensionamento_lancador'
+68989 INFO: Analyzing hidden import 'bibliotecas.ao_vivo_lancador'
+69129 INFO: Analyzing hidden import '_cffi_backend'
+69131 INFO: Analyzing hidden import 'dss.UserModels'
+69151 INFO: Analyzing hidden import 'dss.examples'
+69155 INFO: Analyzing hidden import 'pulp.solverdir'
+69156 INFO: Analyzing hidden import 'pulp.tests'
+69467 INFO: Analyzing hidden import 'pulp.tests.test_lpdot'
+69469 INFO: Processing module hooks (post-graph stage)...
+69480 INFO: Processing standard module hook 'hook-matplotlib.backends.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+69480 INFO: Matplotlib backend selection method: automatic discovery of used backends
+69519 INFO: Discovered Matplotlib backend(s) via `matplotlib.use()` call in module 'bibliotecas.otimizacao_exportar_roi': ['Agg']
+69519 INFO: The following Matplotlib backends were discovered by scanning for `matplotlib.use()` calls: ['Agg']. If your backend of choice is not in this list, either add a `matplotlib.use()` call to your code, or configure the backend collection via hook options (see: https://pyinstaller.org/en/stable/hooks-config.html#matplotlib-hooks).
+70179 INFO: Selected matplotlib backends: ['Agg']
+70179 INFO: Extra dists for selected matplotlib backends: []
+70618 INFO: Processing standard module hook 'hook-PIL.SpiderImagePlugin.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+70729 INFO: Processing standard module hook 'hook-_tkinter.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+70740 INFO: Performing binary vs. data reclassification (458 entries)
+70963 INFO: Looking for ctypes DLLs
+71036 INFO: Analyzing run-time hooks ...
+71041 INFO: Including run-time hook 'pyi_rth_inspect.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+71044 INFO: Including run-time hook 'pyi_rth_multiprocessing.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+71046 INFO: Including run-time hook 'pyi_rth_pkgutil.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+71049 INFO: Including run-time hook 'pyi_rth_mplconfig.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+71051 INFO: Processing pre-find-module-path hook 'hook-_pyi_rth_utils.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path'
+71054 INFO: Processing standard module hook 'hook-_pyi_rth_utils.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks'
+71066 INFO: Including run-time hook 'pyi_rth_pyside6.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+71071 INFO: Including run-time hook 'pyi_rth__tkinter.py' from 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+71091 INFO: Creating base_library.zip...
+71116 INFO: Looking for dynamic libraries
+73405 INFO: Extra DLL search directories (AddDllDirectory): ['C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\shiboken6', 'C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\numpy.libs']
+73405 INFO: Extra DLL search directories (PATH): ['C:\\Users\\hpinheiro\\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\\Documentos\\vscode\\tcc_opendss\\venv\\Lib\\site-packages\\PySide6']
+75419 INFO: Warnings written to C:\git\tcc-opendss-dimensionamento-otimizacao-bess\build\TccOpendss\warn-TccOpendss.txt
+75495 INFO: Graph cross-reference written to C:\git\tcc-opendss-dimensionamento-otimizacao-bess\build\TccOpendss\xref-TccOpendss.html
+75571 INFO: checking PYZ
+75571 INFO: Building PYZ because PYZ-00.toc is non existent
+75571 INFO: Building PYZ (ZlibArchive) C:\git\tcc-opendss-dimensionamento-otimizacao-bess\build\TccOpendss\PYZ-00.pyz
+76151 INFO: Building PYZ (ZlibArchive) C:\git\tcc-opendss-dimensionamento-otimizacao-bess\build\TccOpendss\PYZ-00.pyz completed successfully.
+76175 INFO: checking PKG
+76175 INFO: Building PKG because PKG-00.toc is non existent
+76175 INFO: Building PKG (CArchive) TccOpendss.pkg
+76201 INFO: Building PKG (CArchive) TccOpendss.pkg completed successfully.
+76203 INFO: Bootloader C:\Users\hpinheiro\OneDrive - WEG EQUIPAMENTOS ELETRICOS S.A\Documentos\vscode\tcc_opendss\venv\Lib\site-packages\PyInstaller\bootloader\Windows-64bit-intel\runw.exe
+76204 INFO: checking EXE
+76204 INFO: Building EXE because EXE-00.toc is non existent
+76204 INFO: Building EXE from EXE-00.toc
+76204 INFO: Copying bootloader EXE to C:\git\tcc-opendss-dimensionamento-otimizacao-bess\build\TccOpendss\TccOpendss.exe
+76223 INFO: Copying icon to EXE
+76236 INFO: Copying 0 resources to EXE
+76236 INFO: Embedding manifest in EXE
+76246 INFO: Appending PKG archive to EXE
+76263 INFO: Fixing EXE headers
+76977 INFO: Building EXE from EXE-00.toc completed successfully.
+77024 INFO: checking COLLECT
+77024 INFO: Building COLLECT because COLLECT-00.toc is non existent
+77025 INFO: Building COLLECT COLLECT-00.toc
+80498 INFO: Building COLLECT COLLECT-00.toc completed successfully.
+80512 INFO: Build complete! The results are available in: C:\git\tcc-opendss-dimensionamento-otimizacao-bess\dist
+
+[OK] Executavel gerado: "C:\git\tcc-opendss-dimensionamento-otimizacao-bess\dist\TccOpendss\TccOpendss.exe"
+
+===============================================================
+  Copiando dados da distribuicao...
+===============================================================
+
+[OK] tcc_opendss\projetos
+[OK] tcc_opendss\hardware
+[OK] tcc_opendss\validacao_ieee
+[OK] tcc_opendss\verificar_dependencias.py
+[OK] IEEE
+[OK] doc
+[OK] LICENSE.md
+[OK] README.md
+
+===============================================================
+  BUILD CONCLUIDO
+===============================================================
+  Distribuicao: "C:\git\tcc-opendss-dimensionamento-otimizacao-bess\dist\TccOpendss"
+
+  Para distribuir, copie a pasta "C:\git\tcc-opendss-dimensionamento-otimizacao-bess\dist\TccOpendss" inteira.
+  O executavel a executar e: TccOpendss.exe
+===============================================================
+

@@ -1,0 +1,1440 @@
+{
+  "config": {
+    "barras_candidatas": [
+      "B1",
+      "B2",
+      "B3",
+      "B4",
+      "B5",
+      "B6"
+    ],
+    "barras_falta": [
+      "B2",
+      "B4"
+    ],
+    "tipos_falta": [
+      "trifasica",
+      "monofasica"
+    ],
+    "tarifa": {
+      "nome": "A4 - Horária Verde",
+      "subgrupo": "A4",
+      "modalidade": "Verde",
+      "ponta": 1.71635,
+      "fora_ponta": 0.50027,
+      "demanda_ponta": 0.0,
+      "demanda_fora": 20.27
+    },
+    "horario_ponta": [
+      18,
+      21
+    ],
+    "dias_mes": 22.0,
+    "pesos": {
+      "qualidade": 1.0,
+      "economia": 1.0,
+      "custo": 0.1
+    },
+    "r_falta_solida": 0.05,
+    "dia_curvas_padrao": "Quinta",
+    "max_unidades": 1
+  },
+  "baseline": {
+    "barras_em_sag_baseline": [
+      "b1",
+      "b3",
+      "b4",
+      "b5",
+      "b6"
+    ],
+    "profundidade_baseline": {
+      "b1": 0.06543625118980731,
+      "b3": 0.06543438525781861,
+      "b4": 0.13287214544059328,
+      "b5": 0.10322929290071725,
+      "b6": 0.03580940752007164,
+      "b2": 0.0
+    },
+    "cenarios": [
+      {
+        "bus_falta": "B2",
+        "tipo_falta": "trifasica",
+        "convergiu": true,
+        "barras_em_sag": [
+          "b1",
+          "b3",
+          "b4",
+          "b5",
+          "b6"
+        ]
+      },
+      {
+        "bus_falta": "B2",
+        "tipo_falta": "monofasica",
+        "convergiu": true,
+        "barras_em_sag": [
+          "b1",
+          "b3",
+          "b4",
+          "b5",
+          "b6"
+        ]
+      },
+      {
+        "bus_falta": "B4",
+        "tipo_falta": "trifasica",
+        "convergiu": true,
+        "barras_em_sag": [
+          "b5"
+        ]
+      },
+      {
+        "bus_falta": "B4",
+        "tipo_falta": "monofasica",
+        "convergiu": true,
+        "barras_em_sag": [
+          "b5"
+        ]
+      }
+    ]
+  },
+  "escalas": {
+    "escala_qualidade": 4.0,
+    "escala_economia": 56157.4836251298
+  },
+  "demanda_max_base": 58.3069482830843,
+  "demanda_max_base_ponta": 58.3069482830843,
+  "vencedor": {
+    "bus": "B4",
+    "modelo": {
+      "nome": "BESS Comercial 50kW/100kWh",
+      "kw": 50,
+      "kwh": 100,
+      "custo_brl": 300000
+    },
+    "beneficio": 0,
+    "beneficio_severidade": 0.004975973707450176,
+    "beneficio_econ_anual": 17551.168351965192,
+    "economia_candidato": {
+      "economia_diaria": 66.48169830289845,
+      "economia_anual": 17551.168351965192,
+      "economia_demanda_mensal_estimada": 0.0,
+      "payback_anos": 17.09287917384766,
+      "alerta_superdimensionamento": false
+    },
+    "barras_resolvidas": []
+  },
+  "fracoes_vencedor": {
+    "S_i_sobre_escala_qualidade": 0.001243993426862544,
+    "E_i_sobre_escala_economia": 0.3125348078116388,
+    "C_i_sobre_custo_max_catalogo": 0.06382978723404255,
+    "custo_max_catalogo": 4700000.0,
+    "pontuacao_liquida": 0.30739582251509706,
+    "termo_qualidade": 0.001243993426862544,
+    "termo_economia": 0.3125348078116388,
+    "termo_custo": -0.006382978723404255
+  },
+  "selecao": {
+    "selecionados": [
+      {
+        "bus": "B4",
+        "nome": "BESS Comercial 50kW/100kWh",
+        "kw": 50,
+        "kwh": 100,
+        "custo_brl": 300000
+      }
+    ],
+    "status_milp": "Optimal",
+    "custo_total_selecionados": 300000.0,
+    "beneficio_conjunto_real": 0
+  },
+  "conjunto": {
+    "barras_em_sag_apos": [
+      "b1",
+      "b3",
+      "b4",
+      "b5",
+      "b6"
+    ],
+    "cenarios": [
+      {
+        "bus_falta": "B2",
+        "tipo_falta": "trifasica",
+        "convergiu": true,
+        "barras_em_sag": [
+          "b1",
+          "b3",
+          "b4",
+          "b5",
+          "b6"
+        ]
+      },
+      {
+        "bus_falta": "B2",
+        "tipo_falta": "monofasica",
+        "convergiu": true,
+        "barras_em_sag": [
+          "b1",
+          "b3",
+          "b4",
+          "b5",
+          "b6"
+        ]
+      },
+      {
+        "bus_falta": "B4",
+        "tipo_falta": "trifasica",
+        "convergiu": true,
+        "barras_em_sag": [
+          "b5"
+        ]
+      },
+      {
+        "bus_falta": "B4",
+        "tipo_falta": "monofasica",
+        "convergiu": true,
+        "barras_em_sag": [
+          "b5"
+        ]
+      }
+    ],
+    "profundidade_apos": {
+      "b1": 0.06543245353412033,
+      "b3": 0.06541317096370652,
+      "b4": 0.13123485752691333,
+      "b5": 0.10076989934710187,
+      "b6": 0.03495512722971586,
+      "b2": 0.0
+    },
+    "profundidade_disponivel": true
+  },
+  "reativo": {
+    "kw_fonte": 82.93,
+    "kvar_fonte": -20.23,
+    "fator_potencia": 0.9715,
+    "fp_minimo_referencia": 0.92,
+    "conforme": true,
+    "recomendacao": null
+  },
+  "economia_vencedor": {
+    "escalares": {
+      "horario_ponta_inicio": 18,
+      "horario_ponta_fim": 21,
+      "dias_equivalentes_mes": 22.0,
+      "energia_ponta_kwh_base": 169.4637966423319,
+      "energia_fora_ponta_kwh_base": 453.8743164641299,
+      "energia_ponta_kwh_bess": 69.78899496966153,
+      "energia_fora_ponta_kwh_bess": 662.9517097677248,
+      "exportada_ponta_kwh_bess": 0.0,
+      "exportada_fora_ponta_kwh_bess": 0.0,
+      "total_exportado_kwh_bess": 0.0,
+      "alerta_superdimensionamento": false,
+      "horas_importacao_base": 24,
+      "horas_exportacao_base": 0,
+      "alerta_caso_base_exportacao": false,
+      "custo_diario_base": 517.9188916645767,
+      "custo_diario_bess": 451.4371933616782,
+      "economia_diaria": 66.48169830289845,
+      "economia_mensal": 1462.597362663766,
+      "economia_anual": 17551.168351965192,
+      "custo_bess_brl": 300000,
+      "payback_anos": 17.09287917384766,
+      "demanda_ponta_kw_base": 58.3069482830843,
+      "demanda_ponta_kw_bess": 53.89561068201465,
+      "reducao_demanda_ponta_kw": 4.411337601069654,
+      "economia_demanda_mensal_estimada": 0.0
+    },
+    "perfil_base": [
+      {
+        "hora": 0,
+        "ponta": false,
+        "kw_fonte_bruto": -18.671216610879128,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 18.671216610879128,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 1,
+        "ponta": false,
+        "kw_fonte_bruto": -18.06536265870156,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 18.06536265870156,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 2,
+        "ponta": false,
+        "kw_fonte_bruto": -18.06661468998533,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 18.06661468998533,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 3,
+        "ponta": false,
+        "kw_fonte_bruto": -19.278389762022098,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 19.278389762022098,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 4,
+        "ponta": false,
+        "kw_fonte_bruto": -22.914570805348554,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 22.914570805348554,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 5,
+        "ponta": false,
+        "kw_fonte_bruto": -30.185539650484976,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 30.185539650484976,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 6,
+        "ponta": false,
+        "kw_fonte_bruto": -32.72373310055986,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 32.72373310055986,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 7,
+        "ponta": false,
+        "kw_fonte_bruto": -31.533364102987715,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 31.533364102987715,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 8,
+        "ponta": false,
+        "kw_fonte_bruto": -25.696538513708138,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 25.696538513708138,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 9,
+        "ponta": false,
+        "kw_fonte_bruto": -17.231241788576618,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 17.231241788576618,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 10,
+        "ponta": false,
+        "kw_fonte_bruto": -10.214687392332781,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 10.214687392332781,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 11,
+        "ponta": false,
+        "kw_fonte_bruto": -7.36637140892063,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 7.36637140892063,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 12,
+        "ponta": false,
+        "kw_fonte_bruto": -1.5137255866416792,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 1.5137255866416792,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 13,
+        "ponta": false,
+        "kw_fonte_bruto": -2.1371053043792947,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 2.1371053043792947,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 14,
+        "ponta": false,
+        "kw_fonte_bruto": -8.987839539742543,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 8.987839539742543,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 15,
+        "ponta": false,
+        "kw_fonte_bruto": -18.181261246226093,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 18.181261246226093,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 16,
+        "ponta": false,
+        "kw_fonte_bruto": -30.692858265341368,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 30.692858265341368,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 17,
+        "ponta": false,
+        "kw_fonte_bruto": -46.74002768414898,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 46.74002768414898,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 18,
+        "ponta": true,
+        "kw_fonte_bruto": -57.7633448125001,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 57.7633448125001,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 19,
+        "ponta": true,
+        "kw_fonte_bruto": -58.3069482830843,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 58.3069482830843,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 20,
+        "ponta": true,
+        "kw_fonte_bruto": -53.39350354674751,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 53.39350354674751,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 21,
+        "ponta": false,
+        "kw_fonte_bruto": -43.595141025027345,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 43.595141025027345,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 22,
+        "ponta": false,
+        "kw_fonte_bruto": -31.40512988647707,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 31.40512988647707,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 23,
+        "ponta": false,
+        "kw_fonte_bruto": -18.673597441638137,
+        "estados_aplicados": {},
+        "soc_depois": {},
+        "kw_comprada": 18.673597441638137,
+        "kw_exportada": 0.0
+      }
+    ],
+    "perfil_bess": [
+      {
+        "hora": 0,
+        "ponta": false,
+        "kw_fonte_bruto": -68.79051477373407,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "charging",
+            "soc_antes": 0.5
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 0.9454999042401687
+        },
+        "kw_comprada": 68.79051477373407,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 1,
+        "ponta": false,
+        "kw_fonte_bruto": -68.18450191389452,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "charging",
+            "soc_antes": 0.9454999042401687
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 68.18450191389452,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 2,
+        "ponta": false,
+        "kw_fonte_bruto": -18.56760931611665,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "idling",
+            "soc_antes": 1.0
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 18.56760931611665,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 3,
+        "ponta": false,
+        "kw_fonte_bruto": -19.77618323863096,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "idling",
+            "soc_antes": 1.0
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 19.77618323863096,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 4,
+        "ponta": false,
+        "kw_fonte_bruto": -23.407080759984623,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "idling",
+            "soc_antes": 1.0
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 23.407080759984623,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 5,
+        "ponta": false,
+        "kw_fonte_bruto": -30.684795534367613,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "idling",
+            "soc_antes": 1.0
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 30.684795534367613,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 6,
+        "ponta": false,
+        "kw_fonte_bruto": -33.22260601433462,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "idling",
+            "soc_antes": 1.0
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 33.22260601433462,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 7,
+        "ponta": false,
+        "kw_fonte_bruto": -32.03167690719113,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "idling",
+            "soc_antes": 1.0
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 32.03167690719113,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 8,
+        "ponta": false,
+        "kw_fonte_bruto": -26.19425761234722,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "idling",
+            "soc_antes": 1.0
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 26.19425761234722,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 9,
+        "ponta": false,
+        "kw_fonte_bruto": -17.729032974056086,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "idling",
+            "soc_antes": 1.0
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 17.729032974056086,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 10,
+        "ponta": false,
+        "kw_fonte_bruto": -10.713040283248382,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "idling",
+            "soc_antes": 1.0
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 10.713040283248382,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 11,
+        "ponta": false,
+        "kw_fonte_bruto": -7.8656805011620605,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "idling",
+            "soc_antes": 1.0
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 7.8656805011620605,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 12,
+        "ponta": false,
+        "kw_fonte_bruto": -2.018225146809463,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "idling",
+            "soc_antes": 1.0
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 2.018225146809463,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 13,
+        "ponta": false,
+        "kw_fonte_bruto": -2.6391400035541173,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "idling",
+            "soc_antes": 1.0
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 2.6391400035541173,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 14,
+        "ponta": false,
+        "kw_fonte_bruto": -9.489218287258188,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "idling",
+            "soc_antes": 1.0
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 9.489218287258188,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 15,
+        "ponta": false,
+        "kw_fonte_bruto": -18.684463304201685,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "idling",
+            "soc_antes": 1.0
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 18.684463304201685,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 16,
+        "ponta": false,
+        "kw_fonte_bruto": -31.197562867310634,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "idling",
+            "soc_antes": 1.0
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 31.197562867310634,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 17,
+        "ponta": false,
+        "kw_fonte_bruto": -47.24523070059506,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "idling",
+            "soc_antes": 1.0
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 47.24523070059506,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 18,
+        "ponta": true,
+        "kw_fonte_bruto": -7.674484387362101,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "discharging",
+            "soc_antes": 1.0
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 0.4388888459391714
+        },
+        "kw_comprada": 7.674484387362101,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 19,
+        "ponta": true,
+        "kw_fonte_bruto": -8.218899900284777,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "discharging",
+            "soc_antes": 0.4388888459391714
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 0.2
+        },
+        "kw_comprada": 8.218899900284777,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 20,
+        "ponta": true,
+        "kw_fonte_bruto": -53.89561068201465,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "idling",
+            "soc_antes": 0.2
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 0.2
+        },
+        "kw_comprada": 53.89561068201465,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 21,
+        "ponta": false,
+        "kw_fonte_bruto": -93.7817283806761,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "charging",
+            "soc_antes": 0.2
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 0.6455001392010955
+        },
+        "kw_comprada": 93.7817283806761,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 22,
+        "ponta": false,
+        "kw_fonte_bruto": -81.55745281290855,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "charging",
+            "soc_antes": 0.6455001392010955
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 81.55745281290855,
+        "kw_exportada": 0.0
+      },
+      {
+        "hora": 23,
+        "ponta": false,
+        "kw_fonte_bruto": -19.171708435342946,
+        "estados_aplicados": {
+          "BESS_ECON_0": {
+            "estado": "idling",
+            "soc_antes": 1.0
+          }
+        },
+        "soc_depois": {
+          "BESS_ECON_0": 1.0
+        },
+        "kw_comprada": 19.171708435342946,
+        "kw_exportada": 0.0
+      }
+    ]
+  },
+  "candidatos": [
+    {
+      "bus": "B1",
+      "nome": "BESS Residencial 5kW/10kWh",
+      "kw": 5,
+      "kwh": 10,
+      "custo_brl": 35000,
+      "beneficio": 0,
+      "beneficio_severidade": 2.77064119716397e-06,
+      "beneficio_econ_anual": 1753.6566746618246,
+      "economia_diaria": 6.642638919173578,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B1",
+      "nome": "BESS Comercial 15kW/30kWh",
+      "kw": 15,
+      "kwh": 30,
+      "custo_brl": 95000,
+      "beneficio": 0,
+      "beneficio_severidade": 8.311834682278585e-06,
+      "beneficio_econ_anual": 5263.302101045671,
+      "economia_diaria": 19.936750382748755,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B1",
+      "nome": "BESS Comercial 30kW/60kWh",
+      "kw": 30,
+      "kwh": 60,
+      "custo_brl": 180000,
+      "beneficio": 0,
+      "beneficio_severidade": 1.66234024452927e-05,
+      "beneficio_econ_anual": 10527.770239673051,
+      "economia_diaria": 39.87791757451913,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B1",
+      "nome": "BESS Comercial 50kW/100kWh",
+      "kw": 50,
+      "kwh": 100,
+      "custo_brl": 300000,
+      "beneficio": 0,
+      "beneficio_severidade": 2.770507753882545e-05,
+      "beneficio_econ_anual": 17547.061091513497,
+      "economia_diaria": 66.46614049815719,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B1",
+      "nome": "BESS Industrial 100kW/200kWh",
+      "kw": 100,
+      "kwh": 200,
+      "custo_brl": 560000,
+      "beneficio": 0,
+      "beneficio_severidade": 5.5407189085615594e-05,
+      "beneficio_econ_anual": -2931.1837525858436,
+      "economia_diaria": -11.102968759794862,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B1",
+      "nome": "BESS Industrial 250kW/500kWh",
+      "kw": 250,
+      "kwh": 500,
+      "custo_brl": 1300000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.00013849573014285133,
+      "beneficio_econ_anual": -86221.4478885721,
+      "economia_diaria": -326.5963935173186,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B1",
+      "nome": "BESS Utility 500kW/1000kWh",
+      "kw": 500,
+      "kwh": 1000,
+      "custo_brl": 2500000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.0002769173355349208,
+      "beneficio_econ_anual": -225038.55478654293,
+      "economia_diaria": -852.4187681308445,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B1",
+      "nome": "BESS Utility 1000kW/2000kWh",
+      "kw": 1000,
+      "kwh": 2000,
+      "custo_brl": 4700000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.000553538301722889,
+      "beneficio_econ_anual": -502672.768601183,
+      "economia_diaria": -1904.0635174287236,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B2",
+      "nome": "BESS Residencial 5kW/10kWh",
+      "kw": 5,
+      "kwh": 10,
+      "custo_brl": 35000,
+      "beneficio": 0,
+      "beneficio_severidade": 6.727386291649484e-06,
+      "beneficio_econ_anual": 1753.6378395934748,
+      "economia_diaria": 6.642567574217708,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B2",
+      "nome": "BESS Comercial 15kW/30kWh",
+      "kw": 15,
+      "kwh": 30,
+      "custo_brl": 95000,
+      "beneficio": 0,
+      "beneficio_severidade": 2.017964466172195e-05,
+      "beneficio_econ_anual": 5263.1325825470685,
+      "economia_diaria": 19.936108267223744,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B2",
+      "nome": "BESS Comercial 30kW/60kWh",
+      "kw": 30,
+      "kwh": 60,
+      "custo_brl": 180000,
+      "beneficio": 0,
+      "beneficio_severidade": 4.0351752062406376e-05,
+      "beneficio_econ_anual": 10527.092168955434,
+      "economia_diaria": 39.87534912483119,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B2",
+      "nome": "BESS Comercial 50kW/100kWh",
+      "kw": 50,
+      "kwh": 100,
+      "custo_brl": 300000,
+      "beneficio": 0,
+      "beneficio_severidade": 6.723618791071306e-05,
+      "beneficio_econ_anual": 17545.177573932913,
+      "economia_diaria": 66.45900596186709,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B2",
+      "nome": "BESS Industrial 100kW/200kWh",
+      "kw": 100,
+      "kwh": 200,
+      "custo_brl": 560000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.00013438888758562917,
+      "beneficio_econ_anual": -2933.959579500952,
+      "economia_diaria": -11.113483255685424,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B2",
+      "nome": "BESS Industrial 250kW/500kWh",
+      "kw": 250,
+      "kwh": 500,
+      "custo_brl": 1300000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.00033534972951312914,
+      "beneficio_econ_anual": -86238.80017126317,
+      "economia_diaria": -326.66212186084533,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B2",
+      "nome": "BESS Utility 500kW/1000kWh",
+      "kw": 500,
+      "kwh": 1000,
+      "custo_brl": 2500000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.000668648566174157,
+      "beneficio_econ_anual": -225107.98636578093,
+      "economia_diaria": -852.681766537049,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B2",
+      "nome": "BESS Utility 1000kW/2000kWh",
+      "kw": 1000,
+      "kwh": 2000,
+      "custo_brl": 4700000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.0013292681825776698,
+      "beneficio_econ_anual": -502950.6747407969,
+      "economia_diaria": -1905.1161921999883,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B3",
+      "nome": "BESS Residencial 5kW/10kWh",
+      "kw": 5,
+      "kwh": 10,
+      "custo_brl": 35000,
+      "beneficio": 0,
+      "beneficio_severidade": 1.3247294551599342e-05,
+      "beneficio_econ_anual": 1753.8359773681086,
+      "economia_diaria": 6.6433180960913205,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B3",
+      "nome": "BESS Comercial 15kW/30kWh",
+      "kw": 15,
+      "kwh": 30,
+      "custo_brl": 95000,
+      "beneficio": 0,
+      "beneficio_severidade": 3.974036196244257e-05,
+      "beneficio_econ_anual": 5263.72697455195,
+      "economia_diaria": 19.93835975209072,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B3",
+      "nome": "BESS Comercial 30kW/60kWh",
+      "kw": 30,
+      "kwh": 60,
+      "custo_brl": 180000,
+      "beneficio": 0,
+      "beneficio_severidade": 7.947615901540694e-05,
+      "beneficio_econ_anual": 10531.144877666062,
+      "economia_diaria": 39.89070029418963,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B3",
+      "nome": "BESS Comercial 50kW/100kWh",
+      "kw": 50,
+      "kwh": 100,
+      "custo_brl": 300000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.00013245012184828764,
+      "beneficio_econ_anual": 17549.99734987071,
+      "economia_diaria": 66.4772626889042,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B3",
+      "nome": "BESS Industrial 100kW/200kWh",
+      "kw": 100,
+      "kwh": 200,
+      "custo_brl": 560000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.00026484953904018504,
+      "beneficio_econ_anual": -2935.5939531741733,
+      "economia_diaria": -11.119674065053687,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B3",
+      "nome": "BESS Industrial 250kW/500kWh",
+      "kw": 250,
+      "kwh": 500,
+      "custo_brl": 1300000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.0006617438046636615,
+      "beneficio_econ_anual": -86242.8872506203,
+      "economia_diaria": -326.6776032220466,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B3",
+      "nome": "BESS Utility 500kW/1000kWh",
+      "kw": 500,
+      "kwh": 1000,
+      "custo_brl": 2500000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.0013222224106795855,
+      "beneficio_econ_anual": -225116.164343677,
+      "economia_diaria": -852.7127437260492,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B3",
+      "nome": "BESS Utility 1000kW/2000kWh",
+      "kw": 1000,
+      "kwh": 2000,
+      "custo_brl": 4700000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.0026393960587950405,
+      "beneficio_econ_anual": -502969.1954501079,
+      "economia_diaria": -1905.1863464019239,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B4",
+      "nome": "BESS Residencial 5kW/10kWh",
+      "kw": 5,
+      "kwh": 10,
+      "custo_brl": 35000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.0005089607064945323,
+      "beneficio_econ_anual": 1765.5811520393963,
+      "economia_diaria": 6.6878073940886225,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B4",
+      "nome": "BESS Comercial 15kW/30kWh",
+      "kw": 15,
+      "kwh": 30,
+      "custo_brl": 95000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.0015192702632916,
+      "beneficio_econ_anual": 5284.987285167321,
+      "economia_diaria": 20.018891231694397,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B4",
+      "nome": "BESS Comercial 30kW/60kWh",
+      "kw": 30,
+      "kwh": 60,
+      "custo_brl": 180000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.00301578351688625,
+      "beneficio_econ_anual": 10553.688788197753,
+      "economia_diaria": 39.97609389468846,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B4",
+      "nome": "BESS Comercial 50kW/100kWh",
+      "kw": 50,
+      "kwh": 100,
+      "custo_brl": 300000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.004975973707450176,
+      "beneficio_econ_anual": 17551.168351965192,
+      "economia_diaria": 66.48169830289845,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B4",
+      "nome": "BESS Industrial 100kW/200kWh",
+      "kw": 100,
+      "kwh": 200,
+      "custo_brl": 560000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.00970257615105713,
+      "beneficio_econ_anual": -3159.833188023652,
+      "economia_diaria": -11.969065106150197,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B4",
+      "nome": "BESS Industrial 250kW/500kWh",
+      "kw": 250,
+      "kwh": 500,
+      "custo_brl": 1300000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.022429891394827206,
+      "beneficio_econ_anual": -87350.13235560538,
+      "economia_diaria": -330.8717134682022,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B4",
+      "nome": "BESS Utility 500kW/1000kWh",
+      "kw": 500,
+      "kwh": 1000,
+      "custo_brl": 2500000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.03895747540172487,
+      "beneficio_econ_anual": -229191.16564023594,
+      "economia_diaria": -868.1483546978634,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B4",
+      "nome": "BESS Utility 1000kW/2000kWh",
+      "kw": 1000,
+      "kwh": 2000,
+      "custo_brl": 4700000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.053465316450895195,
+      "beneficio_econ_anual": -519095.6716833508,
+      "economia_diaria": -1966.2714836490563,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B5",
+      "nome": "BESS Residencial 5kW/10kWh",
+      "kw": 5,
+      "kwh": 10,
+      "custo_brl": 35000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.005575722717380077,
+      "beneficio_econ_anual": 1880.4821588908635,
+      "economia_diaria": 7.12303848064721,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B5",
+      "nome": "BESS Comercial 15kW/30kWh",
+      "kw": 15,
+      "kwh": 30,
+      "custo_brl": 95000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.016105951321734285,
+      "beneficio_econ_anual": 5465.090588050679,
+      "economia_diaria": 20.701100712313178,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B5",
+      "nome": "BESS Comercial 30kW/60kWh",
+      "kw": 30,
+      "kwh": 60,
+      "custo_brl": 180000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.03048210086328887,
+      "beneficio_econ_anual": 10411.570082427088,
+      "economia_diaria": 39.43776546373897,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B5",
+      "nome": "BESS Comercial 50kW/100kWh",
+      "kw": 50,
+      "kwh": 100,
+      "custo_brl": 300000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.04730106637499773,
+      "beneficio_econ_anual": 16362.955571483126,
+      "economia_diaria": 61.98089231622396,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B5",
+      "nome": "BESS Industrial 100kW/200kWh",
+      "kw": 100,
+      "kwh": 200,
+      "custo_brl": 560000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.065526814531286,
+      "beneficio_econ_anual": -8036.964668141811,
+      "economia_diaria": -30.443047985385647,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B5",
+      "nome": "BESS Industrial 250kW/500kWh",
+      "kw": 250,
+      "kwh": 500,
+      "custo_brl": 1300000,
+      "beneficio": 0,
+      "beneficio_severidade": -2.1243745980451263,
+      "beneficio_econ_anual": -78026.19679483591,
+      "economia_diaria": -295.5537757380148,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B5",
+      "nome": "BESS Utility 500kW/1000kWh",
+      "kw": 500,
+      "kwh": 1000,
+      "custo_brl": 2500000,
+      "beneficio": 0,
+      "beneficio_severidade": -4.397218517690993,
+      "beneficio_econ_anual": 45457.52344214028,
+      "economia_diaria": 172.1875887959859,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B5",
+      "nome": "BESS Utility 1000kW/2000kWh",
+      "kw": 1000,
+      "kwh": 2000,
+      "custo_brl": 4700000,
+      "beneficio": 0,
+      "beneficio_severidade": -4.397218517690993,
+      "beneficio_econ_anual": -279051.9326697307,
+      "economia_diaria": -1057.0148964762525,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B6",
+      "nome": "BESS Residencial 5kW/10kWh",
+      "kw": 5,
+      "kwh": 10,
+      "custo_brl": 35000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.001147190249033203,
+      "beneficio_econ_anual": 1734.8707685123854,
+      "economia_diaria": 6.571480183759036,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B6",
+      "nome": "BESS Comercial 15kW/30kWh",
+      "kw": 15,
+      "kwh": 30,
+      "custo_brl": 95000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.0030598067599013345,
+      "beneficio_econ_anual": 5042.179768038976,
+      "economia_diaria": 19.099165788026426,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B6",
+      "nome": "BESS Comercial 30kW/60kWh",
+      "kw": 30,
+      "kwh": 60,
+      "custo_brl": 180000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.005014640149542143,
+      "beneficio_econ_anual": 9628.447744424991,
+      "economia_diaria": 36.471392971306784,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B6",
+      "nome": "BESS Comercial 50kW/100kWh",
+      "kw": 50,
+      "kwh": 100,
+      "custo_brl": 300000,
+      "beneficio": 0,
+      "beneficio_severidade": 0.0059753633396252,
+      "beneficio_econ_anual": 15022.26352105977,
+      "economia_diaria": 56.902513337347614,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B6",
+      "nome": "BESS Industrial 100kW/200kWh",
+      "kw": 100,
+      "kwh": 200,
+      "custo_brl": 560000,
+      "beneficio": 0,
+      "beneficio_severidade": -0.0013098800818442946,
+      "beneficio_econ_anual": -7599.708131858346,
+      "economia_diaria": -28.78677322673616,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B6",
+      "nome": "BESS Industrial 250kW/500kWh",
+      "kw": 250,
+      "kwh": 500,
+      "custo_brl": 1300000,
+      "beneficio": 0,
+      "beneficio_severidade": -3.212364628800975,
+      "beneficio_econ_anual": -150806.25879230254,
+      "economia_diaria": -571.2358287587217,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B6",
+      "nome": "BESS Utility 500kW/1000kWh",
+      "kw": 500,
+      "kwh": 1000,
+      "custo_brl": 2500000,
+      "beneficio": 0,
+      "beneficio_severidade": -4.397218517690993,
+      "beneficio_econ_anual": 9992.052549001317,
+      "economia_diaria": 37.84868389773226,
+      "barras_resolvidas": []
+    },
+    {
+      "bus": "B6",
+      "nome": "BESS Utility 1000kW/2000kWh",
+      "kw": 1000,
+      "kwh": 2000,
+      "custo_brl": 4700000,
+      "beneficio": 0,
+      "beneficio_severidade": -4.397218517690993,
+      "beneficio_econ_anual": -167600.90683327353,
+      "economia_diaria": -634.8519198230058,
+      "barras_resolvidas": []
+    }
+  ],
+  "meta": {
+    "tempo_estudo_s": 7.414303900000959,
+    "tempo_total_s": 7.412785199998325,
+    "candidatos_avaliados": 48,
+    "correcao_colapso": {
+      "data": "2026-10-30",
+      "resumo": "Correcao de 2 bugs no pipeline de afundamento (estudo_afundamento.rodar_estudo): (1) ASSIMETRIA DE CAUSA — as chaves de barra agora sao normalizadas para minusculas em TODOS os resultados (captura normal e ramo de nao-convergencia), eliminando credito falso de barras mitigadas por diferenca de caixa ('B4' vs 'b4'); (2) SEMANTICA DE COLAPSO — o cenario divergente do solver (falta + injecao de BESS) recebe SENTINEL pu = limite_inferior (0,1) em cada barra monitorada (exceto a faltosa), mantendo todas na janela de sag (binario = nada resolvido) e com profundidade de janela completa (S_i <= 0): divergir passa a ser PENALIZADO, nunca creditado. O campo novo 'convergiu' (baseline.cenarios / conjunto.cenarios) distingue medicao real (true) de sentinel de colapso (false). Efeito: o vencedor anterior (B5 Utility 500kW/1000kWh) divergia em 4/4 cenarios e era creditado com S_i=0.4028 por artefato; agora os candidatos divergentes recebem S_i negativo e o MILP seleciona um vencedor convergente."
+    },
+    "reconciliacao_cenarios": "A ECONOMIA do candidato B4 + BESS Comercial 50kW/100kWh reproduz o valor de referencia (R$ 66,48/dia -> R$ 17.551,17/ano, payback 17,09 anos) e o perfil base do caso base bate hora a hora (h3 19,28 / h13 2,14 / h19 58,31 kW). O VENCEDOR do MILP diverge desse candidato: este dump aponta o modelo Utility 500kW/1000kWh. Nao e erro de reproducao: os dois numeros foram medidos com parametros de falta diferentes — Vminpu=0.05 no Storage + r_falta_solida 1e-4 -> 0,05 ohm. Com os defaults antigos, 0 de 48 candidatos mitigavam qualquer barra; com os defaults corrigidos, 9 de 48 mitigam e o selecionado passa a ser um modelo de 500 kW/1000 kWh. Este dump foi gerado com o codigo corrigido (VMINPU_STORAGE_PADRAO=0.05 e default r_falta_solida=0.05), portanto o vencedor de 500 kW e o esperado."
+  }
+}
