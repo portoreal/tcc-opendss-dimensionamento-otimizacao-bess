@@ -162,7 +162,8 @@ o solver CBC embutido para o PLIM, matplotlib para gráficos e openpyxl para exp
 ## Como executar
 
 1. **Executável** (modo distribuído) — baixe o pacote na página de
-   [Releases](https://github.com/portoreal/tcc-opendss-dimensionamento-otimizacao-bess/releases).
+   [Releases](https://github.com/portoreal/tcc-opendss-dimensionamento-otimizacao-bess/releases)
+   ou em `exe_empacotado/dist/TccOpendss.zip` no repositório.
    Não exige Python instalado.
 2. **Código-fonte** (modo de desenvolvimento) — execute `tcc_opendss.bat` na raiz do
    repositório. O script cria o `venv` e instala as dependências na primeira execução; requer
@@ -177,7 +178,7 @@ o solver CBC embutido para o PLIM, matplotlib para gráficos e openpyxl para exp
 | `IEEE/` | `feeder13/34/37/123.zip` e os demais sistemas de teste publicados | **Sistemas de teste oficiais do IEEE PES DSASC** — gabarito oficial, © IEEE |
 | `OpenDSS/` | Binários do motor EPRI OpenDSS (`.exe`/`.dll` — COM), legados e **não usados em runtime** (o motor é o `dss-python` do pip) | EPRI — OpenDSS oficial |
 | `OpenDSS/tutorials_files-master/` | Tutoriais e materiais de eventos (UFRGS, Mackenzie, UFSM, PES Day) | **Materiais de treinamento da comunidade OpenDSS** — material de estudo, **NÃO gabarito** |
-| `exe_empacotado/` | Destino futuro do empacotamento em `.exe` | Saída de build |
+| `exe_empacotado/` | Aplicativo empacotado (`TccOpendss.exe` com interpretador e bibliotecas embutidas, via PyInstaller) e artefatos de build | Saída de build — pronto para distribuição |
 
 ## Procedência
 
