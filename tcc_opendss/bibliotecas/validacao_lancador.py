@@ -95,9 +95,26 @@ def abrir_validacao(parent=None):
     subprocess.Popen
         O processo filho iniciado, útil para o chamador acompanhar/encerrar.
     """
-    raiz = Path(__file__).resolve().parent.parent
+    if getattr(sys, "frozen", False):
+        # TRANSPARÊNCIA TÉCNICA — execução congelada (.exe): sys.executable
+        # é o PRÓPRIO TccOpendss.exe, e "python -m" não existe no bundle.
+        # Relançar com "-m" faria o exe entrar no main() do menu principal
+        # e REABRIR o debugger de integridade em vez da validação. O
+        # relançamento segue o MESMO contrato de _lancar_modulo
+        # (tcc_opendss.py): exe relançado com --modulo-congelado; o shim do
+        # topo do menu executa o módulo como __main__ via runpy. O cwd
+        # espelha RAIZ_PROJETO do menu (pasta "tcc_opendss" irmã do .exe).
+        raiz = Path(sys.executable).resolve().parent / "tcc_opendss"
+        argumentos = [
+            sys.executable,
+            "--modulo-congelado",
+            "bibliotecas.validacao_lancador",
+        ]
+    else:
+        raiz = Path(__file__).resolve().parent.parent
+        argumentos = [sys.executable, "-m", "bibliotecas.validacao_lancador"]
     return subprocess.Popen(
-        [sys.executable, "-m", "bibliotecas.validacao_lancador"],
+        argumentos,
         cwd=str(raiz),
         close_fds=True,
     )

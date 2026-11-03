@@ -240,13 +240,30 @@ if _PYSIDE6_DISPONIVEL:
         if not _esta_empacotado() and pasta_bibliotecas_import not in sys.path:
             sys.path.insert(0, pasta_bibliotecas_import)
 
-        from ui_win11 import (
-            detectar_tema as _detectar_tema_win11,
-            obter_paleta_ativa as _obter_paleta_win11,
-            fonte_padrao as _fonte_padrao_win11,
-            RAIO_BORDA_CARTAO as _RAIO_BORDA_CARTAO_WIN11,
-            RAIO_BORDA_BOTAO as _RAIO_BORDA_BOTAO_WIN11,
-        )
+        try:
+            # Modo script: "bibliotecas/" entra no sys.path acima e
+            # "ui_win11" importa como módulo top-level.
+            from ui_win11 import (
+                detectar_tema as _detectar_tema_win11,
+                obter_paleta_ativa as _obter_paleta_win11,
+                fonte_padrao as _fonte_padrao_win11,
+                RAIO_BORDA_CARTAO as _RAIO_BORDA_CARTAO_WIN11,
+                RAIO_BORDA_BOTAO as _RAIO_BORDA_BOTAO_WIN11,
+            )
+        except ImportError:
+            # Modo congelado (.exe): o PyInstaller embute ui_win11 SOMENTE
+            # como submódulo do pacote "bibliotecas"
+            # (collect_submodules no .spec) - não existe "ui_win11"
+            # top-level no bundle. Sem este fallback, o import falhava em
+            # silêncio e o debugger fixava o TEMA CLARO (fallback local),
+            # ignorando o tema escuro do Windows.
+            from bibliotecas.ui_win11 import (
+                detectar_tema as _detectar_tema_win11,
+                obter_paleta_ativa as _obter_paleta_win11,
+                fonte_padrao as _fonte_padrao_win11,
+                RAIO_BORDA_CARTAO as _RAIO_BORDA_CARTAO_WIN11,
+                RAIO_BORDA_BOTAO as _RAIO_BORDA_BOTAO_WIN11,
+            )
 
         RAIO_BORDA_CARTAO = _RAIO_BORDA_CARTAO_WIN11
         RAIO_BORDA_BOTAO = _RAIO_BORDA_BOTAO_WIN11

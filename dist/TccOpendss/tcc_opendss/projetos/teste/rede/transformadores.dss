@@ -1,0 +1,1 @@
+New Transformer.TF1 phases=3.0 windings=2 buses=(B3,B4) conns=(wye,wye) kvs=(13.8,0.38) kvas=(150.0,150.0) xhl=2.0
