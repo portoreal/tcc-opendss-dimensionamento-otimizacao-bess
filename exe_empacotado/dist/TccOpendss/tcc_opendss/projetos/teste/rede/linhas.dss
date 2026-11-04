@@ -1,4 +1,0 @@
-New Line.L1 bus1=B1 bus2=B2 phases=3.0 length=1.0 units=km r1=0.1 x1=0.2 r0=0.3 x0=0.4
-New Line.L2 bus1=B1 bus2=B3 phases=3.0 length=1.0 units=km r1=0.1 x1=0.2 r0=0.3 x0=0.4
-New Line.L3 bus1=B4 bus2=B5 phases=3.0 length=1.0 units=km r1=0.1 x1=0.2 r0=0.3 x0=0.4
-New Line.L4 bus1=B4 bus2=B6 phases=3.0 length=1.0 units=km r1=0.1 x1=0.2 r0=0.3 x0=0.4

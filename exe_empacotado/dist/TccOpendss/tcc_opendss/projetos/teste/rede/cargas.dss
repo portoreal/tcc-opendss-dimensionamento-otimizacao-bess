@@ -1,2 +1,0 @@
-New Load.C1 bus1=B4 phases=3.0 kv=0.38 kw=30.0 kvar=3.0 model=1.0 conn=wye daily=C1_Terça
-New Load.C2 bus1=B5 phases=3.0 kv=0.38 kw=30.0 kvar=3.0 model=1.0 conn=wye
