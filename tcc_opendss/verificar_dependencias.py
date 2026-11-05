@@ -10,22 +10,33 @@ import sys
 # PySide6: interface gráfica do módulo de Validação do Modelo Computacional
 #          (padrão visual Win11/Fluent, adotado do projeto de referência).
 # openpyxl: geração da planilha Excel de resultados da validação.
+#
+# As versões são fixadas (pin) de propósito: garante que uma instalação
+# nova reproduza exatamente o requirements.txt. Em especial, o PuLP deve
+# permanecer na série 2.x, pois o módulo de otimização
+# (otimizacao_milp.py) usa a API clássica (LpVariable.dicts, LpStatus,
+# PULP_CBC_CMD), removida na reescrita 4.x.
 DEPENDENCIAS_NECESSARIAS = [
-    "dss-python",
-    "matplotlib",
-    "pulp",
-    "PySide6",
-    "openpyxl",
+    "dss-python==0.15.7",
+    "matplotlib==3.11.2",
+    "pulp==2.7.0",
+    "PySide6==6.12.0",
+    "openpyxl==3.1.5",
 ]
 
 
 def obter_versao_instalada(pacote: str):
     """
     Retorna a versão instalada do pacote.
+    Aceita tanto o nome puro ("pulp") quanto o spec com pin
+    ("pulp==2.7.0") — a consulta ao importlib.metadata usa apenas o
+    nome base.
     Retorna None quando o pacote não está instalado.
     """
+    nome_base = pacote.split("==")[0]
+
     try:
-        return importlib.metadata.version(pacote)
+        return importlib.metadata.version(nome_base)
     except importlib.metadata.PackageNotFoundError:
         return None
 
@@ -33,6 +44,8 @@ def obter_versao_instalada(pacote: str):
 def instalar_pacote(pacote: str):
     """
     Instala um pacote utilizando o pip do ambiente virtual ativo.
+    O spec recebido (ex.: "pulp==2.7.0") é repassado ao pip com o pin,
+    de modo que a versão fixada seja respeitada.
     """
     print(f"[INSTALANDO] {pacote}...")
 
@@ -120,6 +133,9 @@ def gerar_requirements(
 ):
     """
     Gera o requirements.txt na pasta do projeto.
+    As linhas saem sempre como "nome==versao_instalada": o nome base é
+    extraído da chave (que pode vir com pin, ex.: "pulp==2.7.0") para
+    não duplicar o operador (evita "pulp==2.7.0==2.7.0").
     """
     print()
     print("=" * 60)
@@ -132,13 +148,15 @@ def gerar_requirements(
         encoding="utf-8",
     ) as arquivo:
         for pacote, versao in pacotes_instalados.items():
+            nome_base = pacote.split("==")[0]
+
             if versao:
                 arquivo.write(
-                    f"{pacote}=={versao}\n"
+                    f"{nome_base}=={versao}\n"
                 )
             else:
                 arquivo.write(
-                    f"{pacote}\n"
+                    f"{nome_base}\n"
                 )
 
     print(
