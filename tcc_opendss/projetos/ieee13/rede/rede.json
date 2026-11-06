@@ -2,67 +2,115 @@
   "barras": {
     "sourcebus": {
       "nome": "sourcebus",
-      "kv_base": 115.0
+      "kv_base": 115.0,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "650": {
       "nome": "650",
-      "kv_base": 4.16
+      "kv_base": 4.16,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "rg60": {
       "nome": "rg60",
-      "kv_base": 4.16
+      "kv_base": 4.16,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "633": {
       "nome": "633",
-      "kv_base": 4.16
+      "kv_base": 4.16,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "634": {
       "nome": "634",
-      "kv_base": 0.48
+      "kv_base": 0.48,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "671": {
       "nome": "671",
-      "kv_base": 4.16
+      "kv_base": 4.16,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "645": {
       "nome": "645",
-      "kv_base": 4.16
+      "kv_base": 4.16,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "646": {
       "nome": "646",
-      "kv_base": 4.16
+      "kv_base": 4.16,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "692": {
       "nome": "692",
-      "kv_base": 4.16
+      "kv_base": 4.16,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "675": {
       "nome": "675",
-      "kv_base": 4.16
+      "kv_base": 4.16,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "611": {
       "nome": "611",
-      "kv_base": 4.16
+      "kv_base": 4.16,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "652": {
       "nome": "652",
-      "kv_base": 4.16
+      "kv_base": 4.16,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "670": {
       "nome": "670",
-      "kv_base": 4.16
+      "kv_base": 4.16,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "632": {
       "nome": "632",
-      "kv_base": 4.16
+      "kv_base": 4.16,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "680": {
       "nome": "680",
-      "kv_base": 4.16
+      "kv_base": 4.16,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "684": {
       "nome": "684",
-      "kv_base": 4.16
+      "kv_base": 4.16,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     }
   },
   "ramos": {
@@ -80,7 +128,9 @@
         "x1": 0.3708,
         "r0": 0.3468,
         "x0": 1.1124
-      }
+      },
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "L_632670": {
       "tipo": "Line",
@@ -96,7 +146,9 @@
         "x1": 0.3708,
         "r0": 0.3468,
         "x0": 1.1124
-      }
+      },
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "L_670671": {
       "tipo": "Line",
@@ -112,7 +164,9 @@
         "x1": 0.3708,
         "r0": 0.3468,
         "x0": 1.1124
-      }
+      },
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "L_671680": {
       "tipo": "Line",
@@ -128,7 +182,9 @@
         "x1": 0.3708,
         "r0": 0.3468,
         "x0": 1.1124
-      }
+      },
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "L_632633": {
       "tipo": "Line",
@@ -144,7 +200,9 @@
         "x1": 0.4724,
         "r0": 1.1037,
         "x0": 1.4172
-      }
+      },
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "L_632645": {
       "tipo": "Line",
@@ -160,7 +218,9 @@
         "x1": 0.5548,
         "r0": 2.0877,
         "x0": 1.6644
-      }
+      },
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "L_645646": {
       "tipo": "Line",
@@ -176,7 +236,9 @@
         "x1": 0.5548,
         "r0": 2.0877,
         "x0": 1.6644
-      }
+      },
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "L_692675": {
       "tipo": "Line",
@@ -192,7 +254,9 @@
         "x1": 0.2561,
         "r0": 0.8976,
         "x0": 0.7683
-      }
+      },
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "L_671684": {
       "tipo": "Line",
@@ -208,7 +272,9 @@
         "x1": 0.5548,
         "r0": 2.0877,
         "x0": 1.6644
-      }
+      },
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "L_684611": {
       "tipo": "Line",
@@ -224,7 +290,9 @@
         "x1": 0.8373,
         "r0": 2.4777,
         "x0": 2.5119
-      }
+      },
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "L_684652": {
       "tipo": "Line",
@@ -240,7 +308,9 @@
         "x1": 0.3184,
         "r0": 2.5026,
         "x0": 0.9552
-      }
+      },
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "L_671692": {
       "tipo": "Line",
@@ -256,7 +326,9 @@
         "x1": 0.0,
         "r0": 0.0003,
         "x0": 0.0
-      }
+      },
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "TR_0_sourcebus_650": {
       "tipo": "Transformer",
@@ -271,7 +343,9 @@
         "conn1": "wye",
         "conn2": "wye",
         "xhl": 0.5
-      }
+      },
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "TR_1_650_rg60": {
       "tipo": "Transformer",
@@ -286,7 +360,9 @@
         "conn1": "wye",
         "conn2": "wye",
         "xhl": 0.5
-      }
+      },
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "TR_2_633_634": {
       "tipo": "Transformer",
@@ -301,7 +377,9 @@
         "conn1": "wye",
         "conn2": "wye",
         "xhl": 2.0
-      }
+      },
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     }
   },
   "derivacoes": {
@@ -314,7 +392,13 @@
         "kv": 4.16,
         "kvar": 600.0
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": [
+        485.8986979247659,
+        514.0115046159463
+      ],
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "CAP_cap2": {
       "tipo": "Capacitor",
@@ -325,7 +409,10 @@
         "kv": 2.402,
         "kvar": 100.0
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "CARGA_671": {
       "tipo": "Load",
@@ -339,7 +426,10 @@
         "model": 1,
         "conn": "delta"
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "CARGA_634a": {
       "tipo": "Load",
@@ -353,7 +443,10 @@
         "model": 1,
         "conn": "wye"
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "CARGA_634b": {
       "tipo": "Load",
@@ -367,7 +460,10 @@
         "model": 1,
         "conn": "wye"
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "CARGA_634c": {
       "tipo": "Load",
@@ -381,7 +477,10 @@
         "model": 1,
         "conn": "wye"
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "CARGA_645": {
       "tipo": "Load",
@@ -395,7 +494,10 @@
         "model": 1,
         "conn": "wye"
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "CARGA_646": {
       "tipo": "Load",
@@ -409,7 +511,10 @@
         "model": 1,
         "conn": "delta"
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "CARGA_692": {
       "tipo": "Load",
@@ -423,7 +528,10 @@
         "model": 1,
         "conn": "delta"
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "CARGA_675a": {
       "tipo": "Load",
@@ -437,7 +545,10 @@
         "model": 1,
         "conn": "wye"
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "CARGA_675b": {
       "tipo": "Load",
@@ -451,7 +562,10 @@
         "model": 1,
         "conn": "wye"
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "CARGA_675c": {
       "tipo": "Load",
@@ -465,7 +579,10 @@
         "model": 1,
         "conn": "wye"
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "CARGA_611": {
       "tipo": "Load",
@@ -479,7 +596,10 @@
         "model": 1,
         "conn": "wye"
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "CARGA_652": {
       "tipo": "Load",
@@ -493,7 +613,10 @@
         "model": 1,
         "conn": "wye"
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "CARGA_670a": {
       "tipo": "Load",
@@ -507,7 +630,10 @@
         "model": 1,
         "conn": "wye"
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "CARGA_670b": {
       "tipo": "Load",
@@ -521,7 +647,10 @@
         "model": 1,
         "conn": "wye"
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "CARGA_670c": {
       "tipo": "Load",
@@ -535,7 +664,10 @@
         "model": 1,
         "conn": "wye"
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "FONTE_sourcebus": {
       "tipo": "Vsource",
@@ -548,7 +680,10 @@
         "mvasc3": 2000,
         "mvasc1": 2100
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     },
     "FV_675": {
       "tipo": "PVSystem",
@@ -563,7 +698,10 @@
         "cutin": 2.0,
         "cutout": 2.0
       },
-      "grupo": null
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     }
   },
   "curvas_xy": {}

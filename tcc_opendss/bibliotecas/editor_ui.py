@@ -388,13 +388,25 @@ CORES = {
 # ------------------------------------------------------------------ #
 RAIO_BARRA_BASE = 8
 RAIO_LEQUE = 58
-MEIA_LARGURA_CAIXA = 26
-MEIA_ALTURA_CAIXA = 13
+# A caixa de derivação deixou de ter tamanho fixo. Ela abraça o próprio
+# texto: a medida sai do QFontMetricsF da fonte do rótulo e cresce com
+# ele. Um nome curto ("Load") rende uma pílula estreita; um nome longo
+# ("CARGA_670a") rende uma pílula mais larga, sem texto vazando para
+# fora do fundo colorido.
+#
+# As duas constantes abaixo são o único tamanho fixo que restou: a
+# espessura da moldura em volta do texto. Horizontal maior que vertical
+# porque a linha de texto já carrega o próprio respiro.
+PADDING_CAIXA_H = 5
+PADDING_CAIXA_V = 3
 
 # Margem fixa (pixels) que o auto-encaixe reserva nas bordas. Tem de
-# cobrir RAIO_LEQUE + max(MEIA_LARGURA_CAIXA, MEIA_ALTURA_CAIXA) e ainda
-# sobrar espaço para o rótulo de texto; abaixo disso o leque da barra
-# mais externa é cortado pela borda da vista.
+# cobrir RAIO_LEQUE somado ao meia-largura/altura da MAIOR caixa que
+# aquele leque possa produzir, e ainda sobrar espaço para o rótulo de
+# texto; abaixo disso as caixas da barra mais externa são cortadas pela
+# borda da vista. Como a caixa agora depende do texto, o valor cobre a
+# pílula mais larga que o editor costuma desenhar (nome de 15 caracteres
+# em 7pt, duas linhas).
 MARGEM_FIT = 150
 
 # Distância (pixels) do rótulo de ramo até a linha, medida na
@@ -418,10 +430,127 @@ DESLOCAMENTO_ROTULO_BARRA = 18
 # disputar atenção com ela — daí a sombra discreta e a grade de pontos
 # quase invisível.
 # ------------------------------------------------------------------ #
-FUNDO_CANVAS = "#ffffff"
-# A grade fica três tons abaixo do papel: aparece quando se olha para
-# ela e some quando se olha para a rede.
-COR_GRADE_PONTOS = "#dbe2ea"
+#
+# A paleta deixou de ser um punhado de constantes soltas quando o editor
+# passou a aceitar tema escuro. Duas listas de cor com as mesmas chaves
+# resolvem melhor do que dezenas de nomes fixos: quem pinta pergunta ao
+# tema corrente e não precisa saber de onde a cor veio. O tema claro
+# reproduz exatamente os valores que existiam antes — quem trabalha no
+# claro não percebe diferença nenhuma.
+#
+# A escolha entre os dois é automática (segue o Windows). O parâmetro
+# `tema_forcado` de EditorRede existe para inspeção e teste; deixado em
+# None, o tema é o do sistema.
+_TEMAS = {
+    "claro": {
+        "fundo_canvas": "#ffffff",
+        # A grade fica três tons abaixo do papel: aparece quando se olha
+        # para ela e some quando se olha para a rede.
+        "cor_grade": "#dbe2ea",
+        "texto_primario": "#1B1B1B",
+        "texto_secundario": "#64748b",
+        "painel_fundo": "#f8fafc",
+        "painel_borda": "#e9eef5",
+        "painel_titulo": "#1e293b",
+        "painel_secao": "#64748b",
+        "botao_fundo": "#ffffff",
+        "botao_borda": "#e2e8f0",
+        "botao_texto": "#334155",
+        "botao_hover": "#f1f5f9",
+        "botao_pressionado": "#e2e8f0",
+        "acento": COR_ACCENT_MARCA,
+        "acento_hover": "#00356b",
+        "acento_texto_sobre": "#ffffff",
+        "perigo": "#b91c1c",
+        "perigo_fundo": "#fef2f2",
+        "perigo_borda": "#fecaca",
+        "card_fundo": "#ffffff",
+        "card_borda": "#e2e8f0",
+        "card_titulo": "#0f172a",
+        "card_corpo": "#475569",
+        "card_vazio": "#94a3b8",
+        "card_tag_fundo": "#eef4fb",
+        "pilula_fundo": "rgba(255, 255, 255, 242)",
+        "pilula_borda": "#e5e7eb",
+        "pilula_texto": "#334155",
+        "pilula_hover": "#f3f4f6",
+        "pilula_risco": "#e5e7eb",
+        "arvore_fundo": "#ffffff",
+        "arvore_borda": "#e2e8f0",
+        "arvore_alternada": "#f8fafc",
+        "arvore_hover": "#eef2f7",
+        "arvore_selecao": "#e8f0fa",
+        "arvore_selecao_texto": "#004587",
+        "arvore_cabecalho": "#94a3b8",
+        "sombra": QColor(15, 23, 42, 40),
+        "barra_fundo": "#ffffff",
+        "barra_borda": "#334155",
+        "texto_rotulo_barra": "black",
+        "caixa_borda": "black",
+        "halo_ramo": "#dbe9f7",
+        "janela_zoom_fundo": "#dbe9f7",
+    },
+    "escuro": {
+        # Superfície #0f172a e painel #111827: o mesmo par de tons que os
+        # editores de código usam. Não é preto puro, porque preto chapado
+        # vibra ao lado de linhas coloridas e cansa a vista mais rápido.
+        "fundo_canvas": "#0f172a",
+        "cor_grade": "#263143",
+        # Texto em #e2e8f0 (não branco): branco sobre fundo escuro
+        # "brilha" e borra a leitura de texto pequeno.
+        "texto_primario": "#e2e8f0",
+        "texto_secundario": "#94a3b8",
+        "painel_fundo": "#111827",
+        "painel_borda": "#1f2937",
+        "painel_titulo": "#e2e8f0",
+        "painel_secao": "#94a3b8",
+        "botao_fundo": "#1e293b",
+        "botao_borda": "#334155",
+        "botao_texto": "#e2e8f0",
+        "botao_hover": "#273449",
+        "botao_pressionado": "#0b1220",
+        # O azul institucional (#004587) reprova no contraste contra
+        # fundo escuro — some. A versão clara da mesma família mantém a
+        # identidade e continua legível.
+        "acento": "#6ea8e8",
+        "acento_hover": "#8fbdf0",
+        "acento_texto_sobre": "#0b1220",
+        "perigo": "#f87171",
+        "perigo_fundo": "#2a1518",
+        "perigo_borda": "#7f1d1d",
+        "card_fundo": "#111827",
+        "card_borda": "#374151",
+        "card_titulo": "#e2e8f0",
+        "card_corpo": "#cbd5e1",
+        "card_vazio": "#94a3b8",
+        "card_tag_fundo": "#1e293b",
+        "pilula_fundo": "rgba(17, 24, 39, 245)",
+        "pilula_borda": "#334155",
+        "pilula_texto": "#e2e8f0",
+        "pilula_hover": "#273449",
+        "pilula_risco": "#334155",
+        "arvore_fundo": "#0f172a",
+        "arvore_borda": "#1f2937",
+        "arvore_alternada": "#141d2f",
+        "arvore_hover": "#1e293b",
+        "arvore_selecao": "#1e3a5f",
+        "arvore_selecao_texto": "#bfdbfe",
+        "arvore_cabecalho": "#94a3b8",
+        "sombra": QColor(0, 0, 0, 120),
+        "barra_fundo": "#0f172a",
+        "barra_borda": "#94a3b8",
+        "texto_rotulo_barra": "#e2e8f0",
+        "caixa_borda": "#0b1220",
+        "halo_ramo": "#1e3a5f",
+        "janela_zoom_fundo": "#1e3a5f",
+    },
+}
+
+# Nomes expostos para quem quiser forçar um dos temas (teste, inspeção,
+# captura de tela). O editor usa "escuro"/"claro" ao detectar o sistema.
+TEMAS_DISPONIVEIS = ("claro", "escuro")
+TEMA_PADRAO = "claro"
+
 ESPACO_GRADE = 24.0
 # Escala mínima para desenhar a grade. Com o diagrama afastado os
 # pontos viram um borrão cinza que escurece o fundo inteiro sem ajudar
@@ -432,7 +561,6 @@ ESCALA_MINIMA_GRADE = 0.5
 # é um filtro de pixel refeito a cada repintura; num item que anda a
 # cada evento de mouse isso trava o arraste. Um retângulo deslocado
 # custa duas chamadas de desenho.
-COR_SOMBRA = QColor(15, 23, 42, 40)
 DESLOCAMENTO_SOMBRA = 2.0
 RAIO_CAIXA = 8.0
 RAIO_CARTAO = 10.0
@@ -440,6 +568,52 @@ RAIO_CARTAO = 10.0
 # Texto do cartão de propriedades sem seleção. Fica em constante porque
 # o mesmo texto aparece no cartão (HTML) e no teste de estado vazio.
 TEXTO_SEM_SELECAO = "Clique num elemento do diagrama para ver suas propriedades."
+
+
+def _sistema_em_tema_escuro() -> bool:
+    """Diz se o sistema operacional pede tema escuro.
+
+    A pergunta certa é feita ao próprio Qt, que já sabe a resposta em
+    cada plataforma e a atualiza quando o usuário troca. Ele pode não
+    saber, porém: em alguns backends a resposta é `Unknown`, e é o caso
+    do backend offscreen. Por isso a leitura do registro do Windows
+    entra como segunda opinião — o valor `AppsUseLightTheme` é
+    justamente o que o menu de configurações do Windows altera, e zero
+    ali significa escuro.
+
+    Qualquer falha vale "claro". Uma janela clara num sistema escuro
+    continua legível; o contrário deixaria texto de baixo contraste
+    para quem não pediu tema nenhum.
+    """
+    # 1) A resposta do Qt.
+    try:
+        from PySide6.QtGui import QGuiApplication
+        aplicacao = QGuiApplication.instance()
+        esquema_escuro = getattr(Qt, "ColorScheme", None)
+        if aplicacao is not None and esquema_escuro is not None:
+            esquema = aplicacao.styleHints().colorScheme()
+            if esquema == esquema_escuro.Dark:
+                return True
+            if esquema == esquema_escuro.Light:
+                return False
+    except Exception:
+        # Qt antigo, backend exótico ou styleHints indisponível: cai no
+        # registro em vez de derrubar o editor por causa de cor.
+        pass
+
+    # 2) Registro do Windows. HKCU não exige privilégio algum.
+    try:
+        import winreg
+        chave = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+        try:
+            valor, _tipo = winreg.QueryValueEx(chave, "AppsUseLightTheme")
+        finally:
+            chave.Close()
+        return int(valor) == 0
+    except Exception:
+        return False
 
 
 def _ponto_salvo_valido(posicao):
@@ -503,6 +677,89 @@ def _centralizar_rotulo(rotulo, x, y) -> None:
     rotulo.setPos(x - rect.width() / 2, y - rect.height() / 2)
 
 
+TAMANHO_FONTE_ROTULO_DERIVACAO = 7
+
+
+def _medir_texto_rotulo(texto: str, tamanho_fonte: int) -> tuple:
+    """Mede o texto do rótulo como o desenho vai precisar dele.
+
+    Devolve (largura, altura) já considerando o teto de largura do
+    _RotuloItem. Sem esse teto, um nome de vinte caracteres geraria uma
+    pílula de meia cena. Com ele, a linha quebra e a largura para em
+    LARGURA_MAXIMA — e a altura cresce para compensar, que é o que a
+    medição por QFontMetricsF.naturalTextRect devolve.
+
+    A medida é feita com a MESMA fonte que o item vai usar (7pt por
+    padrão). Medir com outra fonte é o erro clássico aqui: a caixa fica
+    alguns pixels menor que o conteúdo e o vazamento volta.
+    """
+    fonte = QFont()
+    fonte.setPointSizeF(max(5.0, float(tamanho_fonte)))
+    medida = QFontMetricsF(fonte)
+    mais_larga = max(
+        (medida.horizontalAdvance(linha) for linha in texto.split("\n")),
+        default=0.0)
+    largura = min(mais_larga, _RotuloItem.LARGURA_MAXIMA)
+    # naturalTextRect calcula a quebra de linha e a altura correspondente
+    # com a mesma engine que o QGraphicsTextItem usa. Pedir a altura linha
+    # a linha vezes o número de linhas erraria por arredondamento de
+    # leading (a folga entre linhas não é exatamente lineSpacing).
+    rect = medida.boundingRect(
+        QRectF(0, 0, largura, 1e6), int(Qt.TextFlag.TextWordWrap), texto)
+    return rect.width(), rect.height()
+
+
+def _prender_rotulo_na_caixa(rotulo, caixa) -> None:
+    """Torna o rótulo filho da caixa e o centraliza no rect dela.
+
+    Filho, e não vizinho: a partir daqui, mover a caixa move o texto
+    junto por conta do Qt. O repositório de posições que existia antes
+    (atualizar o rótulo a cada pixel de arraste da caixa) deixa de ser
+    necessário para as derivações.
+
+    Deixar de ser arrastável é consequência desejada. O texto preso é
+    propriedade visual do elemento — arrastá-lo para fora seria o defeito
+    que este trecho corrige. Barras e ramos mantêm o texto solto, onde o
+    ajuste fino continua fazendo sentido.
+    """
+    rotulo.setParentItem(caixa)
+    rotulo.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
+    rotulo.setFlag(
+        QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, False)
+    rotulo.setCursor(Qt.CursorShape.PointingHandCursor)
+    rect_caixa = caixa.rect()
+    rect_texto = rotulo.boundingRect()
+    rotulo.setPos(
+        rect_caixa.center().x() - rect_texto.width() / 2,
+        rect_caixa.center().y() - rect_texto.height() / 2)
+
+
+def _ponto_na_borda_da_caixa(centro, alvo, meia_largura: float,
+                             meia_altura: float) -> tuple:
+    """Onde a linha barra→caixa encosta no retângulo da caixa.
+
+    A ligação do leque saía do centro da barra e terminava no centro da
+    caixa, entrando por baixo do preenchimento. Com a caixa maior, esse
+    trecho enterrado cresceu. Recortar na borda resolve: a linha para
+    exatamente no contorno, e o leque lê como uma ligação, não como um
+    risco que some dentro do elemento.
+
+    A interseção é a de um raio com um retângulo — a aproximação do rect
+    de padding basta, porque RAIO_CAIXA (8 px) é pequeno diante das
+    dimensões típicas. Nos cantos a linha entra alguns pixels, imperceptível
+    neste tamanho.
+    """
+    dx = alvo[0] - centro[0]
+    dy = alvo[1] - centro[1]
+    if abs(dx) < 1e-9 and abs(dy) < 1e-9:
+        return alvo[0], alvo[1]
+    # Fração do caminho até bater no primeiro dos dois lados.
+    escala_x = meia_largura / abs(dx) if abs(dx) > 1e-9 else float("inf")
+    escala_y = meia_altura / abs(dy) if abs(dy) > 1e-9 else float("inf")
+    escala = min(escala_x, escala_y)
+    return alvo[0] - dx * escala, alvo[1] - dy * escala
+
+
 def _desvio_rotulo_valido(desvio):
     """Converte o desvio [dx, dy] gravado no modelo em tupla, ou None.
 
@@ -551,6 +808,31 @@ def _escurecer(nome: str, fator: float) -> str:
     return cor.darker(int(round(100 / max(fator, 0.01)))).name()
 
 
+def _no_tema(cor: str, tema: dict) -> str:
+    """Devolve uma cor de elemento ajustada ao tema corrente.
+
+    A paleta CORES nasceu para papel branco. Sobre fundo escuro, "black"
+    e "darkgreen" se dissolvem no fundo e a linha do ramo desaparece —
+    justo a informação que o diagrama existe para mostrar. A correção
+    não é refazer a paleta: é clarear o que for escuro demais, mexendo
+    só na luminosidade e preservando matiz e saturação, para que cada
+    tipo de elemento continue sendo reconhecido pela cor.
+
+    O limiar de 0,35 separa as cores que somem no escuro (preto, verde
+    escuro, marrom, azul-aço) das que já se leem bem. No tema claro a
+    função devolve a cor intacta, e é por isso que o desenho de quem usa
+    o tema claro continua pixel a pixel igual ao de antes.
+    """
+    if tema.get("nome") != "escuro":
+        return cor
+    rgba = _qcolor(cor)
+    matiz, saturacao, luminosidade, alfa = rgba.getHslF()
+    if luminosidade >= 0.35:
+        return cor
+    ajustada = QColor.fromHslF(matiz, saturacao, 0.62, alfa)
+    return ajustada.name()
+
+
 def _cor_texto_sobre(nome_cor: str) -> str:
     """Escolhe preto ou branco para o texto conforme o fundo.
 
@@ -567,6 +849,20 @@ def _cor_texto_sobre(nome_cor: str) -> str:
 def _cor_texto_id() -> str:
     """Cor do rótulo que identifica o projeto: o azul institucional."""
     return COR_ACCENT_MARCA
+
+
+def _tema_por_nome(modo: str) -> dict:
+    """Monta o dicionário de cores de um tema, já identificado.
+
+    A chave "nome" é acrescentada aqui, e não nas duas listas, porque a
+    única coisa que o desenho precisa saber é se está no escuro — a
+    pergunta que _no_tema faz. Toda chamada devolve um dicionário novo:
+    quem receber o tema não corre o risco de alterar a tabela do módulo.
+    """
+    base = _TEMAS.get(modo) or _TEMAS[TEMA_PADRAO]
+    tema = dict(base)
+    tema["nome"] = modo if modo in TEMAS_DISPONIVEIS else TEMA_PADRAO
+    return tema
 
 
 def _formatar_potencia(valor: float) -> str:
@@ -714,11 +1010,15 @@ class _CartaoBarra(QGraphicsRectItem):
 
     LARGURA = 240.0
 
-    def __init__(self, nome_barra: str):
+    def __init__(self, nome_barra: str, tema: dict = None):
         super().__init__()
         self.nome_barra = nome_barra
+        # O cartão guarda o tema em que nasceu: ele é criado ao abrir e
+        # reconstruído na troca de tema, então não precisa saber mudar
+        # de cara depois.
+        self._tema = tema or _tema_por_nome(TEMA_PADRAO)
         self._texto = QGraphicsTextItem(self)
-        self._texto.setDefaultTextColor(_qcolor("#1B1B1B"))
+        self._texto.setDefaultTextColor(_qcolor(self._tema["texto_primario"]))
         fonte = QFont()
         fonte.setPointSizeF(7.5)
         self._texto.setFont(fonte)
@@ -756,12 +1056,12 @@ class _CartaoBarra(QGraphicsRectItem):
         # descolada do corpo, o que é o que dá a impressão de o cartão
         # estar suspenso sobre o diagrama.
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(COR_SOMBRA))
+        painter.setBrush(QBrush(self._tema["sombra"]))
         painter.drawRoundedRect(
             corpo.translated(DESLOCAMENTO_SOMBRA, DESLOCAMENTO_SOMBRA),
             RAIO_CARTAO, RAIO_CARTAO)
-        painter.setBrush(QBrush(_qcolor("#fbfcfe")))
-        painter.setPen(QPen(_qcolor(COR_ACCENT_MARCA), 1))
+        painter.setBrush(QBrush(_qcolor(self._tema["card_fundo"])))
+        painter.setPen(QPen(_qcolor(self._tema["acento"]), 1))
         painter.drawRoundedRect(corpo, RAIO_CARTAO, RAIO_CARTAO)
 
     def atualizar(self, titulo: str, linhas: list) -> None:
@@ -773,7 +1073,7 @@ class _CartaoBarra(QGraphicsRectItem):
         """
         partes = [
             f"<div style='font-size:9pt; font-weight:600;"
-            f" color:{COR_ACCENT_MARCA};'>{_escapar_html(titulo)}</div>"
+            f" color:{self._tema['acento']};'>{_escapar_html(titulo)}</div>"
         ]
         for linha in linhas:
             partes.append(
@@ -843,11 +1143,12 @@ class _BarraItem(QGraphicsEllipseItem):
         # enquanto o cartão da barra está aberto. O contorno é quem
         # carrega o estado; o miolo branco mantém a barra legível sobre
         # qualquer linha que passe por baixo dela.
-        cor_contorno = (_qcolor(COR_ACCENT_MARCA)
+        tema = self._tema()
+        cor_contorno = (_qcolor(tema["acento"])
                         if (self._sob_cursor or destacada)
-                        else _qcolor("#334155"))
+                        else _qcolor(tema["barra_borda"]))
         painter.setPen(QPen(cor_contorno, 2))
-        painter.setBrush(QBrush(_qcolor("white")))
+        painter.setBrush(QBrush(_qcolor(tema["barra_fundo"])))
         painter.drawEllipse(self.rect())
         if (self._sob_cursor or destacada) and not selecionado:
             # Halo na cor institucional, por fora da elipse. Fica atrás
@@ -855,7 +1156,7 @@ class _BarraItem(QGraphicsEllipseItem):
             # aparece, porque o selecionado tem precedência): dois
             # anéis concêntricos ao mesmo tempo confundiriam mais do que
             # informariam.
-            pen = QPen(_qcolor(COR_ACCENT_MARCA), 2)
+            pen = QPen(_qcolor(tema["acento"]), 2)
             painter.setPen(pen)
             painter.setBrush(Qt.BrushStyle.NoBrush)
             r = self._raio + 3
@@ -863,11 +1164,22 @@ class _BarraItem(QGraphicsEllipseItem):
         if selecionado:
             # Marca de seleção: anel tracejado por fora da elipse. Não
             # existia no Tk, onde o Canvas não tinha estado de seleção.
-            pen = QPen(_qcolor("red"), 1.5, Qt.PenStyle.DashLine)
+            pen = QPen(_qcolor(tema["perigo"]), 1.5, Qt.PenStyle.DashLine)
             painter.setPen(pen)
             painter.setBrush(Qt.BrushStyle.NoBrush)
             r = self._raio + 4
             painter.drawEllipse(QRectF(-r, -r, 2 * r, 2 * r))
+
+    def _tema(self) -> dict:
+        """Tema do editor, com um padrão para itens fora do editor.
+
+        Um _BarraItem solto (num teste de pintura, por exemplo) não tem
+        editor; cair no tema claro evita um AttributeError no meio do
+        paint, que o Qt trataria como travamento da cena inteira.
+        """
+        if self._editor is not None:
+            return self._editor._tema
+        return _tema_por_nome(TEMA_PADRAO)
 
     def boundingRect(self):
         """Região a repintar, com folga para o halo de destaque.
@@ -1048,11 +1360,17 @@ class _LinhaRamoItem(QGraphicsLineItem):
         super().setPen(caneta)
 
     def _caneta_destaque(self) -> QPen:
-        caneta = QPen(_qcolor(COR_ACCENT_MARCA),
+        caneta = QPen(_qcolor(self._tema()["acento"]),
                       self._caneta_repouso.widthF() + 2.0)
         caneta.setCapStyle(Qt.PenCapStyle.RoundCap)
         caneta.setStyle(self._caneta_repouso.style())
         return caneta
+
+    def _tema(self) -> dict:
+        """Tema do editor; claro quando o item não pertence a nenhum."""
+        if self._editor is not None:
+            return self._editor._tema
+        return _tema_por_nome(TEMA_PADRAO)
 
     def _caneta_hover(self) -> QPen:
         caneta = QPen(self._caneta_repouso)
@@ -1066,7 +1384,7 @@ class _LinhaRamoItem(QGraphicsLineItem):
             # O halo claro é pintado primeiro e mais grosso; a linha
             # colorida por cima. É o mesmo recurso do halo da barra,
             # na mesma linguagem.
-            halo = QPen(_qcolor("#dbe9f7"),
+            halo = QPen(_qcolor(self._tema()["halo_ramo"]),
                         self._caneta_repouso.widthF() + 6.0)
             halo.setCapStyle(Qt.PenCapStyle.RoundCap)
             painter.setPen(halo)
@@ -1153,14 +1471,15 @@ class _DerivacaoItem(QGraphicsRectItem):
     O retângulo base nasce em (0, 0), com o canto superior esquerdo na
     origem. Isso deixa o item ser posicionado pelo CENTRO, que é também
     o valor que o override grava. Guardar o centro, e não o canto, evita
-    que a caixa deslize alguns pixels a cada redesenho por conta de
-    conversão de canto.
     """
 
-    def __init__(self, nome: str, barra: str, editor: "EditorRede"):
-        super().__init__(
-            -MEIA_LARGURA_CAIXA, -MEIA_ALTURA_CAIXA,
-            2 * MEIA_LARGURA_CAIXA, 2 * MEIA_ALTURA_CAIXA)
+    # O rect chega pronto do redesenhar(), medido sobre o texto. A caixa
+    # não escolhe o próprio tamanho: quem manda é o conteúdo, e o texto é
+    # item filho dela — crescer aqui e encolher lá seria trabalho dobrado
+    # para o mesmo resultado.
+    def __init__(self, nome: str, barra: str, editor: "EditorRede",
+                 largura: float, altura: float):
+        super().__init__(-largura / 2, -altura / 2, largura, altura)
         self.nome_derivacao = nome
         self.barra_ancora = barra
         self._editor = editor
@@ -1204,7 +1523,7 @@ class _DerivacaoItem(QGraphicsRectItem):
             cor = _qcolor("gray")
 
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(COR_SOMBRA))
+        painter.setBrush(QBrush(self._tema()["sombra"]))
         painter.drawRoundedRect(
             corpo.translated(DESLOCAMENTO_SOMBRA, DESLOCAMENTO_SOMBRA),
             RAIO_CAIXA, RAIO_CAIXA)
@@ -1214,7 +1533,7 @@ class _DerivacaoItem(QGraphicsRectItem):
             # Realce do hover: borda no acento institucional, 2 px. A
             # cor de estado da caixa continua no preenchimento, então o
             # tipo do elemento não se perde no destaque.
-            pintor_pen = QPen(_qcolor(COR_ACCENT_MARCA), 2)
+            pintor_pen = QPen(_qcolor(self._tema()["acento"]), 2)
         else:
             # Borda de 1 px num tom escurecido da própria cor: dá
             # definição ao contorno sem introduzir uma cor estranha à
@@ -1222,6 +1541,17 @@ class _DerivacaoItem(QGraphicsRectItem):
             pintor_pen = QPen(cor.darker(150), 1)
         painter.setPen(pintor_pen)
         painter.drawRoundedRect(corpo, RAIO_CAIXA, RAIO_CAIXA)
+
+    def _tema(self) -> dict:
+        """Tema do editor, com o claro como padrão fora dele.
+
+        A borda no escuro não pode ser o preto de antes: a caixa
+        ficaria sem contorno contra o fundo noturno. O tema escuro
+        declara `caixa_borda` para exatamente esse caso.
+        """
+        if self._editor is not None:
+            return self._editor._tema
+        return _tema_por_nome(TEMA_PADRAO)
 
     def hoverEnterEvent(self, event):
         self._sob_cursor = True
@@ -1254,10 +1584,25 @@ class _DerivacaoItem(QGraphicsRectItem):
             if abs(deslocamento.x()) > 5 or abs(deslocamento.y()) > 5:
                 # Arrastou a caixa de lugar: o itemChange já cuidou da
                 # posição, e o painel de propriedades não tem por que
-                # mudar.
+                # mudar. O texto também fica como está — quem arrastou
+                # quis mover o elemento, não esconder o nome dele.
                 return
+        # Clique curto na caixa alterna o texto dela. Isso não é atalho
+        # para o usuário: a caixa é o elemento, e o texto é uma
+        # propriedade visual dele. Ocultar e reexibir pelo próprio objeto
+        # é mais direto que procurar um botão no painel.
+        #
+        # A caixa NÃO some junto — ela é a representação elétrica do
+        # elemento no diagrama. Só o nome sai.
         if self._editor is not None:
-            self._editor._selecionar_no_mapa("derivacao", self.nome_derivacao)
+            self._editor.alternar_rotulo("derivacao", self.nome_derivacao)
+            # A seleção vem depois: alternar_rotulo redesenha a cena
+            # inteira, e o painel de propriedades precisa montar o cartão
+            # sobre os itens NOVOS, não sobre os que acabaram de morrer.
+            # Também por isso o nome é guardado — depois do redesenho
+            # `self` já não pertence à cena.
+            self._editor._selecionar_no_mapa(
+                "derivacao", self.nome_derivacao)
 
     def itemChange(self, change, value):
         if (change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged
@@ -1265,6 +1610,24 @@ class _DerivacaoItem(QGraphicsRectItem):
             self._editor._ao_mover_derivacao(
                 self.nome_derivacao, self.barra_ancora, self.pos())
         return super().itemChange(change, value)
+
+    def mouseDoubleClickEvent(self, event):
+        """Duplo clique abre o formulário do elemento.
+
+        O atalho existia na árvore do painel, mas não no mapa: quem
+        estava olhando o diagrama precisava desviar o olho até a lista
+        para editar. Como a caixa é a face visível do elemento, o
+        caminho curto passa a valer aqui também.
+
+        O evento não é repassado ao base. Com a caixa movível, o Qt usa o
+        segundo press para iniciar outro arraste, e o item sairia do
+        lugar às costas do usuário enquanto o formulário abre.
+        """
+        if self._editor is not None:
+            self._editor._editar_derivacao(self.nome_derivacao)
+            event.accept()
+            return
+        super().mouseDoubleClickEvent(event)
 
 
 class _RotuloItem(QGraphicsTextItem):
@@ -1274,7 +1637,7 @@ class _RotuloItem(QGraphicsTextItem):
     O fundo é pintado no mesmo drawRect do texto e não como item
     separado: assim nunca descola do texto quando o rótulo se move.
 
-    TRANSPARÊNCIA TÉCNICA: `fundo=None` desliga o retângulo. É o caso
+    TRANSPARÊNCIA TÉCNICA: `fundo=False` desliga o retângulo. É o caso
     dos rótulos desenhados DENTRO das caixas de derivação, onde o fundo
     branco cobria o preenchimento colorido do elemento e o texto sumia
     no meio dele."""
@@ -1326,7 +1689,11 @@ class _RotuloItem(QGraphicsTextItem):
             default=0.0)
         if mais_larga > self.LARGURA_MAXIMA:
             self.setTextWidth(self.LARGURA_MAXIMA)
-        self._cor_fundo = _qcolor(fundo) if fundo is not None else None
+        # `fundo=False` é o "sem retângulo" pedido pela caixa de
+        # derivação, cujo preenchimento já faz esse papel. Qualquer nome
+        # de cor liga o retângulo. Manter a distinção explícita evita que
+        # um None vindo de fora desligue o fundo por acidente.
+        self._cor_fundo = _qcolor(fundo) if fundo else None
         self._tamanho_fonte = tamanho_fonte
         self.setZValue(1.0)
         # Todo rótulo com dono pode ser arrastado sozinho: separar o
@@ -1466,6 +1833,11 @@ class _CanvasRede(QGraphicsView):
         self.ao_mudar_escala = None
         self.ao_mudar_modo_janela = None
         self.ao_redimensionar = None
+        # Fundo e grade saem daqui. A vista não escolhe tema — o editor
+        # decide e deposita o dicionário corrente nesta referência, que
+        # o drawBackground consulta a cada repintura. Trocar o tema é
+        # trocar o dicionário e pedir update; nada é reconstruído.
+        self.tema: dict = _tema_por_nome(TEMA_PADRAO)
 
         # Animação do zoom. A roda dispara muitos eventos por gesto, e
         # aplicar cada passo na hora produz o salto seco que dá a
@@ -1852,8 +2224,9 @@ class _CanvasRede(QGraphicsView):
         # restaurando-se a transformação de identidade do pintor.
         painter.save()
         painter.resetTransform()
-        painter.setPen(QPen(_qcolor("steelblue"), 1.0, Qt.PenStyle.DashLine))
-        painter.setBrush(QBrush(_qcolor("#dbe9f7")))
+        painter.setPen(QPen(_qcolor(self.tema["acento"]), 1.0,
+                            Qt.PenStyle.DashLine))
+        painter.setBrush(QBrush(_qcolor(self.tema["janela_zoom_fundo"])))
         painter.drawRect(self._retangulo_janela)
         painter.restore()
 
@@ -1866,7 +2239,7 @@ class _CanvasRede(QGraphicsView):
         de tela daria uma malha fixa, que se move por baixo do diagrama
         e destrói a referência de posição.
         """
-        painter.fillRect(retangulo, QBrush(_qcolor(FUNDO_CANVAS)))
+        painter.fillRect(retangulo, QBrush(_qcolor(self.tema["fundo_canvas"])))
         if self._escala_atual() < ESCALA_MINIMA_GRADE:
             return
         painter.save()
@@ -1874,7 +2247,7 @@ class _CanvasRede(QGraphicsView):
         # Caneta sem largura: no Qt isso pinta sempre 1 pixel de tela,
         # independentemente do zoom. Com caneta de 1 unidade de cena, os
         # pontos sumiriam ao afastar e virariam borrões ao aproximar.
-        painter.setPen(QPen(_qcolor(COR_GRADE_PONTOS), 0))
+        painter.setPen(QPen(_qcolor(self.tema["cor_grade"]), 0))
         esquerda = math.floor(retangulo.left() / ESPACO_GRADE) * ESPACO_GRADE
         topo = math.floor(retangulo.top() / ESPACO_GRADE) * ESPACO_GRADE
         pontos = []
@@ -1903,6 +2276,58 @@ class _CanvasRede(QGraphicsView):
             self.ao_mudar_escala(self._escala_atual())
 
 
+class _BotaoLegenda(QPushButton):
+    """Botão de adição de elemento com uma marca da cor usada no mapa.
+
+    O botão serve de legenda da paleta: ao lado do nome do elemento há um
+    chip vertical com a mesma cor que aquele tipo recebe no diagrama, de
+    modo que o usuário reconheça no mapa o que acabou de adicionar sem
+    consultar o código nem a árvore.
+
+    O chip é decorativo. Desenhá-lo no paintEvent, depois do
+    super().paintEvent(), preserva todo o comportamento de botão — folha
+    de estilo, hover, afundamento e marcação — sem reimplementar nenhum
+    desses estados.
+    """
+
+    LARGURA_CHIP = 7
+    ALTURA_CHIP = 14
+    RECUO_DIREITA = 6
+
+    def __init__(self, texto, cor_marca=None, parent=None):
+        super().__init__(texto, parent)
+        # Guardada como texto ("steelblue") e não como QColor: a paleta
+        # CORES é a fonte única das cores do mapa, e converter na hora de
+        # guardar obrigaria a reconverter para o tema escuro adiante.
+        self._cor_marca = cor_marca
+
+    def set_cor_marca(self, cor):
+        self._cor_marca = cor
+        self.update()
+
+    def cor_marca(self):
+        return self._cor_marca
+
+    def paintEvent(self, evento):
+        super().paintEvent(evento)
+        if not self._cor_marca:
+            return
+        pintor = QPainter(self)
+        pintor.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        largura = self.LARGURA_CHIP
+        altura = self.ALTURA_CHIP
+        x = self.width() - largura - self.RECUO_DIREITA
+        y = (self.height() - altura) / 2
+        retangulo = QRectF(x, y, largura, altura)
+        # O contorno vem de _escurecer sobre a própria cor: sem ele, os
+        # tons claros da paleta (goldenrod, orange) desaparecem no fundo
+        # quase branco do botão e o chip deixa de identificar o elemento.
+        pintor.setPen(QPen(QColor(_escurecer(self._cor_marca, 1.45)), 1))
+        pintor.setBrush(QColor(self._cor_marca))
+        pintor.drawRoundedRect(retangulo, 3, 3)
+        pintor.end()
+
+
 class EditorRede(QWidget):
     """Widget central do editor: painel de ferramentas, diagrama e lista.
 
@@ -1912,11 +2337,28 @@ class EditorRede(QWidget):
     fonte da verdade, o modelo `RedeEletrica` é.
     """
 
-    def __init__(self, rede: RedeEletrica = None, projeto: Projeto = None):
+    def __init__(self, rede: RedeEletrica = None, projeto: Projeto = None,
+                 tema_forcado: str = None):
+        """Monta o editor.
+
+        `tema_forcado` aceita "claro" ou "escuro" e existe para
+        inspeção e teste; em uso normal fica em None e o tema vem do
+        sistema operacional, lido uma vez aqui. A leitura única não é
+        economia: a mudança ao vivo chega pelo sinal do Qt, que reaplica
+        o tema já com o editor montado.
+        """
         super().__init__()
         self.rede = rede or RedeEletrica()
         self.projeto = projeto
         self.orientacao = "vertical"
+        # O tema é decidido ANTES de qualquer widget: a montagem já
+        # pergunta as cores ao dicionário, e montar no claro para
+        # repintar depois daria um piscar claro na abertura.
+        if tema_forcado in TEMAS_DISPONIVEIS:
+            self._modo_tema = tema_forcado
+        else:
+            self._modo_tema = "escuro" if _sistema_em_tema_escuro() else "claro"
+        self._tema = _tema_por_nome(self._modo_tema)
 
         # Quem está selecionado no diagrama, na forma (categoria, nome)
         # — a mesma chave que a árvore usa. Só existe um por vez: a
@@ -2001,10 +2443,25 @@ class EditorRede(QWidget):
 
         self._montar_layout()
         self._carregar_projeto_automaticamente()
+        # Aparência aplicada depois de os widgets existirem: o QSS dos
+        # painéis só alcança o que já está na árvore, e o do canvas só
+        # pinta cena que existe.
+        self.aplicar_tema()
         # O cartão vive na cena, não na vista, mas é a vista quem sabe
         # distinguir clique de pan no fundo vazio. O gancho fecha o
         # buraco entre os dois sem que a vista precise conhecer o editor.
         self.view.ao_clicar_fundo = self._ao_clicar_fundo_mapa
+        # Seguir a troca de tema do Windows sem fechar o programa. O
+        # sinal existe no PySide6 atual; em versões que não o tenham, o
+        # tema fica o da abertura — o que é uma limitação aceitável, não
+        # um erro.
+        try:
+            from PySide6.QtGui import QGuiApplication
+            dicas = QGuiApplication.styleHints()
+            if dicas is not None and hasattr(dicas, "colorSchemeChanged"):
+                dicas.colorSchemeChanged.connect(self._ao_mudar_esquema_sistema)
+        except Exception:
+            pass
         # Equivalente ao self.after(50, self.redesenhar) do Tk. O layout
         # só tem dimensão útil depois do primeiro ciclo de eventos; antes
         # disso o enquadramento seria calculado sobre uma área nula.
@@ -2113,7 +2570,11 @@ class EditorRede(QWidget):
             fonte.setBold(True)
             label_projeto.setFont(fonte)
             label_projeto.setWordWrap(True)
-            label_projeto.setStyleSheet(f"color: {_cor_texto_id()} ;")
+            # A cor definitiva fica com aplicar_tema(): o azul do tema
+            # claro some no painel escuro.
+            label_projeto.setObjectName("tituloProjeto")
+            label_projeto.setStyleSheet(
+                f"color: {self._tema['acento']};")
             coluna.addWidget(label_projeto)
 
         label_titulo = QLabel("Adicionar elemento")
@@ -2123,13 +2584,16 @@ class EditorRede(QWidget):
         label_titulo.setObjectName("tituloPainel")
         coluna.addWidget(label_titulo)
 
+        # Sem chip: a barra é desenhada em branco com contorno azulado, e
+        # inventar uma cor só para o botão quebraria a função de legenda.
         coluna.addWidget(self._botao_painel("➕ Nova Barra", self._criar_barra))
 
         coluna.addWidget(self._label_secao("Ramos (2 barras)"))
         for texto, tipo in [("── Linha", "Line"), ("── Chave", "Switch"),
                             ("⧈ Transformador", "Transformer")]:
             coluna.addWidget(self._botao_painel(
-                texto, lambda _checked=False, t=tipo: self._criar_ramo(t)))
+                texto, lambda _checked=False, t=tipo: self._criar_ramo(t),
+                cor_marca=CORES[tipo]))
 
         coluna.addWidget(self._label_secao("Conectados (1 barra)"))
         # Storage não tem botão próprio aqui: nasce pelo fluxo
@@ -2140,17 +2604,22 @@ class EditorRede(QWidget):
                             ("🌀 Reator", "Reactor"),
                             ("⚡ Fonte (Vsource)", "Vsource")]:
             coluna.addWidget(self._botao_painel(
-                texto, lambda _checked=False, t=tipo: self._criar_derivacao(t)))
+                texto, lambda _checked=False, t=tipo: self._criar_derivacao(t),
+                cor_marca=CORES[tipo]))
 
         # O medidor também fica fora do laço acima: não passa por
         # _criar_derivacao, porque o formulário dele não pede barra — a
         # âncora de desenho vem do elemento monitorado.
         coluna.addWidget(self._botao_painel("⏱ Medidor de energia",
-                                            self._criar_medidor))
+                                            self._criar_medidor,
+                                            cor_marca=CORES["EnergyMeter"]))
 
         coluna.addWidget(self._label_secao("Sistemas compostos"))
+        # O BESS cria um Storage no modelo; a marca mostra "teal" porque é
+        # essa a cor com que a caixa correspondente aparece no mapa.
         coluna.addWidget(self._botao_painel(
-            "🔋 Sistema BESS", self._criar_sistema_bess))
+            "🔋 Sistema BESS", self._criar_sistema_bess,
+            cor_marca=CORES["Storage"]))
 
         label_orientacao = QLabel("Orientação do layout")
         fonte_orientacao = fonte_padrao(10)
@@ -2243,7 +2712,7 @@ class EditorRede(QWidget):
         self.tree.setAlternatingRowColors(True)
         self.tree.setSelectionMode(QTreeWidget.SelectionMode.ExtendedSelection)
         self.tree.setFont(fonte_padrao(9))
-        self.tree.setStyleSheet(self.ESTILO_ARVORE)
+        self.tree.setStyleSheet(self._estilo(self.ESTILO_ARVORE))
         self.tree.itemDoubleClicked.connect(self._ao_dar_duplo_clique)
         coluna_lista.addWidget(self.tree, 1)
 
@@ -2268,7 +2737,7 @@ class EditorRede(QWidget):
         # existirem: o Qt resolve os seletores por objectName em tempo de
         # pintura, não na criação, mas aplicar no fim deixa a montagem
         # numa passada só.
-        self.setStyleSheet(self.ESTILO_PAINEL)
+        self.setStyleSheet(self._estilo(self.ESTILO_PAINEL))
 
         # Os widgets flutuantes dependem de a vista já pertencer ao
         # layout: o reposicionamento usa a geometria do viewport, que só
@@ -2283,27 +2752,33 @@ class EditorRede(QWidget):
     # mesma linguagem: fundo branco quase opaco, borda fina de um tom
     # abaixo do branco e cantos totalmente arredondados. Duas folhas de
     # estilo separadas divergiriam no primeiro ajuste.
+    #
+    # As folhas abaixo são MOLDES: o texto tem as cores do tema entre
+    # chaves e um método preenche. Escrever duas folhas por estilo
+    # (uma clara, uma escura) duplicaria o layout inteiro em cada
+    # variante e a primeira correção de espaçamento seria feita só de um
+    # lado.
     ESTILO_PILULA = (
-        "QFrame#pilula {"
-        " background-color: rgba(255, 255, 255, 242);"
-        " border: 1px solid #e5e7eb;"
+        "QFrame#pilula {{"
+        " background-color: {pilula_fundo};"
+        " border: 1px solid {pilula_borda};"
         " border-radius: 18px;"
-        "}"
+        "}}"
     )
     ESTILO_BOTAO_PILULA = (
-        "QToolButton {"
+        "QToolButton {{"
         " border: none;"
         " border-radius: 14px;"
         " background: transparent;"
         " padding: 4px 8px;"
-        " color: #334155;"
-        "}"
-        "QToolButton:hover { background-color: #f3f4f6; }"
-        "QToolButton:checked {"
-        f" background-color: {COR_ACCENT_MARCA};"
-        " color: white;"
-        "}"
-        "QToolButton:pressed { background-color: #e5e7eb; }"
+        " color: {pilula_texto};"
+        "}}"
+        "QToolButton:hover {{ background-color: {pilula_hover}; }}"
+        "QToolButton:checked {{"
+        " background-color: {acento};"
+        " color: {acento_texto_sobre};"
+        "}}"
+        "QToolButton:pressed {{ background-color: {botao_pressionado}; }}"
     )
 
     # ------------------------------------------------------------------ #
@@ -2319,15 +2794,15 @@ class EditorRede(QWidget):
     # institucional ao lado, funcionam como neutros e não como uma cor a
     # mais competindo com a rede desenhada.
     ESTILO_PAINEL = (
-        "QFrame#painelLateral { background-color: #f8fafc; border: none;"
-        " border-right: 1px solid #e9eef5; }"
-        "QFrame#painelLista { background-color: #f8fafc; border: none;"
-        " border-left: 1px solid #e9eef5; }"
-        "QLabel#dicaPainel { color: #94a3b8; }"
-        "QLabel#tituloSecao { color: #64748b; font-weight: 600;"
-        " letter-spacing: 1px; }"
-        "QLabel#tituloPainel { color: #1e293b; font-weight: 600; }"
-        "QRadioButton { color: #475569; spacing: 5px; }"
+        "QFrame#painelLateral {{ background-color: {painel_fundo};"
+        " border: none; border-right: 1px solid {painel_borda}; }}"
+        "QFrame#painelLista {{ background-color: {painel_fundo};"
+        " border: none; border-left: 1px solid {painel_borda}; }}"
+        "QLabel#dicaPainel {{ color: {card_vazio}; }}"
+        "QLabel#tituloSecao {{ color: {painel_secao}; font-weight: 600;"
+        " letter-spacing: 1px; }}"
+        "QLabel#tituloPainel {{ color: {painel_titulo}; font-weight: 600; }}"
+        "QRadioButton {{ color: {botao_texto}; spacing: 5px; }}"
     )
 
     # Botão de ação do painel. Três variantes, declaradas como chave de
@@ -2335,47 +2810,52 @@ class EditorRede(QWidget):
     # interessa na tela: simular), "perigo" (exclusão) e neutro (o
     # padrão, que é a maioria).
     ESTILO_BOTAO_PAINEL = (
-        "QPushButton {"
-        " background-color: #ffffff;"
-        " border: 1px solid #e2e8f0;"
+        "QPushButton {{"
+        " background-color: {botao_fundo};"
+        " border: 1px solid {botao_borda};"
         " border-radius: 8px;"
         " padding: 5px 8px;"
-        " color: #334155;"
+        " color: {botao_texto};"
         " text-align: left;"
-        "}"
-        "QPushButton:hover { background-color: #f1f5f9; border-color: #cbd5e1; }"
-        "QPushButton:pressed { background-color: #e2e8f0; }"
-        "QPushButton[acao=\"primario\"] {"
-        f" background-color: {COR_ACCENT_MARCA};"
-        " border: 1px solid " + COR_ACCENT_MARCA + ";"
-        " color: #ffffff; font-weight: 600; text-align: center;"
-        "}"
-        "QPushButton[acao=\"primario\"]:hover { background-color: #00356b; }"
-        "QPushButton[acao=\"perigo\"] { color: #b91c1c; text-align: center; }"
-        "QPushButton[acao=\"perigo\"]:hover {"
-        " background-color: #fef2f2; border-color: #fecaca; }"
+        "}}"
+        "QPushButton:hover {{ background-color: {botao_hover};"
+        " border-color: {botao_borda}; }}"
+        "QPushButton:pressed {{ background-color: {botao_pressionado}; }}"
+        "QPushButton[acao=\"primario\"] {{"
+        " background-color: {acento};"
+        " border: 1px solid {acento};"
+        " color: {acento_texto_sobre}; font-weight: 600; text-align: center;"
+        "}}"
+        "QPushButton[acao=\"primario\"]:hover {{"
+        " background-color: {acento_hover}; }}"
+        "QPushButton[acao=\"perigo\"] {{ color: {perigo};"
+        " text-align: center; }}"
+        "QPushButton[acao=\"perigo\"]:hover {{"
+        " background-color: {perigo_fundo};"
+        " border-color: {perigo_borda}; }}"
     )
 
     # Árvore de elementos. A seleção usa o azul institucional em versão
     # clara, com a barra lateral de acento que os editores atuais
     # desenham — a cor cheia no fundo escurece as três colunas de texto.
     ESTILO_ARVORE = (
-        "QTreeWidget {"
-        " background-color: #ffffff;"
-        " border: 1px solid #e2e8f0;"
+        "QTreeWidget {{"
+        " background-color: {arvore_fundo};"
+        " border: 1px solid {arvore_borda};"
         " border-radius: 10px;"
         " padding: 2px;"
-        " alternate-background-color: #f8fafc;"
+        " alternate-background-color: {arvore_alternada};"
         " outline: none;"
-        "}"
-        "QTreeWidget::item { padding: 3px 2px; border-radius: 5px; }"
-        "QTreeWidget::item:hover { background-color: #eef2f7; }"
-        "QTreeWidget::item:selected {"
-        " background-color: #e8f0fa; color: #004587; }"
-        "QHeaderView::section {"
-        " background-color: #ffffff; border: none;"
-        " border-bottom: 1px solid #e2e8f0;"
-        " padding: 4px 2px; color: #94a3b8; font-weight: 600; }"
+        "}}"
+        "QTreeWidget::item {{ padding: 3px 2px; border-radius: 5px; }}"
+        "QTreeWidget::item:hover {{ background-color: {arvore_hover}; }}"
+        "QTreeWidget::item:selected {{"
+        " background-color: {arvore_selecao};"
+        " color: {arvore_selecao_texto}; }}"
+        "QHeaderView::section {{"
+        " background-color: {arvore_fundo}; border: none;"
+        " border-bottom: 1px solid {arvore_borda};"
+        " padding: 4px 2px; color: {arvore_cabecalho}; font-weight: 600; }}"
     )
 
     # Cartão de propriedades. Borda fina, canto de 10 px e fundo branco
@@ -2383,19 +2863,119 @@ class EditorRede(QWidget):
     # aplicado ao widget — o objeto selecionado fica suspenso sobre a
     # superfície da lista.
     ESTILO_CARD_PROPS = (
-        "QFrame#cardProps {"
-        " background-color: #ffffff;"
-        " border: 1px solid #e2e8f0;"
+        "QFrame#cardProps {{"
+        " background-color: {card_fundo};"
+        " border: 1px solid {card_borda};"
         " border-radius: 10px;"
-        "}"
+        "}}"
     )
-    ESTILO_CORPO_PROPS = "color: #475569;"
-    ESTILO_TITULO_CARD = "color: #0f172a; font-weight: 600;"
+    ESTILO_CORPO_PROPS = "color: {card_corpo};"
+    ESTILO_TITULO_CARD = "color: {card_titulo}; font-weight: 600;"
     ESTILO_TAG_CARD = (
-        f"color: {COR_ACCENT_MARCA}; background-color: #eef4fb;"
+        "color: {acento}; background-color: {card_tag_fundo};"
         " border-radius: 6px; padding: 1px 6px; font-weight: 600;"
     )
-    ESTILO_VAZIO_CARD = "color: #94a3b8;"
+    ESTILO_VAZIO_CARD = "color: {card_vazio};"
+
+    # ------------------------------------------------------------------ #
+    def _estilo(self, molde: str) -> str:
+        """Preenche um molde de folha de estilo com o tema corrente.
+
+        Toda folha passa por aqui, e é por isso que não existe um
+        "estilo claro" e um "estilo escuro" paralelos: um único texto,
+        preenchido com um único dicionário.
+        """
+        return molde.format(**self._tema)
+
+    def aplicar_tema(self) -> None:
+        """Pinta o editor inteiro com o tema corrente.
+
+        Chamado na montagem e a cada troca de tema do sistema. O que
+        depende de QSS é reaplicado widget a widget — folha herdada não
+        chega aos objetos que já receberam a própria. O que depende de
+        pintura (fundo, grade, elementos) sai com um redesenho.
+        """
+        tema = self._tema
+        # A vista consulta este dicionário a cada repintura do fundo.
+        self.view.tema = tema
+        self.setStyleSheet(self._estilo(self.ESTILO_PAINEL))
+        # Os painéis laterais são frames nomeados no próprio QSS; os
+        # botões carregam folha própria e precisam ser alcançados um a
+        # um.
+        for botao in self.findChildren(QPushButton):
+            botao.setStyleSheet(self._estilo(self.ESTILO_BOTAO_PAINEL))
+        if getattr(self, "tree", None) is not None:
+            self.tree.setStyleSheet(self._estilo(self.ESTILO_ARVORE))
+            # O cabeçalho da árvore herda a paleta do sistema, e no
+            # escuro ela traria texto escuro sobre o cabeçalho escuro.
+            paleta_cabecalho = self.tree.header().palette()
+            paleta_cabecalho.setColor(
+                paleta_cabecalho.ColorRole.WindowText,
+                QColor(tema["arvore_cabecalho"]))
+            self.tree.header().setPalette(paleta_cabecalho)
+
+        # Widgets flutuantes. Eles existem só depois da primeira montagem;
+        # a checagem cobre a chamada durante o __init__.
+        for nome in ("_barra_ferramentas", "_barra_status"):
+            pilula_widget = getattr(self, nome, None)
+            if pilula_widget is not None:
+                pilula_widget.setStyleSheet(self._estilo(self.ESTILO_PILULA))
+                for botao in pilula_widget.findChildren(QToolButton):
+                    botao.setStyleSheet(self._estilo(self.ESTILO_BOTAO_PILULA))
+                for rotulo in pilula_widget.findChildren(QLabel):
+                    rotulo.setStyleSheet(
+                        f"color: {tema['pilula_texto']}; border: none;")
+        if getattr(self, "botao_mostrar_todos", None) is not None:
+            # Os dois botões de rótulos tinham ajuste próprio sobre a
+            # folha base (um em negrito, o outro esmaecido); o ajuste
+            # sobrevive ao tema.
+            self.botao_mostrar_todos.setStyleSheet(
+                self._estilo(self.ESTILO_BOTAO_PILULA)
+                + "QToolButton { font-weight: 700; }")
+            self.botao_ocultar_todos.setStyleSheet(
+                self._estilo(self.ESTILO_BOTAO_PILULA)
+                + f"QToolButton {{ color: {tema['card_vazio']}; }}")
+
+        # Cartão de propriedades do painel.
+        if getattr(self, "_card_propriedades", None) is not None:
+            self._card_propriedades.setStyleSheet(
+                self._estilo(self.ESTILO_CARD_PROPS))
+        for atributo, molde in (
+                ("_rotulo_props_titulo", self.ESTILO_TITULO_CARD),
+                ("_rotulo_props_tag", self.ESTILO_TAG_CARD)):
+            rotulo = getattr(self, atributo, None)
+            if rotulo is not None:
+                rotulo.setStyleSheet(self._estilo(molde))
+
+        # O rótulo do projeto e as dicas eram pintados por cor fixa no
+        # momento da criação (ver _montar_layout); sem repintura, o azul
+        # institucional ficaria sobre o painel escuro.
+        for rotulo in self.findChildren(QLabel):
+            if rotulo.objectName() == "tituloProjeto":
+                rotulo.setStyleSheet(f"color: {tema['acento']};")
+            elif rotulo.objectName() == "dicaPainel":
+                rotulo.setStyleSheet(f"color: {tema['card_vazio']};")
+
+        # Os itens de cena guardam a cor no momento da criação; o
+        # redesenho os refaz com a paleta do tema.
+        if getattr(self, "cena", None) is not None:
+            self.redesenhar()
+        self.atualizar_card_propriedades()
+
+    def _ao_mudar_esquema_sistema(self, *_args) -> None:
+        """Reage à troca de tema claro/escuro no sistema operacional.
+
+        Um editor aberto no fim do dia, quando o Windows entra no modo
+        noturno, não deve ser o único programa da tela a continuar
+        branco. Só reaplica quando o esquema efetivo mudou: o sinal
+        também chega para "Unknown", e nesse caso não há o que fazer.
+        """
+        novo = "escuro" if _sistema_em_tema_escuro() else "claro"
+        if novo == self._modo_tema:
+            return
+        self._modo_tema = novo
+        self._tema = _tema_por_nome(novo)
+        self.aplicar_tema()
 
     def _montar_widgets_flutuantes(self):
         """Cria a pílula de ferramentas (topo) e a de status (rodapé).
@@ -2411,7 +2991,7 @@ class EditorRede(QWidget):
         """
         pilula = QFrame(self.view)
         pilula.setObjectName("pilula")
-        pilula.setStyleSheet(self.ESTILO_PILULA)
+        pilula.setStyleSheet(self._estilo(self.ESTILO_PILULA))
         linha = QHBoxLayout(pilula)
         linha.setContentsMargins(6, 4, 6, 4)
         linha.setSpacing(2)
@@ -2422,7 +3002,7 @@ class EditorRede(QWidget):
             botao.setToolTip(dica)
             botao.setCursor(Qt.CursorShape.PointingHandCursor)
             botao.setCheckable(marcavel)
-            botao.setStyleSheet(self.ESTILO_BOTAO_PILULA)
+            botao.setStyleSheet(self._estilo(self.ESTILO_BOTAO_PILULA))
             botao.setMinimumHeight(28)
             botao.setMinimumWidth(28)
             if marcavel:
@@ -2436,7 +3016,7 @@ class EditorRede(QWidget):
             risco = QFrame(pilula)
             risco.setFrameShape(QFrame.Shape.VLine)
             risco.setFrameShadow(QFrame.Shadow.Plain)
-            risco.setStyleSheet("color: #e5e7eb;")
+            risco.setStyleSheet(f"color: {self._tema['pilula_risco']};")
             risco.setFixedHeight(20)
             linha.addWidget(risco)
 
@@ -2444,7 +3024,8 @@ class EditorRede(QWidget):
             "−", "Reduzir a vista", self.view.reduzir)
         self.label_zoom = QLabel("100%", pilula)
         self.label_zoom.setFont(fonte_padrao(9))
-        self.label_zoom.setStyleSheet("color: #334155; border: none;")
+        self.label_zoom.setStyleSheet(
+            f"color: {self._tema['pilula_texto']}; border: none;")
         self.label_zoom.setAlignment(Qt.AlignmentFlag.AlignCenter)
         # Largura fixa: sem ela o percentual pularia de 3 para 4 dígitos
         # e empurraria os botões vizinhos a cada passo de zoom.
@@ -2479,11 +3060,11 @@ class EditorRede(QWidget):
         # vazado é ocultar. Um ícone só repetido obrigaria a ler o
         # tooltip toda vez.
         self.botao_mostrar_todos.setStyleSheet(
-            self.ESTILO_BOTAO_PILULA
+            self._estilo(self.ESTILO_BOTAO_PILULA)
             + "QToolButton { font-weight: 700; }")
         self.botao_ocultar_todos.setStyleSheet(
-            self.ESTILO_BOTAO_PILULA
-            + "QToolButton { color: #94a3b8; }")
+            self._estilo(self.ESTILO_BOTAO_PILULA)
+            + f"QToolButton {{ color: {self._tema['card_vazio']}; }}")
 
         sombra = QGraphicsDropShadowEffect(pilula)
         sombra.setBlurRadius(16)
@@ -2496,7 +3077,7 @@ class EditorRede(QWidget):
         # ---- Barra de status (rodapé, alinhada à esquerda) ---- #
         status = QFrame(self.view)
         status.setObjectName("pilula")
-        status.setStyleSheet(self.ESTILO_PILULA)
+        status.setStyleSheet(self._estilo(self.ESTILO_PILULA))
         linha_status = QHBoxLayout(status)
         linha_status.setContentsMargins(10, 2, 10, 2)
         self.label_status = QLabel("", status)
@@ -2591,7 +3172,8 @@ class EditorRede(QWidget):
         if self.botao_zoom_janela.isChecked():
             self.botao_zoom_janela.setChecked(False)
 
-    def _botao_painel(self, texto, callback, variante: str = None) -> QPushButton:
+    def _botao_painel(self, texto, callback, variante: str = None,
+                      cor_marca: str = None) -> QPushButton:
         """Botão de ação dos painéis.
 
         `variante` escolhe a aparência pela propriedade dinâmica `acao`,
@@ -2599,16 +3181,20 @@ class EditorRede(QWidget):
         azul institucional e "perigo" pinta o texto de vermelho. O
         restante é o botão neutro.
 
+        `cor_marca` transforma o botão em legenda: recebe a cor que o
+        tipo de elemento tem no mapa e a repassa ao chip desenhado por
+        _BotaoLegenda. Sem a cor, o botão é um QPushButton comum.
+
         A cor do texto acompanha cada variante na própria folha de
         estilo. Declarar só o fundo deixava o texto herdar a QPalette do
         sistema — branco no tema escuro do Windows — e sumir em cima
         dos fundos claros.
         """
-        botao = QPushButton(texto)
+        botao = _BotaoLegenda(texto, cor_marca) if cor_marca else QPushButton(texto)
         botao.setFont(fonte_padrao(10))
         botao.setMinimumHeight(28)
         botao.setCursor(Qt.CursorShape.PointingHandCursor)
-        botao.setStyleSheet(self.ESTILO_BOTAO_PAINEL)
+        botao.setStyleSheet(self._estilo(self.ESTILO_BOTAO_PAINEL))
         if variante:
             botao.setProperty("acao", variante)
         botao.clicked.connect(lambda _checked=False: callback())
@@ -3281,7 +3867,7 @@ class EditorRede(QWidget):
         """
         card = QFrame()
         card.setObjectName("cardProps")
-        card.setStyleSheet(self.ESTILO_CARD_PROPS)
+        card.setStyleSheet(self._estilo(self.ESTILO_CARD_PROPS))
 
         dentro = QVBoxLayout(card)
         dentro.setContentsMargins(10, 8, 10, 8)
@@ -3295,7 +3881,7 @@ class EditorRede(QWidget):
         fonte_titulo.setBold(True)
         titulo.setFont(fonte_titulo)
         titulo.setObjectName("tituloCard")
-        titulo.setStyleSheet(self.ESTILO_TITULO_CARD)
+        titulo.setStyleSheet(self._estilo(self.ESTILO_TITULO_CARD))
         linha_titulo.addWidget(titulo)
         linha_titulo.addStretch(1)
 
@@ -3305,7 +3891,7 @@ class EditorRede(QWidget):
         fonte_etiqueta = fonte_padrao(8)
         fonte_etiqueta.setBold(True)
         etiqueta.setFont(fonte_etiqueta)
-        etiqueta.setStyleSheet(self.ESTILO_TAG_CARD)
+        etiqueta.setStyleSheet(self._estilo(self.ESTILO_TAG_CARD))
         etiqueta.setVisible(False)
         linha_titulo.addWidget(etiqueta)
 
@@ -3316,7 +3902,7 @@ class EditorRede(QWidget):
         corpo.setWordWrap(True)
         corpo.setTextFormat(Qt.TextFormat.RichText)
         corpo.setAlignment(Qt.AlignmentFlag.AlignTop)
-        corpo.setStyleSheet(self.ESTILO_VAZIO_CARD)
+        corpo.setStyleSheet(self._estilo(self.ESTILO_VAZIO_CARD))
         dentro.addWidget(corpo)
 
         # Ações ficam num widget à parte para sumirem juntas no estado
@@ -3328,12 +3914,12 @@ class EditorRede(QWidget):
         linha_acoes.setSpacing(6)
         botao_editar = QPushButton("✏ Editar")
         botao_editar.setCursor(Qt.CursorShape.PointingHandCursor)
-        botao_editar.setStyleSheet(self.ESTILO_BOTAO_PAINEL)
+        botao_editar.setStyleSheet(self._estilo(self.ESTILO_BOTAO_PAINEL))
         botao_editar.clicked.connect(self._editar_selecionado_no_mapa)
         botao_excluir = QPushButton("🗑 Excluir")
         botao_excluir.setCursor(Qt.CursorShape.PointingHandCursor)
         botao_excluir.setProperty("acao", "perigo")
-        botao_excluir.setStyleSheet(self.ESTILO_BOTAO_PAINEL)
+        botao_excluir.setStyleSheet(self._estilo(self.ESTILO_BOTAO_PAINEL))
         botao_excluir.clicked.connect(self._excluir_selecionado_no_mapa)
         linha_acoes.addWidget(botao_editar)
         linha_acoes.addWidget(botao_excluir)
@@ -3363,14 +3949,14 @@ class EditorRede(QWidget):
         dados = self._descricao_selecao(selecao) if selecao else None
         if not dados:
             corpo.setText(f"<span style='color:#94a3b8'>{TEXTO_SEM_SELECAO}</span>")
-            corpo.setStyleSheet(self.ESTILO_VAZIO_CARD)
+            corpo.setStyleSheet(self._estilo(self.ESTILO_VAZIO_CARD))
             tag.setVisible(False)
             self._acoes_props.setVisible(False)
             return
 
         nome, tipo, linhas, editavel = dados
         corpo.setText("<br>".join(linhas))
-        corpo.setStyleSheet(self.ESTILO_CORPO_PROPS)
+        corpo.setStyleSheet(self._estilo(self.ESTILO_CORPO_PROPS))
         tag.setText(tipo)
         tag.setVisible(bool(tipo))
         # Grupo BESS não tem formulário próprio de propriedades — ele é
@@ -4161,7 +4747,7 @@ class EditorRede(QWidget):
 
     # ------------------------------------------------------------------ #
     def _desenhar_rotulo(self, x, y, texto, cor, tamanho_fonte=8,
-                         fundo: str = "white", alvo=None, tipo_alvo: str = "",
+                         fundo: str = None, alvo=None, tipo_alvo: str = "",
                          desvio=None):
         """Desenha um rótulo com (x, y) no centro do texto e devolve o item.
 
@@ -4171,6 +4757,11 @@ class EditorRede(QWidget):
         mostra o texto — e arrastável. `desvio` aplica o ajuste que o
         usuário já tinha imposto a este texto.
         """
+        # O fundo do rótulo não é escolha do item: é a superfície onde
+        # ele está pousado. Deixar o tema decidir é o que mantém a caixa
+        # do texto legível quando o canvas muda de cor.
+        if fundo is None:
+            fundo = self._tema["fundo_canvas"]
         rotulo = _RotuloItem(texto, cor, tamanho_fonte, fundo,
                              editor=self, alvo=alvo, tipo_alvo=tipo_alvo)
         # O create_text do Tk recebia (x, y) como CENTRO do texto, com
@@ -4236,11 +4827,16 @@ class EditorRede(QWidget):
 
     def _ao_mover_derivacao(self, nome, barra, ponto):
         """Grava a posição imposta à caixa e regeometriza só o que depende
-        dela: a linha pontilhada e o rótulo. O resto da cena fica parado.
+        dela: a linha pontilhada. O resto da cena fica parado.
 
         Diferente do arraste de barra, não há nada pendurado na caixa: a
-        ligação termina nela. Por isso basta mexer no próprio par
-        linha/rótulo, sem propagar nada adiante.
+        ligação termina nela. Por isso basta mexer na linha, sem
+        propagar nada adiante.
+
+        O rótulo não aparece mais aqui. Desde que virou item FILHO da
+        caixa, ele se desloca com ela pelo próprio Qt, e reposicioná-lo à
+        mão seria trabalho redundante — pior, brigaria com a posição que
+        o pai acabou de dar.
         """
         if self._redesenhando:
             return
@@ -4253,17 +4849,30 @@ class EditorRede(QWidget):
 
         ligacao = self._ligacoes_derivacoes.get(nome)
         if ligacao is not None:
-            item_ligacao, _ancora = ligacao
-            _reposicionar_segmento(
-                item_ligacao, (ponto.x(), ponto.y()), mover_fim=True)
+            item_ligacao, ancora = ligacao
+            origem = self._posicoes.get(ancora)
+            if origem is not None:
+                # A ponta que toca a caixa para na borda dela, como no
+                # redesenho: o arraste não pode fazer a linha enterrar-se
+                # no preenchimento que a criação deixa de fora.
+                meia_largura, meia_altura = self._meia_caixa(nome)
+                fim_x, fim_y = _ponto_na_borda_da_caixa(
+                    origem, (ponto.x(), ponto.y()), meia_largura, meia_altura)
+                _reposicionar_segmento(item_ligacao, (fim_x, fim_y),
+                                       mover_fim=True)
 
+    def _meia_caixa(self, nome):
+        """Meia largura e meia altura da caixa desenhada para `nome`.
+
+        Lê do item vivo, e não recalcula pelo texto: durante o arraste a
+        caixa é a mesma instância, e reler o modelo custaria uma consulta
+        por passo de mouse para chegar ao mesmo número.
+        """
         rotulo = self._rotulos_derivacoes.get(nome)
-        if rotulo is not None:
-            # A caixa andou: o rótulo vai junto mantendo o desvio que o
-            # usuário tiver imposto a ele.
-            _posicionar_rotulo_em(
-                rotulo, ponto.x(), ponto.y(),
-                derivacao.rotulo_posicao if derivacao is not None else None)
+        if rotulo is not None and rotulo.parentItem() is not None:
+            rect = rotulo.parentItem().rect()
+            return rect.width() / 2, rect.height() / 2
+        return 0.0, 0.0
 
     def _atualizar_geometria_barra(self, nome):
         """Redesenha no lugar as conexões que tocam a barra `nome`.
@@ -4321,9 +4930,15 @@ class EditorRede(QWidget):
             if destino is None:
                 continue
             # Na ligação em leque, a ponta que se move é a que sai da
-            # barra (a inicial). A que toca a caixa fica onde está, e é
-            # ela que _reposicionar_segmento preserva.
-            _reposicionar_segmento(item, pos, mover_fim=False)
+            # barra (a inicial). A que toca a caixa fica onde está, no
+            # contorno do rect — e com a caixa maior, essa ponta precisa
+            # ser recalculada no mesmo instante, ou a linha voltaria a
+            # enterrar-se alguns pixels no preenchimento a cada arraste de
+            # barra.
+            meia_largura, meia_altura = self._meia_caixa(der_nome)
+            fim_x, fim_y = _ponto_na_borda_da_caixa(
+                pos, destino, meia_largura, meia_altura)
+            _reposicionar_segmento(item, (fim_x, fim_y), mover_fim=True)
 
     def _desvio_do_ramo(self, nome):
         """Desvio de rótulo gravado no ramo `nome`, ou None.
@@ -4394,13 +5009,18 @@ class EditorRede(QWidget):
         """
         if self._redesenhando or rotulo.alvo is None:
             return
+        # Rótulo de derivação não grava desvio: ele é filho da caixa e não
+        # pode ser arrastado. Se algum caminho antigo chamar isto para uma
+        # derivação, sai por aqui em vez de gravar uma coordenada que
+        # ninguém lê (o campo rotulo_posicao continua no modelo por
+        # compatibilidade com as redes já salvas).
+        if rotulo.tipo_alvo == "derivacao":
+            return
         alvo = None
         if rotulo.tipo_alvo == "barra":
             alvo = self.rede.barras.get(rotulo.alvo)
         elif rotulo.tipo_alvo == "ramo":
             alvo = self.rede.ramos.get(rotulo.alvo)
-        elif rotulo.tipo_alvo == "derivacao":
-            alvo = self.rede.derivacoes.get(rotulo.alvo)
         if alvo is None:
             return
 
@@ -4482,7 +5102,7 @@ class EditorRede(QWidget):
 
     def abrir_cartao_barra(self, nome_barra: str) -> None:
         """Monta o cartão da barra e o prende ao lado dela na cena."""
-        cartao = _CartaoBarra(nome_barra)
+        cartao = _CartaoBarra(nome_barra, tema=self._tema)
         self.cena.addItem(cartao)
         self._cartao_barra = cartao
         self._cartao_barra_nome = nome_barra
@@ -4684,7 +5304,7 @@ class EditorRede(QWidget):
                 if not p1 or not p2:
                     continue
 
-                cor = CORES.get(ramo.tipo, "black")
+                cor = _no_tema(CORES.get(ramo.tipo, "black"), self._tema)
                 # _LinhaRamoItem, e não QGraphicsLineItem: é o ramo que
                 # responde ao clique no painel de propriedades e que
                 # desenha o destaque de seleção.
@@ -4765,7 +5385,7 @@ class EditorRede(QWidget):
                         ex, ey = override
                     self._posicoes[der.nome] = (ex, ey)
 
-                    cor = CORES.get(der.tipo, "gray")
+                    cor = _no_tema(CORES.get(der.tipo, "gray"), self._tema)
 
                     ligacao = QGraphicsLineItem(pos_bus[0], pos_bus[1], ex, ey)
                     caneta = QPen(_qcolor(cor), max(1, espessura_linha - 2))
@@ -4775,26 +5395,47 @@ class EditorRede(QWidget):
                     self.cena.addItem(ligacao)
                     self._ligacoes_derivacoes[der.nome] = (ligacao, bus)
 
-                    caixa = _DerivacaoItem(der.nome, bus, self)
-                    caixa.setPos(ex, ey)
-                    caixa.setBrush(QBrush(_qcolor(cor)))
-                    caixa.setPen(QPen(_qcolor("black"), 1))
-                    caixa.setZValue(1.0)
-                    self.cena.addItem(caixa)
-
                     tem_curva = any(der.parametros.get(c) not in (None, "", "Nenhuma")
                                     for c in ("daily", "duty", "yearly"))
                     texto_der = f"{der.tipo}\n{der.nome}" + (" 📈" if tem_curva else "")
+                    # A caixa nasce DEPOIS do texto, e não antes: o texto
+                    # é que define o tamanho dela. Medir aqui, com a mesma
+                    # fonte e o mesmo teto de largura do _RotuloItem, é o
+                    # que garante que a pílula nunca fique menor que o que
+                    # precisa conter.
+                    largura_texto, altura_texto = _medir_texto_rotulo(
+                        texto_der, tamanho_fonte=7)
+                    # A ponta da ligação para na borda da caixa, e não no
+                    # centro dela: com o texto dentro, a linha entrando até
+                    # o centro ficaria escondida sob o preenchimento.
+                    fim_x, fim_y = _ponto_na_borda_da_caixa(
+                        (pos_bus[0], pos_bus[1]), (ex, ey),
+                        largura_texto / 2 + PADDING_CAIXA_H,
+                        altura_texto / 2 + PADDING_CAIXA_V)
+                    ligacao.setLine(pos_bus[0], pos_bus[1], fim_x, fim_y)
+                    caixa = _DerivacaoItem(
+                        der.nome, bus, self,
+                        largura_texto + 2 * PADDING_CAIXA_H,
+                        altura_texto + 2 * PADDING_CAIXA_V)
+                    caixa.setPos(ex, ey)
+                    caixa.setBrush(QBrush(_qcolor(cor)))
+                    caixa.setPen(QPen(
+                        _qcolor(self._tema["caixa_borda"]), 1))
+                    caixa.setZValue(1.0)
+                    self.cena.addItem(caixa)
+
                     # Cor do texto escolhida por contraste com o
                     # preenchimento da caixa, e sem retângulo de fundo
-                    # (fundo=None). Antes era branco fixo, que sobre os
+                    # (fundo=False). Antes era branco fixo, que sobre os
                     # preenchimentos claros ficava ilegível.
                     if der.rotulo_visivel:
-                        self._rotulos_derivacoes[der.nome] = self._desenhar_rotulo(
+                        rotulo_der = self._desenhar_rotulo(
                             ex, ey, texto_der, _cor_texto_sobre(cor),
-                            tamanho_fonte=7, fundo=None,
-                            alvo=der.nome, tipo_alvo="derivacao",
-                            desvio=der.rotulo_posicao)
+                            tamanho_fonte=7, fundo=False,
+                            alvo=der.nome, tipo_alvo="derivacao")
+                        _prender_rotulo_na_caixa(rotulo_der, caixa)
+                        caixa.rotulo = rotulo_der
+                        self._rotulos_derivacoes[der.nome] = rotulo_der
 
             # O mapa de rótulos de elemento é refeito a partir do que foi
             # desenhado nesta passagem. Quem ficou de fora não entra, e é
@@ -4816,7 +5457,8 @@ class EditorRede(QWidget):
                 if barra.rotulo_visivel:
                     rotulo_barra = self._desenhar_rotulo(
                         x, y - DESLOCAMENTO_ROTULO_BARRA,
-                        f"{nome}\n{barra.kv_base} kV", "black",
+                        f"{nome}\n{barra.kv_base} kV",
+                        self._tema["texto_rotulo_barra"],
                         alvo=nome, tipo_alvo="barra",
                         desvio=barra.rotulo_posicao)
                     # O rótulo entra nas dependências da PRÓPRIA barra, na
