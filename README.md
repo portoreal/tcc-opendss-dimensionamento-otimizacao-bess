@@ -1,14 +1,14 @@
 # TCC OpenDSS — Dimensionamento e Otimização do Posicionamento de BESS para Mitigação de Afundamentos de Tensão
 
-Ferramenta de engenharia em Python sobre o motor OpenDSS que implementa o processo completo de
-dimensionamento e otimização do posicionamento de sistemas de
-armazenamento de energia (BESS) para mitigação de afundamentos de tensão: simula e mapeia os
-cenários de afundamento, formula e resolve a seleção da localização e do porte por programação
-linear inteira mista (PLIM) com critérios combinados de qualidade de energia e economia
-tarifária, e avalia o impacto econômico da configuração selecionada. O processo de modelagem e
-simulação é validado contra os sistemas de teste IEEE 13, 34, 37 e 123 nós, e o método completo
-é demonstrado em um estudo de rede de distribuição — da modelagem ao relatório de ROI/DRE,
-incluindo a geração de firmware de bancada em ESP32 e Arduino.
+Ferramenta de engenharia em Python sobre o motor OpenDSS que executa o processo completo de
+dimensionamento e otimização do posicionamento de sistemas de armazenamento de energia (BESS)
+para mitigação de afundamentos de tensão. Ela simula e mapeia os cenários de afundamento, formula
+e resolve a escolha da localização e do porte por programação linear inteira mista (PLIM), com
+critérios combinados de qualidade de energia e economia tarifária, e mede o impacto econômico da
+configuração selecionada. A modelagem e a simulação são validadas contra os sistemas de teste
+IEEE 13, 34, 37 e 123 nós. O método inteiro, por fim, aparece em dois estudos de rede de
+distribuição — da modelagem ao relatório de ROI/DRE, incluindo a geração de firmware de bancada
+em ESP32 e Arduino.
 
 Trabalho de Conclusão de Curso de Engenharia Elétrica — Universidade Católica de Santa Catarina
 (Jaraguá do Sul/SC), 2026. Autoria: Pedro Henrique Sousa Pinheiro. Orientação: Douglas Flores
@@ -29,6 +29,18 @@ Copetti. Coorientação: Fabiano Luz Cardoso.
 - **Editor de Rede** — desenho gráfico da rede com barras arrastáveis em *canvas* e árvore
   hierárquica; linhas e transformadores aceitam campos opcionais de ensaio (`c1`/`c0` e
   `loadloss`/`noloadloss`), que ficam em branco quando não há dado de placa.
+- **Medidor de energia** — o `EnergyMeter` é um elemento do diagrama, não um detalhe escondido
+  no script exportado. Ao criá-lo, o editor sugere a entrada principal de energia: o primeiro
+  ramo que toca a barra da fonte, onde a concessionária mede de fato. Duplo clique troca o ramo
+  monitorado e o terminal. A exportação leva o medidor em `medidores.dss`, redirecionado por
+  último no Master — e o motor recusa medir a própria fonte, que não é elemento de entrega de
+  potência.
+- **Visualização do diagrama** — zoom na roda do mouse ancorado no cursor (0,1x a 10x), botões
+  de aproximar, afastar e enquadrar tudo, deslocamento panorâmico pelo fundo vazio ou pelo botão
+  do meio e zoom de janela por retângulo. Barras e caixas de elemento se arrastam com as linhas,
+  as ligações de leque e os rótulos acompanhando ao vivo, sem desconectar nada. Quando o desenho
+  fica carregado, o alternador "Mostrar rótulos" esconde os rótulos de ramos e elementos e
+  mantém os das barras.
 - **Exportador DSS** — converte `rede.json` em scripts OpenDSS executáveis, com curvas padrão
   por dia da semana para os elementos que não têm curva própria.
 - **Dimensionamento** — cálculo de condutores (queda de tensão), transformadores (margem de
@@ -38,9 +50,13 @@ Copetti. Coorientação: Fabiano Luz Cardoso.
   multi-critério (PuLP/CBC), verificação conjunta do vencedor por simulação e análise de
   reativo segundo o PRODIST.
 - **Economia** — QSTS de 24 h com despacho do BESS por estado de carga (SoC) e cálculo de
-  payback.
-- **Relatório ROI/DRE em HTML** — receitas contra investimento, projeção de payback, quatro
-  gráficos embutidos e incentivos regulatórios com fonte declarada.
+  payback. A análise se estende à semana inteira: sete dias de 24 h, com carga e geração
+  fotovoltaica seguindo a curva de cada dia, e o estudo completo anexa esse resultado ao
+  arquivo de saída. A aba Economia da janela de resultados traz os gráficos correspondentes.
+- **Relatório ROI/DRE em HTML** — receitas contra investimento, projeção de payback, seis
+  gráficos embutidos e incentivos regulatórios com fonte declarada. Além dos quatro originais,
+  entram a economia semanal ao instalar o sistema e a composição percentual das fontes por dia,
+  em barras empilhadas de rede, fotovoltaica e BESS.
 - **Simulação ao Vivo** — painel animado de operação multi-dia, com nuvens sobre a geração
   fotovoltaica, faltas interativas e exportação dos gráficos.
 - **Afundamento de tensão** — varredura de cenários de falta com classificação de severidade e
@@ -98,6 +114,33 @@ declarada por enrolamento; idealizar apenas a resistência declarada não corrig
 
 No estudo de demonstração (rede de distribuição com 6 barras candidatas, 48 candidatos — 6 barras × 8 portes de catálogo —, faltas trifásica e monofásica em duas barras, tarifa verde A4, curvas de quinta-feira), o método compara todos os candidatos simulados e seleciona o BESS Comercial de 50 kW/100 kWh (R$ 300.000) na barra B4: melhoria da profundidade de afundamento nas 5 barras monitoradas, fator de potência de 0,972 conforme ao PRODIST Módulo 8, economia de R$ 66,48/dia (R$ 17.551,17/ano) e payback de 17,09 anos — a verificação conjunta confirma o benefício real da configuração, que substitui a estimativa da soma de benefícios individuais.
 
+### Estudo de demonstração em rede IEEE 13 nós
+
+O segundo estudo abandona a rede reduzida e roda sobre um alimentador real de porte
+intermediário. O projeto nasceu do próprio conversor da validação, aquele que transforma o
+circuito compilado pelo motor em `rede.json` editável: 16 barras, 15 ramos e 19 derivações, com
+as cargas do circuito oficial preservadas sem diferença — 3.466 kW e 2.102 kvar. Sobre essa base
+foi acrescentado um PVSystem de 1.000 kWp na barra 675, a maior carga trifásica, para que a
+análise tenha geração distribuída de verdade e não apenas a rede de origem.
+
+Os parâmetros repetem a configuração de referência: tarifa verde A4 com ponta das 18h às 21h,
+22 dias equivalentes por mês, faltas monofásica sólida e de alta impedância e peso de custo
+0,01. A varredura percorre as barras trifásicas 634, 671, 675, 692 e 670.
+
+O PLIM devolveu status "Optimal" e escolheu o BESS Utility de 1000 kW/2000 kWh, R$ 4.700.000, na
+barra 670. A economia apurada é de R$ 1.330,86 por dia — R$ 351.348,24 no ano —, com payback de
+13,38 anos; no recorte semanal, R$ 9.299,21. A participação das fontes em cada dia fica entre
+83,5% e 90,8% para a rede, 7,4% a 14,2% para a fotovoltaica e 1,8% a 2,3% para o BESS. No
+reativo, a geração fotovoltaica em carga leve levou o fator de potência a 0,5622 capacitivo — o
+diagnóstico recomenda um reator de 1.050 kvar.
+
+**Ressalva de modelo.** O modelo de rede do editor não representa endereçamento de fase, então
+as cargas monofásicas se acumulam na fase 1. O caso base fica com tensão mínima de 0,8407 pu
+contra os 0,975 pu do circuito oficial, perdas de 192,23 kW contra 110,50 kW e erro médio de
+tensão de 8%. A distorção é do modelo de rede, não do método de otimização: o resultado
+qualitativo — porte, barra e ordem de grandeza econômica — se sustenta, mas os valores absolutos
+de tensão exigiriam o endereçamento de fase para uso em projeto executivo.
+
 ## Destaques técnicos
 
 1. **Seleção multi-critério no PLIM.** O objetivo combina qualidade de energia (severidade
@@ -136,6 +179,19 @@ No estudo de demonstração (rede de distribuição com 6 barras candidatas, 48 
      **1,6 nF/km**.
    - O `Vminpu` padrão (0,9) do elemento Storage degrada a injeção para impedância constante
      dentro da faixa de afundamento; o modelo usa **0,05**.
+   - `ILines.RMatrix` **não existe**; o nome correto é `Rmatrix`. Acesso por atributo a nome
+     inexistente caía silenciosamente no fallback de impedância do conversor, e todas as linhas
+     do projeto convertido herdavam r1 = x1 = 0,3 Ω — sem erro, sem aviso.
+   - `ILines.Units`, acessado como valor numérico, **retorna sempre 0**. A unidade de
+     comprimento só é legível por consulta de texto ao motor, o que obriga o exportador a
+     normalizar todas as linhas em km e eliminar a ambiguidade na origem.
+   - `TotalPower[0]` devolve **kW** nesta versão. O experimento de calibração — carga de 100 kW
+     → leitura de −100,83 — fixa a escala e descarta qualquer divisão por 1000 no consumo.
+   - O motor **altera o diretório de trabalho do processo** ao compilar. Artefatos de estudo
+     precisam ser gravados com caminho absoluto calculado antes da compilação, ou o arquivo cai
+     no lugar errado.
+   - Comprimentos em `ft` **não são confiáveis** na definição de Line — km e mi se comportam
+     como esperado, ft não. Daí a normalização para km.
 
    Detalhes completos no [Manual do Desenvolvedor](doc/manual_desenvolvedor.html).
 

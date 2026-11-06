@@ -394,6 +394,8 @@
     <li><a href="#modulos">Módulos</a>
       <ol>
         <li><a href="#editor-rede">Editor de Rede</a></li>
+        <li><a href="#editor-visualizacao">Navegação e visualização do diagrama</a></li>
+        <li><a href="#editor-medidor">Medidor de energia</a></li>
         <li><a href="#dimensionamento">Dimensionamento</a></li>
         <li><a href="#otimizacao-bess">Otimização de BESS</a></li>
         <li><a href="#relatorio-roi">Relatório ROI / DRE</a></li>
@@ -432,7 +434,7 @@
   <li><strong>Simular afundamentos</strong> — aplicar faltas barra a barra e medir a severidade dos afundamentos de tensão.</li>
   <li><strong>Otimizar o BESS por PLIM</strong> — avaliar candidatos (barra × porte) e resolver um problema de programação linear inteira mista para escolher a melhor alocação.</li>
   <li><strong>Avaliar a economia</strong> — simular um dia representativo e calcular redução de demanda, energia e payback.</li>
-  <li><strong>Em itir o relatório ROI/DRE</strong> — gerar um documento HTML com investimento, economia, projeção de payback e gráficos.</li>
+  <li><strong>Emitir o relatório ROI/DRE</strong> — gerar um documento HTML com investimento, economia, projeção de payback e gráficos.</li>
   <li><strong>Simular ao vivo</strong> — acompanhar a operação do sistema em painel animado multi-dia, com falta interativa.</li>
   <li><strong>Exportar</strong> — gerar arquivos de parametrização e modelos OpenDSS para as placas Arduino/ESP32.</li>
 </ol>
@@ -572,7 +574,7 @@
 
 <h3 id="conceito-afundamento">3.4 Estudo de afundamento</h3>
 
-<p>O estudo de afundamento aplica uma <strong>falta barra a barra</strong> e mede o quanto a tensão cai nas demais barras.</p>
+<p>O estudo de afundamento aplica uma <strong>falta barra a barra</strong> e mede o quanto a tensão cai nas demais barras. Aplica-se uma falta em cada barra, uma de cada vez; o que se registra é a tensão residual de todas as outras em cada cenário.</p>
 
 <ul>
   <li><strong>Janela de afundamento:</strong> tensões residuais entre <strong>0,1 e 0,9 pu</strong>, conforme os critérios da ANEEL/PRODIST.</li>
@@ -593,13 +595,14 @@
 <ol class="passos">
   <li><strong>Desenhe as barras</strong> arrastando no canvas para posicioná-las.</li>
   <li><strong>Conecte os ramos</strong> ligando as barras com linhas, chaves e transformadores, e adicione as derivações (cargas, geradores, capacitores, reatores, PV, BESS).</li>
+  <li><strong>Adicione o medidor de energia</strong> (seção <a href="#editor-medidor">4.3</a>) se o projeto for medir o ponto de entrega.</li>
   <li><strong>Edite os parâmetros</strong> de cada elemento selecionado.</li>
   <li><strong>Salve</strong> o projeto.</li>
 </ol>
 
 <h4>Campos opcionais de placa e ensaio</h4>
 
-<p>Alguns elementos aceitam parâmetros extras obtidos de placa ou de ensaio:</p>
+<p>Alguns elementos aceitam parâmetros extras obtidos de placa ou de ensaio. A tabela seguinte traz os dois casos existentes hoje.</p>
 
 <table>
   <caption>Parâmetros opcionais por tipo de elemento.</caption>
@@ -632,9 +635,83 @@
 
 <!-- 4.2 -->
 <div class="card">
-<h3 id="dimensionamento">4.2 Dimensionamento</h3>
+<h3 id="editor-visualizacao">4.2 Navegação e visualização do diagrama</h3>
 
-<p>A rotina de dimensionamento transforma dados de projeto em equipamentos escolhidos de um catálogo padronizado e em um memorial de cálculo.</p>
+<p>Em rede com muitos elementos o diagrama fica carregado, e a leitura de uma derivação específica depende de aproximar a vista e tirar da frente o que está por cima. Os controles de visualização ficam no painel lateral esquerdo, no bloco <strong>"— Visualização —"</strong>, e não flutuando sobre a área de desenho — botão flutuante tende a cair justamente em cima da barra que se queria clicar.</p>
+
+<table>
+  <caption>Controles de navegação da área de desenho.</caption>
+  <thead>
+    <tr><th style="width:30%">Controle</th><th>Efeito</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Roda do mouse</td><td>Amplia ou reduz a vista, ancorada no ponto onde está o cursor — o elemento sob o ponteiro não sai do lugar. Limites de <strong>0,1×</strong> a <strong>10×</strong>.</td></tr>
+    <tr><td>Botões <strong>＋</strong> e <strong>−</strong></td><td>Os mesmos passos de ampliação e redução, agora pelo centro da vista.</td></tr>
+    <tr><td><strong>Enquadrar tudo</strong></td><td>Reenquadra o diagrama inteiro na janela. Não refaz o layout da rede.</td></tr>
+    <tr><td>Arrastar o fundo vazio</td><td>Move a vista (<em>pan</em>) sem alterar nada do desenho.</td></tr>
+    <tr><td>Botão do meio do mouse</td><td>Move a vista a partir de qualquer ponto, inclusive sobre um elemento.</td></tr>
+    <tr><td><strong>Zoom de janela</strong></td><td>Botão alternável. Com o modo ativo o cursor vira cruz: arraste um retângulo e a vista passa a mostrar exatamente aquela região. O modo se encerra ao concluir o retângulo ou com <span class="kbd">Esc</span>.</td></tr>
+    <tr><td><strong>Mostrar rótulos</strong></td><td>Caixa de seleção que exibe ou esconde os nomes dos ramos e dos elementos. Os nomes das barras continuam visíveis — são a referência com que a pessoa se localiza no desenho.</td></tr>
+  </tbody>
+</table>
+
+<h4>Arrastar barras e elementos</h4>
+
+<p>Barras e caixas de elemento (cargas, capacitores, PV, medidor, entre outras) podem ser arrastadas para fora do lugar calculado pelo layout automático. Durante o movimento, as linhas dos ramos, as ligações pontilhadas das derivações e os rótulos <strong>acompanham ao vivo</strong>: nada se desconecta na tela e nenhuma ligação precisa ser refeita depois.</p>
+
+<p>O ajuste de posição vale apenas enquanto o editor estiver aberto. Ao salvá-lo e reabrir, o layout automático volta a valer — é o que mantém o desenho coerente com a topologia gravada em <code>rede.json</code>.</p>
+
+<div class="aviso info">
+  <span class="rotulo">Observação</span>
+  <p>Ao pé do painel, uma dica resume os três gestos mais usados: roda do mouse para zoom, arrastar o fundo para mover a vista e botão do meio para mover a partir de qualquer ponto.</p>
+</div>
+</div>
+
+<!-- 4.3 -->
+<div class="card">
+<h3 id="editor-medidor">4.3 Medidor de energia</h3>
+
+<p>O medidor (<code>EnergyMeter</code> do OpenDSS) é o elemento que registra a energia que atravessa um ponto do circuito. Incluí-lo no diagrama, e não só no arquivo exportado, permite ver onde a medição está e mudá-la de lugar como qualquer outro elemento.</p>
+
+<h4>Posição padrão: a entrada principal da rede</h4>
+
+<p>Na prática, a medição de energia fica onde a rede recebe a energia — na entrada da subestação. O botão <strong>"⏱ Medidor de energia"</strong> já sugere esse ponto: o primeiro ramo ligado à barra da fonte, no terminal correspondente. O formulário abre com essa escolha preenchida, e a dica exibida informa que se trata da entrada principal.</p>
+
+<p>Há dois casos em que a sugestão não aparece. Sem fonte criada, o editor avisa que é preciso criar a Fonte (<code>Vsource</code>) antes — é ela que define a entrada principal. Sem nenhum ramo no modelo, o aviso pede que se crie ao menos uma linha, chave ou transformador.</p>
+
+<h4>Apontar o medidor para outro ponto</h4>
+
+<ol class="passos">
+  <li><strong>Crie o medidor</strong> pelo botão "⏱ Medidor de energia" ou <strong>dê duplo clique</strong> em um medidor existente.</li>
+  <li><strong>Escolha o elemento monitorado</strong> — a lista traz os ramos do modelo: linhas, chaves e transformadores.</li>
+  <li><strong>Escolha o terminal</strong> (1 ou 2).</li>
+  <li><strong>Confirme</strong> e salve o projeto.</li>
+</ol>
+
+<p>As opções de alvo são ramos por uma razão de motor, não de interface: o OpenDSS recusa medir cargas, geradores, PV, BESS e a própria fonte — são elementos que não entregam potência adiante. Um medidor apontado para um deles faria a exportação falhar depois, com mensagem do próprio motor. Restringir a lista antecipa o problema.</p>
+
+<div class="aviso info">
+  <span class="rotulo">Observação</span>
+  <p>O formulário do medidor não pede barra. A posição no desenho é derivada do elemento monitorado e do terminal escolhidos; pedir barra também abriria espaço para um par (barra, elemento) inconsistente.</p>
+</div>
+
+<h4>Onde ele aparece e como se move</h4>
+
+<ul>
+  <li>O medidor entra na <strong>árvore de elementos</strong> como os demais, e pode ser arrastado no diagrama como qualquer caixa de elemento (seção <a href="#editor-visualizacao">4.2</a>).</li>
+  <li>Ao <strong>excluir o ramo medido</strong>, o medidor vai junto: sem o elemento não há o que medir, e um medidor órfão travaria a exportação. Um aviso lista o que foi removido em cascata.</li>
+</ul>
+
+<h4>Exportação</h4>
+
+<p>Os medidores são gravados em um arquivo próprio, <code>medidores.dss</code>, incluído por último no <code>Master.dss</code> — depois dos ramos que eles referenciam, na forma <code>New EnergyMeter.&lt;nome&gt; element=Line.L1 terminal=1</code>. Redes antigas, sem medidor, continuam carregando e exportando normalmente.</p>
+</div>
+
+<!-- 4.4 -->
+<div class="card">
+<h3 id="dimensionamento">4.4 Dimensionamento</h3>
+
+<p>O dimensionamento converte os dados de projeto informados — potência, tensão, fator de potência — em equipamentos escolhidos de um catálogo padronizado. A cada escolha corresponde um trecho do memorial de cálculo, com a justificativa numérica.</p>
 
 <ol class="passos">
   <li><strong>Informe os dados de projeto:</strong> potência, tensão, fator de potência, comprimento, margem, autonomia, HSP (horas de sol pleno) e demais campos solicitados.</li>
@@ -649,9 +726,9 @@
 </div>
 </div>
 
-<!-- 4.3 -->
+<!-- 4.5 -->
 <div class="card">
-<h3 id="otimizacao-bess">4.3 Otimização de BESS</h3>
+<h3 id="otimizacao-bess">4.5 Otimização de BESS</h3>
 
 <p>É o módulo central da análise: decide <strong>onde</strong> e <strong>com que porte</strong> instalar o BESS.</p>
 
@@ -683,6 +760,30 @@
   </tbody>
 </table>
 
+<h4>Análise de economia semanal</h4>
+
+<p>Além do dia representativo, o estudo percorre os <strong>sete dias da semana</strong>. A carga e a geração fotovoltaica seguem a curva de cada dia, e o despacho do BESS é refeito dia a dia; o resultado é o custo e a economia reais da semana, e não sete vezes o mesmo dia.</p>
+
+<p>A opção é habilitada ao configurar o estudo. Um dia que falhe não derruba os demais: ele entra com zero e a mensagem correspondente vai para os avisos do resultado — semana parcial sinalizada é mais útil que nenhum número.</p>
+
+<p>Com a análise semanal habilitada, a aba <strong>"Economia"</strong> da janela de resultados passa a exibir <strong>dois gráficos</strong>, lado a lado, acima do memorial:</p>
+
+<table>
+  <caption>Gráficos adicionais da aba Economia.</caption>
+  <thead>
+    <tr><th style="width:32%">Gráfico</th><th>Leitura</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Economia diária ao instalar o sistema</strong></td><td>Uma barra por dia da semana, em R$/dia. Barra verde indica economia sobre o caso base; vermelha, dia em que o sistema custou mais que operar sem ele. Uma linha tracejada marca o zero.</td></tr>
+    <tr><td><strong>Composição percentual das fontes de energia por dia</strong></td><td>Uma barra empilhada por dia da semana, somando 100%: <strong>rede</strong>, <strong>PV</strong> e <strong>BESS</strong>, na proporção da energia consumida no dia. Dia sem energia contabilizada aparece vazio.</td></tr>
+  </tbody>
+</table>
+
+<div class="aviso info">
+  <span class="rotulo">Observação</span>
+  <p>Sem a análise semanal habilitada, a aba Economia termina no memorial, como antes. Os dois gráficos dependem dela para existir.</p>
+</div>
+
 <h4>Ações disponíveis</h4>
 
 <table>
@@ -703,11 +804,11 @@
 </div>
 </div>
 
-<!-- 4.4 -->
+<!-- 4.6 -->
 <div class="card">
-<h3 id="relatorio-roi">4.4 Relatório ROI / DRE</h3>
+<h3 id="relatorio-roi">4.6 Relatório ROI / DRE</h3>
 
-<p>O relatório é um documento HTML autônomo, gerado a partir do estudo de otimização ou de economia.</p>
+<p>O relatório é um arquivo HTML autônomo — abre em qualquer navegador, sem a ferramenta instalada —, gerado ao final do estudo de otimização ou de economia.</p>
 
 <h4>O que o relatório contém</h4>
 
@@ -715,7 +816,7 @@
   <li><strong>Cartões-resumo</strong> — investimento, economia anual, payback e ROI em destaque.</li>
   <li><strong>DRE</strong> — demonstrativo de resultado <strong>sem O&amp;M</strong>, acompanhado de <strong>nota de transparência</strong> explicitando essa ausência.</li>
   <li><strong>Projeção de payback</strong> — evolução do retorno ao longo dos anos.</li>
-  <li><strong>Quatro gráficos</strong> — visualizações de resultado e de fluxo financeiro.</li>
+  <li><strong>Seis gráficos</strong> — os quatro de resultado e fluxo financeiro, mais os dois da análise semanal descritos em <a href="#otimizacao-bess">4.5</a>. Quando o estudo roda sem a análise semanal, o relatório volta a trazer quatro.</li>
   <li><strong>Qualidade de energia</strong> — indicadores de severidade antes e depois.</li>
   <li><strong>Alertas</strong> — ressalvas sobre premissas e resultados atípicos.</li>
   <li><strong>Incentivos regulatórios</strong> — referências aplicáveis ao caso.</li>
@@ -746,11 +847,11 @@
 </div>
 </div>
 
-<!-- 4.5 -->
+<!-- 4.7 -->
 <div class="card">
-<h3 id="economia-energia">4.5 Economia de Energia</h3>
+<h3 id="economia-energia">4.7 Economia de Energia</h3>
 
-<p>Este módulo roda uma simulação <strong>QSTS de um dia representativo</strong> e calcula o retorno financeiro da operação.</p>
+<p>Este módulo roda uma simulação <strong>QSTS</strong> — série temporal quase-estática, 24 soluções de fluxo de potência em sequência — sobre um dia representativo, e calcula o retorno financeiro da operação. O dia escolhido é a amostra; a economia anual sai da extrapolação dele pelos dias equivalentes do mês.</p>
 
 <ol class="passos">
   <li><strong>Execute a simulação</strong> do dia representativo.</li>
@@ -769,11 +870,11 @@
 </div>
 </div>
 
-<!-- 4.6 -->
+<!-- 4.8 -->
 <div class="card">
-<h3 id="simulacao-ao-vivo">4.6 Simulação ao Vivo</h3>
+<h3 id="simulacao-ao-vivo">4.8 Simulação ao Vivo</h3>
 
-<p>Painel animado <strong>multi-dia</strong> que mostra a operação do sistema ao longo do tempo.</p>
+<p>Painel animado <strong>multi-dia</strong>. A operação do sistema é reproduzida em sequência, e o comportamento do BESS pode ser acompanhado hora a hora sem executar estudo nenhum.</p>
 
 <ol class="passos">
   <li><strong>Ajuste o relógio</strong> — a velocidade de reprodução é configurável; o valor padrão é de <strong>5 minutos por dia</strong> de simulação.</li>
@@ -797,11 +898,11 @@
 </table>
 </div>
 
-<!-- 4.7 -->
+<!-- 4.9 -->
 <div class="card">
-<h3 id="afundamento-modulo">4.7 Afundamento de Tensão</h3>
+<h3 id="afundamento-modulo">4.9 Afundamento de Tensão</h3>
 
-<p>Executa o estudo de faltas <strong>barra a barra</strong> e produz o <strong>memorial de cálculo completo</strong> do afundamento.</p>
+<p>Executa o estudo de faltas <strong>barra a barra</strong> e produz o <strong>memorial de cálculo completo</strong> do afundamento. Uma falta por vez, em cada barra do sistema; o resultado é a matriz de tensões residuais que alimenta a severidade.</p>
 
 <ol class="passos">
   <li><strong>Selecione a rede</strong> do projeto.</li>
@@ -812,11 +913,11 @@
 <p>Veja em <a href="#conceito-afundamento">3.4 Estudo de afundamento</a> a definição da janela 0,1–0,9 pu e da severidade.</p>
 </div>
 
-<!-- 4.8 -->
+<!-- 4.10 -->
 <div class="card">
-<h3 id="reativo">4.8 Reativo</h3>
+<h3 id="reativo">4.10 Reativo</h3>
 
-<p>Verifica e corrige o <strong>fator de potência no ponto de conexão</strong>.</p>
+<p>Verifica o <strong>fator de potência no ponto de conexão</strong> e, quando ele não atende, dimensiona a compensação.</p>
 
 <ol class="passos">
   <li><strong>Verifique o fator de potência</strong> no ponto de conexão contra a faixa do <strong>PRODIST: 0,92</strong>.</li>
@@ -825,9 +926,9 @@
 </ol>
 </div>
 
-<!-- 4.9 -->
+<!-- 4.11 -->
 <div class="card">
-<h3 id="validacao-ieee">4.9 Validação IEEE</h3>
+<h3 id="validacao-ieee">4.11 Validação IEEE</h3>
 
 <p>Reproduz os <strong>quatro sistemas de teste do IEEE</strong> — <strong>13, 34, 37 e 123 nós</strong> — e compara os resultados da ferramenta com o gabarito oficial.</p>
 
@@ -857,9 +958,9 @@
 </div>
 </div>
 
-<!-- 4.10 -->
+<!-- 4.12 -->
 <div class="card">
-<h3 id="exportadores">4.10 Exportadores Arduino/ESP32</h3>
+<h3 id="exportadores">4.12 Exportadores Arduino/ESP32</h3>
 
 <p>O projeto inclui <strong>sketches pré-prontos em <code>hardware/</code></strong> e gera, por projeto e por estudo, os <strong>arquivos de parametrização <code>.h</code></strong> correspondentes.</p>
 
@@ -876,11 +977,11 @@
 </div>
 </div>
 
-<!-- 4.11 -->
+<!-- 4.13 -->
 <div class="card">
-<h3 id="curvas-semanais">4.11 Curvas Semanais</h3>
+<h3 id="curvas-semanais">4.13 Curvas Semanais</h3>
 
-<p>Editor de perfis horários em percentual.</p>
+<p>Editor de perfis horários em percentual, com a mesma grade de 7 dias × 24 horas que o estudo percorre na análise semanal.</p>
 
 <ol class="passos">
   <li><strong>Edite a grade de 7 dias × 24 horas</strong> em percentual, para cada elemento.</li>
@@ -936,6 +1037,39 @@
   <p>O fator de potência de <strong>0,972</strong> atende ao mínimo de 0,92. O payback de <strong>≈ 17,1 anos</strong> é longo: o resultado é tecnicamente válido, mas deve ser lido junto com o horizonte de análise do projeto.</p>
 </div>
 
+<h3>Projeto de demonstração: ieee13</h3>
+
+<p>A pasta <code>projetos/</code> acompanha também o projeto <code>"ieee13"</code>, montado a partir da rede oficial de <strong>13 nós do IEEE</strong> com o conversor da própria ferramenta: 16 barras, 15 ramos, 19 derivações e uma <strong>PV de 1.000 kWp na barra 675</strong>, que dá à análise uma fonte de geração distribuída além da rede e do BESS. Serve para estudar o método em uma rede real de distribuição, e não em um exemplo de seis barras.</p>
+
+<p>O estudo executado nesse projeto ilustra a leitura dos indicadores em escala maior:</p>
+
+<table>
+  <caption>Resultados do estudo no projeto "ieee13".</caption>
+  <thead>
+    <tr><th style="width:46%">Item</th><th>Valor</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Alocação vencedora</td><td>Barra 670 — BESS 1.000 kW / 2.000 kWh</td></tr>
+    <tr><td>Status do PLIM</td><td><strong>Optimal</strong></td></tr>
+    <tr><td>Investimento</td><td>R$ 4.700.000,00</td></tr>
+    <tr><td>Economia diária</td><td>R$ 1.330,86/dia</td></tr>
+    <tr><td>Economia anual</td><td>R$ 351.348,24/ano</td></tr>
+    <tr><td>Payback</td><td>≈ 13,4 anos</td></tr>
+    <tr><td>Economia semanal</td><td>R$ 9.299,21 na semana</td></tr>
+    <tr><td>Fator de potência</td><td>0,5622 — <strong>não conforme</strong>; recomenda reator de 1.050 kvar</td></tr>
+  </tbody>
+</table>
+
+<div class="aviso atencao">
+  <span class="rotulo">Atenção — fator de potência com geração</span>
+  <p>O fator de potência baixo deste exemplo não é erro de cálculo. Com a PV gerando em horário de carga leve, o alimentador passa a <strong>entregar</strong> reativo à rede, e a leitura sai <strong>capacitiva</strong> — por isso a recomendação é <strong>reator</strong>, e não capacitor. Redes com geração distribuída exigem essa leitura.</p>
+</div>
+
+<div class="aviso info">
+  <span class="rotulo">Observação — aproximações da conversão</span>
+  <p>A conversão da rede oficial para o formato do editor está documentada em <code>projetos/ieee13/notas_conversao.txt</code>. As cargas monofásicas do arquivo original ficam agrupadas na fase 1, porque o modelo não guarda a fase de cada derivação; o perfil de tensão resultante é mais severo que o oficial.</p>
+</div>
+
 <div class="ref-cruzada">
   <span class="rotulo">Para aprofundar — Manual do Desenvolvedor</span>
   <p>A mecânica interna deste módulo está descrita no Manual do Desenvolvedor, seção <a href="manual_desenvolvedor.html#testes-headless">Testes Headless</a> — é onde estão as referências numéricas usadas na conferência dos resultados.</p>
@@ -969,6 +1103,18 @@
     <tr>
       <td>Menu principal não abriu após o console</td>
       <td>A janela de integridade foi fechada antes das 11 verificações. Execute o <code>*.exe</code> novamente (ou, no modo código-fonte, o <code>tcc_opendss.bat</code>).</td>
+    </tr>
+    <tr>
+      <td><strong>"not a Power Delivery element"</strong></td>
+      <td>Mensagem do motor OpenDSS na exportação: o medidor de energia está apontando para um elemento que não entrega potência adiante — a própria fonte, uma carga, um gerador, PV ou BESS. Dê duplo clique no medidor e escolha um <strong>ramo</strong>: linha, chave ou transformador.</td>
+    </tr>
+    <tr>
+      <td>Medidor desapareceu do diagrama</td>
+      <td>O ramo que ele media foi excluído, e o medidor saiu junto — sem o elemento não há o que medir. Um aviso lista o que foi removido em cascata. Recrie o ramo, ou adicione um medidor novo em outro ponto (seção <a href="#editor-medidor">4.3</a>).</td>
+    </tr>
+    <tr>
+      <td>Barras e elementos "voltaram ao lugar"</td>
+      <td>O ajuste de posição feito arrastando vale apenas para a sessão do editor. Ao salvar e reabrir, o layout automático prevalece — o desenho precisa continuar coerente com a topologia de <code>rede.json</code>. Para enxergar sem mover nada, use zoom, <em>pan</em> e o alternador "Mostrar rótulos" (seção <a href="#editor-visualizacao">4.2</a>).</td>
     </tr>
   </tbody>
 </table>

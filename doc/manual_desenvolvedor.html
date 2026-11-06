@@ -455,6 +455,7 @@ footer.doc-foot{
         <li><a href="#empacotamento">Empacotamento e distribuição</a></li>
       </ol>
     </li>
+    <li><a href="#estudo-demonstracao">Estudo de Demonstração (IEEE 13)</a></li>
     <li><a href="#contribuindo">Contribuindo</a></li>
   </ol>
 </nav>
@@ -667,6 +668,40 @@ footer.doc-foot{
   </div>
 
   <div class="card">
+    <p class="card-title">modelo_rede.py · medidor de energia</p>
+    <p class="card-role">O <code>EnergyMeter</code> do OpenDSS é uma <strong>derivação</strong> no modelo, com a mesma identidade das demais.</p>
+    <ul>
+      <li>
+        <strong>Posição padrão.</strong> <code>sugerir_medidor_padrao()</code> devolve o primeiro
+        ramo que toca a barra da fonte — a entrada principal de energia, que é onde a concessionária
+        mede de fato. É sugestão, não imposição: o usuário troca o elemento monitorado quando quiser.
+      </li>
+      <li>
+        <code>resolver_alvo_medidor(elemento, terminal)</code> ancora o ícone na barra correta do
+        ramo; <code>reatribuir_medidores()</code> reescreve a referência quando o ramo é renomeado
+        ou muda de tipo.
+      </li>
+      <li>
+        <code>limpar_medidores_orfaos()</code> apaga o medidor cujo elemento monitorado sumiu.
+        Medidor órfão não é objeto válido — o exportador recusa com <code>ValueError</code> nomeado
+        em vez de emitir um <code>.dss</code> que só falha no motor.
+      </li>
+      <li>
+        <span class="tag tag-warn">limite medido no motor</span> O OpenDSS recusa
+        <code>EnergyMeter</code> apontando para <code>Vsource</code> ou <code>Circuit</code>
+        (<em>“not a Power Delivery element”</em>). O alvo válido é <strong>ramo</strong>:
+        <code>Line</code>, <code>Switch</code>, <code>Transformer</code>.
+      </li>
+      <li>
+        <strong>Exportação.</strong> Arquivo próprio <code>medidores.dss</code>
+        (<code>New EnergyMeter.X element=&lt;ramo&gt; terminal=&lt;n&gt;</code>), redirecionado
+        <strong>por último</strong> em <code>ORDEM_REDIRECT</code>: o elemento monitorado precisa
+        existir antes, e o meter reorganiza as zonas do circuito ao ser definido.
+      </li>
+    </ul>
+  </div>
+
+  <div class="card">
     <p class="card-title">dss_engine.py</p>
     <p class="card-role">Wrapper fino sobre o <code>dss-python</code>: única porta de entrada do motor no sistema.</p>
     <ul>
@@ -713,7 +748,7 @@ footer.doc-foot{
     <p class="card-title">editor_rede.py · editor_ui.py</p>
     <p class="card-role">Editor gráfico da <code>RedeEletrica</code> e sua casca Qt.</p>
     <ul>
-      <li>Desenho em <code>QGraphicsScene</code> com <strong>barras arrastáveis</strong>; a posição é dado persistido, não decoração.</li>
+      <li>Desenho em <code>QGraphicsScene</code> com <strong>barras e derivações arrastáveis</strong>; a posição da barra é dado persistido, não decoração.</li>
       <li>Árvore de elementos em <code>QTreeWidget</code> usando <code>Qt.UserRole</code> para carregar o índice/identidade do elemento — nunca use o texto do nó como chave.</li>
       <li>
         <span class="tag tag-warn">armadilha</span> Campos opcionais em <code>CAMPOS_RAMO_PARAMS</code>:
@@ -723,6 +758,35 @@ footer.doc-foot{
         (<code>%loadloss=</code>). Misturar os dois produz comando silenciosamente ignorado.
       </li>
     </ul>
+  </div>
+
+  <div class="card">
+    <p class="card-title">editor_ui.py · canvas de visualização</p>
+    <p class="card-role">Zoom, pan, janela de zoom e o arraste que não rompe a topologia na tela.</p>
+    <ul>
+      <li>
+        <code>_CanvasRede</code> (<code>QGraphicsView</code>) concentra a navegação: zoom na roda
+        <strong>ancorado no cursor</strong>, entre 0,1× e 10×; pan arrastando o fundo vazio ou com
+        o botão do meio; modo “janela de zoom” com <em>rubber band</em> e <code>Esc</code> para sair.
+      </li>
+      <li>
+        <code>_DerivacaoItem</code> é arrastável — o medidor incluído. O arraste grava em
+        <code>_posicoes_derivacoes</code>, que é <strong>transitório</strong>: não vai para o
+        <code>rede.json</code>, exatamente como já acontecia com o arraste de barras.
+      </li>
+      <li>
+        <span class="tag tag-stop">armadilha</span> <strong>Não chame <code>redesenhar()</code>
+        durante o arraste.</strong> Reconstruir a cena destrói o item que está sob o mouse e o
+        arraste morre no meio. O caminho correto é o que o código faz: <code>redesenhar()</code>
+        registra <code>_dependencias_por_barra</code> (linhas de ramo, ligações do leque, rótulos)
+        e <code>_atualizar_geometria_barra()</code> aplica a geometria nova <strong>ao vivo</strong>.
+      </li>
+      <li>
+        O alternador “Mostrar rótulos” esconde rótulos de ramos e derivações e mantém os de barra.
+        Diagrama denso deixa de virar muro de texto sem esconder a identidade dos nós.
+      </li>
+    </ul>
+    <a class="uso-pratica" href="manual_usuario.html#editor-rede">Uso na prática: Manual do Usuário, seção 4.1 Editor de Rede</a>
   </div>
 
   <div class="card">
@@ -739,7 +803,20 @@ footer.doc-foot{
     <p class="card-title">exportador_dss.py</p>
     <p class="card-role">Tradutor <code>rede.json</code> → scripts <code>.dss</code> consumíveis pelo OpenDSS.</p>
     <ul>
-      <li>Emite <code>Line</code>, <code>Transformer</code>, <code>Load</code>, <code>Storage</code>, <code>Capacitor</code>, curvas do dia via <code>dia_curvas_padrao</code>.</li>
+      <li>Emite <code>Line</code>, <code>Transformer</code>, <code>Load</code>, <code>Storage</code>, <code>Capacitor</code>, <code>EnergyMeter</code> e as curvas do dia via <code>dia_curvas_padrao</code>.</li>
+      <li>
+        <span class="tag tag-stop">unidades</span> <code>_fmt_line</code> normaliza tudo para
+        <strong>km</strong>: <code>length</code> convertido e impedâncias levadas a ohm/km,
+        emitindo <code>units=km</code>. A tabela <code>FATOR_PARA_KM</code> é a fonte da verdade —
+        mi = 1,609344; kft = 0,3048; ft = 0,0003048; m = 0,001; cm = 0,00001; in = 0,0000254;
+        unidade ausente conta como km. Ramo com <code>linecode</code> referenciado passa sem
+        conversão — a impedância já está na unidade do código.
+      </li>
+      <li>
+        A motivação é medida, não estética: no binding, km/mi/sem-unidade dão o mesmo resultado e
+        <strong>ft não é confiável</strong>. Normalizar elimina a ambiguidade comprimento ×
+        impedância que produzia linha 3.280× mais longa sem nenhum erro na tela.
+      </li>
       <li>
         <span class="tag tag-stop">invariante</span> Estudos exportam para uma pasta
         <strong>TEMPORÁRIA</strong>. <code>rede.json</code> nunca é alterado por uma exportação
@@ -863,7 +940,12 @@ footer.doc-foot{
     <p class="card-title">otimizacao_bess.py <span class="tag">orquestrador</span></p>
     <p class="card-role"><code>executar_estudo_completo</code> — a espinha dorsal do TCC.</p>
     <ul>
-      <li>Sequência: caso base → varredura exaustiva barra × catálogo (sag binário + severidade contínua + economia por candidato) → MILP → <strong>verificação conjunta</strong> → reativo → economia completa → memoriais.</li>
+      <li>Sequência: caso base → varredura exaustiva barra × catálogo (sag binário + severidade contínua + economia por candidato) → MILP → <strong>verificação conjunta</strong> → reativo → economia completa → análise semanal (passo 4c) → memoriais.</li>
+      <li>
+        Assinatura headless: <code>executar_estudo_completo(caminho_master, ..., rede=,
+        pasta_curvas=)</code>. Passando a rede e a pasta de curvas, a economia semanal entra no
+        resultado; sem elas o estudo roda igual e o campo fica <code>None</code>.
+      </li>
       <li>
         <span class="tag tag-stop">ponto crítico</span> Na verificação conjunta, o
         <strong>benefício REAL medido substitui a estimativa-soma</strong> dos benefícios
@@ -878,6 +960,11 @@ footer.doc-foot{
         Escalas físicas usadas para normalizar o objetivo MILP:
         <code>σ_Q = (V_sup − V_inf) · n_sag</code> e
         <code>σ_E = spread · D_max · h_p · d · 12</code>.
+      </li>
+      <li>
+        <span class="tag tag-warn">armadilha</span> O motor <strong>muda o CWD do processo</strong>
+        ao compilar. Salve qualquer artefato com caminho absoluto calculado <em>antes</em> do
+        estudo — caminho relativo resolvido depois aponta para o diretório errado.
       </li>
     </ul>
     <a class="uso-pratica" href="manual_usuario.html#otimizacao-bess">Uso na prática: Manual do Usuário, seção 4.3 Otimização de BESS</a>
@@ -935,7 +1022,7 @@ footer.doc-foot{
     <ul>
       <li>DRE <strong>sem O&amp;M</strong>, com nota de transparência declarando a omissão.</li>
       <li>Projeção de <code>min(max(ceil(payback) + 2, 10), 25)</code> anos.</li>
-      <li>4 gráficos matplotlib com backend <strong>Agg</strong>, embutidos em base64 — o HTML não depende de CDN nem de arquivos irmãos.</li>
+      <li><strong>6 gráficos</strong> matplotlib com backend <strong>Agg</strong>, embutidos em base64 — o HTML não depende de CDN nem de arquivos irmãos. Os dois últimos vêm da análise semanal: economia dia a dia (R$/dia, barras verdes contra vermelhas) e composição percentual das fontes por dia (rede, FV e BESS empilhados até 100%).</li>
       <li>Formatação pt-BR com <strong>helpers próprios, sem <code>module locale</code></strong>.</li>
       <li><code>INCENTIVOS_PADRAO</code> editável; valores padrão são didáticos, não contratuais.</li>
       <li>
@@ -975,6 +1062,41 @@ footer.doc-foot{
       <li>Emite alertas de honestidade do dado quando a premissa é frágil (ex.: tarifa sem tributos, curva genérica).</li>
     </ul>
     <a class="uso-pratica" href="manual_usuario.html#economia-energia">Uso na prática: Manual do Usuário, seção 4.5 Economia de Energia</a>
+  </div>
+
+  <div class="card">
+    <p class="card-title">economia_energia.py · análise semanal</p>
+    <p class="card-role"><code>analisar_economia_semanal(rede, pasta_curvas, dia_padrao, bess_list, tarifa, ...)</code> — sete dias × 24 h, não o dia representativo.</p>
+    <ul>
+      <li>
+        Por dia: cópia profunda da rede com <em>rebind</em> das curvas daquele dia — a curva do
+        projeto tem prioridade; sem vínculo, a exportação injeta a curva padrão do dia. Cada dia
+        exporta para pasta temporária própria e roda <strong>duas passadas de despacho</strong>
+        (base e com BESS).
+      </li>
+      <li>
+        Contrato devolvido: <code>{"dias", "economia_diaria_brl", "custo_base_diario_brl",
+        "custo_sistema_diario_brl", "energia_rede_kwh", "energia_fv_kwh", "energia_bess_kwh",
+        "economia_semanal_brl", "avisos"}</code>.
+      </li>
+      <li>
+        Energia por fonte: <strong>rede</strong> = soma das <code>kw_comprada</code> do perfil;
+        <strong>FV</strong> = geração consumida, já descontada a exportação; <strong>BESS</strong> =
+        descarga. Carregamento <strong>não</strong> entra como fonte — consumir a própria bateria
+        para recarregá-la não é geração.
+      </li>
+      <li>
+        <span class="tag tag-warn">degradação</span> Falha em um dia zera aquele dia e registra
+        aviso; a semana inteira não se perde por causa de um sábado. Só ausência total vira
+        <code>None</code>.
+      </li>
+      <li>
+        <strong>Gancho no estudo.</strong> <code>executar_estudo_completo</code> ganhou os
+        parâmetros <code>rede=</code> e <code>pasta_curvas=</code>; com tarifa e rede presentes, o
+        passo <strong>4c</strong> anexa <code>resultado["economia_semanal"]</code> (e
+        <code>avisos_semanais</code> quando falha).
+      </li>
+    </ul>
   </div>
 
   <div class="card">
@@ -1095,6 +1217,32 @@ footer.doc-foot{
       <li><code>validacao_exportar_projeto.py</code> — exporta o projeto de referência.</li>
     </ul>
   </div>
+
+  <div class="card">
+    <p class="card-title">validacao_exportar_projeto.py · conversor IEEE → projeto</p>
+    <p class="card-role"><code>exportar_sistema_como_projeto(objeto_dss, nome)</code> — transforma um caso IEEE compilado em <code>rede.json</code> editável.</p>
+    <ul>
+      <li>
+        É o caminho canônico para trazer um alimentador oficial para o editor. As aproximações
+        ficam registradas em <code>notas_conversao.txt</code>, no projeto gerado. Quem retomar o
+        caso depois sabe o que foi simplificado sem precisar escavar o histórico do código.
+      </li>
+      <li>
+        <span class="tag tag-stop">bug corrigido</span> A leitura pedia <code>ILines.RMatrix</code>,
+        atributo que <strong>não existe</strong> (o certo é <code>Rmatrix</code>). O efeito era
+        silencioso e caro: o conversor caía no fallback e aplicava <code>r1 = x1 = 0,3</code> a
+        <strong>todas</strong> as linhas — o alimentador virava outro.
+      </li>
+      <li>
+        A sequência positiva sai de <code>d − m</code>, não da média da diagonal. Impedância
+        normalizada em ohm/km, alinhada com o exportador.
+      </li>
+      <li>
+        Regressão medida: o projeto <code>teste</code> exportado antes e depois da correção dá
+        números <strong>idênticos, bit a bit</strong>. Sem essa prova, “corrigi a leitura” é promessa.
+      </li>
+    </ul>
+  </div>
 </section>
 
 <!-- ==================================================================== -->
@@ -1163,6 +1311,36 @@ footer.doc-foot{
         <td><code>Storage</code> default <code>Vminpu=0,9</code></td>
         <td>Degrada a injeção exatamente na faixa de sag; <strong>o projeto usa 0,05</strong> (<code>VMINPU_STORAGE_PADRAO</code>), senão o BESS "desaparece" no momento em que deveria ajudar.</td>
       </tr>
+      <tr>
+        <td>11</td>
+        <td><code>ILines.RMatrix</code> não existe — o atributo é <code>Rmatrix</code></td>
+        <td>Acesso ao nome errado devolve <code>None</code> sem levantar erro; o código cai no fallback e usa impedância padrão em toda a rede.</td>
+      </tr>
+      <tr>
+        <td>12</td>
+        <td><code>ILines.Units</code>, lido como número, <strong>retorna sempre 0</strong></td>
+        <td>A unidade legível só existe na consulta de texto do elemento. Confiar no campo numérico faz você “confirmar” uma unidade que não foi lida.</td>
+      </tr>
+      <tr>
+        <td>13</td>
+        <td><code>Circuit.TotalPower[0]</code> devolve <strong>kW</strong> nesta versão</td>
+        <td>Carga de 100 kW lida como −100,83. Dividir por 1000 “para converter” derruba a medição mil vezes — a calibração de sinal continua obrigatória, a conversão de escala não.</td>
+      </tr>
+      <tr>
+        <td>14</td>
+        <td>O motor <strong>altera o CWD do processo</strong> ao compilar</td>
+        <td>Caminho relativo resolvido depois do <code>Compile</code> aponta para outro diretório. Calcule caminhos absolutos antes do estudo.</td>
+      </tr>
+      <tr>
+        <td>15</td>
+        <td>Arredondar impedância por-milha em 4 casas <strong>zera a resistência</strong></td>
+        <td>Valores da ordem de 1e-4 Ω/mi desaparecem no arredondamento. O <code>round</code> destrutivo foi removido; arredonde só na apresentação, nunca no valor que vai ao motor.</td>
+      </tr>
+      <tr>
+        <td>16</td>
+        <td><code>EnergyMeter</code> exige elemento de entrega de potência</td>
+        <td>Apontar para <code>Vsource</code> ou <code>Circuit</code> falha com <em>“not a Power Delivery element”</em>. Use <code>Line</code>, <code>Switch</code> ou <code>Transformer</code>.</td>
+      </tr>
     </tbody>
   </table>
 
@@ -1179,8 +1357,8 @@ footer.doc-foot{
     <span class="box-label">Transparência técnica — escopo dos achados</span>
     <p>
       Estes achados são da versão <strong>0.15.7</strong>. Atualizar o <code>dss-python</code> exige
-      re-verificar os 10 itens, priorizando 4, 5, 6, 7 e 10, cujos efeitos numéricos são grandes
-      o bastante para invalidar comparações com resultados anteriores.
+      re-verificar os 16 itens, priorizando 4, 5, 6, 7, 10, 13 e 15, cujos efeitos numéricos são
+      grandes o bastante para invalidar comparações com resultados anteriores.
     </p>
   </div>
 
@@ -1491,8 +1669,62 @@ venv/Scripts/python.exe -m bibliotecas.&lt;lancador&gt; --projeto .   # se aplic
 </section>
 
 <!-- ==================================================================== -->
+<section id="estudo-demonstracao">
+  <h2 class="sec"><span class="num">7</span>Estudo de Demonstração — IEEE 13 Barras</h2>
+
+  <p>
+    O projeto <code>projetos/ieee13/</code> existe para responder uma pergunta que o caso
+    sintético não responde: o método completo funciona num alimentador com desequilíbrio real,
+    regulador e cargas monofásicas espalhadas? Serve também como caso de regressão do conversor.
+  </p>
+
+  <h3 id="demo-montagem">Como o projeto foi montado</h3>
+  <ul>
+    <li>Rede convertida pelo <strong>conversor canônico</strong> — <code>exportar_sistema_como_projeto()</code>, o mesmo caminho que qualquer usuário usa. Nada foi digitado à mão.</li>
+    <li><strong>16 barras</strong>, 15 ramos, 19 derivações. Cargas somando <strong>3.466 kW / 2.102 kvar</strong>, com <strong>diferença zero</strong> contra o arquivo oficial do comitê.</li>
+    <li><strong>FV de 1.000 kWp</strong> (<code>PVSystem</code>) na barra 675. É a barra de maior carga e trifásica, condição que evita somar ao caso a discussão sobre conexão monofásica de gerador.</li>
+    <li>
+      O regulador foi colapsado num transformador com <strong>boost simétrico</strong>
+      <code>kv2 = 4,411333</code>, média dos taps originais (1,0625 / 1,0500 / 1,06875). Perde-se
+      a regulação por fase, mantém-se a elevação média — a alternativa era perder o boost inteiro.
+    </li>
+  </ul>
+
+  <h3 id="demo-resultado">Resultado do estudo</h3>
+  <table>
+    <caption>Tarifa A4 verde, ponta 18–21 h, peso de custo 0,01, candidatas 634 / 671 / 675 / 692 / 670</caption>
+    <thead><tr><th>Item</th><th>Valor</th></tr></thead>
+    <tbody>
+      <tr><td>Seleção MILP</td><td>BESS <strong>Utility 1000 kW / 2000 kWh</strong> na barra <strong>670</strong> (CAPEX R$ 4,7 M)</td></tr>
+      <tr><td>Economia diária</td><td>R$ 1.330,86</td></tr>
+      <tr><td>Economia anual</td><td>R$ 351.348,24</td></tr>
+      <tr><td>Payback simples</td><td>13,38 anos</td></tr>
+      <tr><td>Economia semanal medida</td><td>R$ 9.299,21</td></tr>
+      <tr><td>Reativo</td><td>FP 0,5622 → reator de 1.050 kvar</td></tr>
+    </tbody>
+  </table>
+  <p>
+    O fator de potência de 0,5622 é consequência direta do FV: em carga leve, o alimentador
+    devolve reativo à fonte. Não é defeito do modelo — é o que o cenário faz com ele.
+  </p>
+
+  <div class="box box-a">
+    <span class="box-label">Limitação declarada — endereçamento de fase</span>
+    <p>
+      O modelo de dados não guarda a fase de cada elemento. Na conversão, as cargas monofásicas
+      empilham na fase 1, o que desequilibra o caso de forma que o alimentador original não tem.
+      Números medidos: <code>Vmin = 0,8407 pu</code> contra <code>0,975</code> do gabarito;
+      perdas de 192,23 kW contra 110,50 kW; erro médio de <strong>8%</strong>. Os resultados de
+      otimização acima são internamente consistentes, mas o caso base <em>não</em> reproduz o
+      perfil oficial. Fechar essa lacuna exige um campo de fase no <code>rede.json</code> — mudança
+      de modelo, deliberadamente fora desta versão.
+    </p>
+  </div>
+</section>
+
+<!-- ==================================================================== -->
 <section id="contribuindo">
-  <h2 class="sec"><span class="num">7</span>Contribuindo</h2>
+  <h2 class="sec"><span class="num">8</span>Contribuindo</h2>
 
   <p>As contribuições são aceitas sob os termos da <a href="https://github.com/portoreal/tcc-opendss-dimensionamento-otimizacao-bess/blob/main/LICENSE.md">LICENSE.md</a> (não comercial) — leia-a antes do primeiro pull request.</p>
 
