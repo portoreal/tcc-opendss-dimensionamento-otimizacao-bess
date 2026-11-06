@@ -1,72 +1,64 @@
 """
 ui_win11.py (port para o TCC OpenDSS)
 
-Dialogos de entrada de dados com visual Windows 11 (Fluent Design),
-construidos com PySide6 - usados pelo modulo de Validacao do Modelo
-Computacional do TCC OpenDSS (dimensionamento e otimizacao do
-posicionamento de BESS para mitigacao de afundamentos de tensao) para
-a coleta de parametros de configuracao, avisos e confirmacoes, E
-TAMBEM pela janela principal do modulo de validacao, que reaproveita a
-MESMA paleta de cores/fonte deste modulo (ver API PUBLICA ADICIONAL ao
-final do arquivo) para manter consistencia visual entre a janela
-principal e os dialogos modais.
+Diálogos de entrada de dados no visual do Windows 11 (Fluent Design),
+construídos com PySide6. O módulo de Validação do Modelo Computacional
+(dimensionamento e otimização do posicionamento de BESS para mitigar
+afundamentos de tensão) usa estes diálogos para colher parâmetros, avisar e
+confirmar. A janela principal da validação também reaproveita a mesma paleta
+e a mesma fonte — ver API PÚBLICA ADICIONAL, ao final do arquivo —, e é só
+por isso que a janela grande e os diálogos pequenos se parecem.
 
-PADRAO VISUAL PORTADO DO PROJETO "gerenciamento_de_demandas"
-================================================
-Este arquivo e um port fiel do modulo "ui_win11.py" do projeto
-"gerenciamento_de_demandas" (fonte citada), mantido com o MESMO padrao
-visual Win11/Fluent e a MESMA paleta, para reuso pelo modulo de
-Validacao do Modelo Computacional do TCC. A unica adaptacao de
-conteudo foi o cabecalho/documentacao e o bloco de teste manual
-(__main__) ao final; a logica de paleta, fontes, dialogos e API publica
-permanece identica a do projeto de origem.
+ORIGEM DO PADRÃO VISUAL
+=======================
+Port fiel do módulo "ui_win11.py" do projeto "gerenciamento_de_demandas"
+(fonte citada), mantido com o mesmo padrão Win11/Fluent e a mesma paleta.
+Mudaram apenas o cabeçalho/documentação e o bloco de teste manual
+(``__main__``) no fim; paleta, fontes, diálogos e API pública continuam
+idênticos aos do projeto de origem.
 
-POR QUE PySide6 E NAO TKINTER PURO
-================================================
-O tkinter nativo (mesmo com o tema "vista" do Windows) nao reproduz
-os elementos visuais do Windows 11 (cantos arredondados, paleta de
-cores Mica/Fluent, tipografia Segoe UI Variable, sombra suave de
-elevacao). O PySide6 permite estilizar os dialogos via QSS (CSS-like)
-+ QGraphicsDropShadowEffect para aproximar esse padrao visual.
+POR QUE PySide6 E NÃO TKINTER PURO
+==================================
+O tkinter nativo, mesmo com o tema "vista" do Windows, não reproduz os
+elementos visuais do Windows 11: cantos arredondados, paleta Mica/Fluent,
+tipografia Segoe UI Variable, sombra suave de elevação. O PySide6 permite
+estilizar os diálogos com QSS (o CSS do Qt) mais QGraphicsDropShadowEffect,
+e com isso chegar perto do padrão do sistema.
 
-ESCOPO: DIALOGOS MODAIS, NAO JANELAS DE TRABALHO COMPLETAS
-================================================
-Este modulo oferece apenas DIALOGOS MODAIS simples (texto, perguntas
-multilinhas, aviso, confirmacao Sim/Nao) - nao substitui widgets
-complexos como abas, tabelas ou listas de selecao multipla usados em
-janelas de trabalho completas (ex.: a janela principal do modulo de
-Validacao do Modelo Computacional do TCC, que e construida diretamente
-com QTableWidget/QMenu do PySide6, apenas reaproveitando a PALETA de
-cores e a FONTE padrao definidas aqui).
+ESCOPO: DIÁLOGOS MODAIS, NÃO JANELAS DE TRABALHO COMPLETAS
+==========================================================
+Aqui só há diálogos modais simples — texto, perguntas multilinha, aviso,
+confirmação Sim/Não. Abas, tabelas e listas de seleção múltipla ficam de
+fora: a janela principal do módulo de Validação é construída diretamente
+com QTableWidget/QMenu do PySide6 e apenas reaproveita a paleta e a fonte
+definidas neste arquivo.
 
-TECNICA DE CANTOS ARREDONDADOS
-================================================
-A janela e SEM MOLDURA NATIVA (FramelessWindowHint +
-WA_TranslucentBackground). Apenas o container principal ("cartao")
-possui fundo opaco com border-radius; todos os widgets internos
-(barra de titulo, area de conteudo, area de botoes) sao QWidget
-"planos" (sem QSS de fundo proprio), permanecendo transparentes e
-deixando o fundo arredondado do "cartao" visivel por tras deles -
-evita que filhos opacos "quadrem" os cantos do container.
+TÉCNICA DE CANTOS ARREDONDADOS
+==============================
+A janela não tem moldura nativa (FramelessWindowHint +
+WA_TranslucentBackground). Só o container principal ("cartão") tem fundo
+opaco com border-radius. Todos os widgets internos — barra de título, área
+de conteúdo, área de botões — são QWidget planos, sem QSS de fundo próprio,
+e portanto transparentes: o fundo arredondado do cartão aparece por trás
+deles. Se algum filho pintasse o próprio fundo, os cantos do container
+apareceriam quadrados.
 
 TEMA CLARO/ESCURO
-================================================
-O tema e detectado automaticamente a partir do registro do Windows
-("AppsUseLightTheme"), com fallback para o tema claro em qualquer
-falha (ex.: ambiente nao Windows, chave ausente). Pode ser forcado
-manualmente via o parametro "tema" das funcoes publicas
-(pedir_texto_win11, pedir_perguntas_win11, mostrar_aviso_win11,
-confirmar_win11): "auto" (padrao), "claro" ou "escuro".
+=================
+O tema vem do registro do Windows ("AppsUseLightTheme"), com queda para o
+tema claro em qualquer falha — ambiente não Windows, chave ausente, falta
+de permissão. O parâmetro "tema" das funções públicas (pedir_texto_win11,
+pedir_perguntas_win11, mostrar_aviso_win11, confirmar_win11) força um tema
+específico quando necessário: "auto" (padrão), "claro" ou "escuro".
 
 COR DE DESTAQUE (ACCENT) FIXA EM AZUL INSTITUCIONAL
-================================================
-O "accent" (cor de destaque usada em botoes principais, bordas de
-foco, selecao de texto etc.) NAO usa o accent dinamico do tema do
-Windows - no tema escuro, o accent padrao do Windows 11 resultaria em
-um azul CLARO ("#60CDFF"), de baixo contraste quando combinado com
-texto branco por cima. Em vez disso, o accent e FIXO em
-"#004587" (azul institucional, o tom de marca usado no TCC), nos dois
-temas (claro e escuro) - ver COR_ACCENT_MARCA.
+===================================================
+O accent é a cor de destaque usada nos botões principais, nas bordas de
+foco e na seleção de texto. Ele não segue o accent dinâmico do Windows: no
+tema escuro, o accent padrão do Windows 11 vira um azul claro ("#60CDFF")
+que quase desaparece sob texto branco. Por isso o accent é fixo em
+"#004587", o azul institucional do TCC, nos dois temas — ver
+COR_ACCENT_MARCA.
 """
 
 from __future__ import annotations
@@ -98,11 +90,11 @@ TemaNome = Literal["auto", "claro", "escuro"]
 # PALETA DE CORES (WINDOWS 11 - TEMAS CLARO E ESCURO)
 # ============================================================================
 
-# Azul "de marca" usado como ACCENT fixo em ambos os temas - ver nota no
-# topo do arquivo ("COR DE DESTAQUE (ACCENT) FIXA EM AZUL INSTITUCIONAL").
-# Mantido como azul institucional, para consistencia visual
-# entre o cabecalho e os elementos interativos (botoes, abas, foco de
-# campos, selecao).
+# Azul "de marca", usado como accent fixo nos dois temas. O motivo está no
+# topo do arquivo, em "COR DE DESTAQUE (ACCENT) FIXA EM AZUL
+# INSTITUCIONAL": no tema escuro o accent do Windows fica claro demais para
+# carregar texto branco. Fixar a cor mantém cabeçalho, botões, abas, foco
+# de campo e seleção falando a mesma língua visual.
 COR_ACCENT_MARCA = "#004587"
 COR_ACCENT_MARCA_HOVER = "#0A5BA8"
 COR_ACCENT_MARCA_PRESSED = "#003766"
@@ -110,6 +102,14 @@ COR_ACCENT_MARCA_PRESSED = "#003766"
 
 @dataclass(frozen=True)
 class _Paleta:
+    """Conjunto imutável de cores de um tema.
+
+    Uma dataclass é só uma classe cujos campos são declarados uma vez e
+    preenchidos na construção - aqui, um registro de cores. ``frozen=True``
+    impede alteração depois de criada: paleta é constante, e um valor
+    trocado por acidente em um ponto do código apareceria como cor errada
+    em outro.
+    """
     fundo_cartao: str
     fundo_cartao_fim_gradiente: str
     borda_cartao: str
@@ -176,14 +176,20 @@ RAIO_BORDA_BOTAO = 6
 
 def _detectar_tema_do_windows() -> Literal["claro", "escuro"]:
     """
-    Le a chave de registro usada pelo Windows para indicar se os
-    aplicativos devem usar o tema claro ou escuro
-    (AppsUseLightTheme: 1 = claro, 0 = escuro). Em qualquer falha
-    (ambiente nao Windows, chave ausente, sem permissao), assume o
-    tema claro como fallback seguro.
+    Lê a chave de registro em que o Windows diz se os aplicativos devem usar
+    o tema claro ou o escuro (AppsUseLightTheme: 1 = claro, 0 = escuro).
+
+    Qualquer falha — ambiente não Windows, chave ausente, sem permissão —
+    cai no tema claro. Escolher o claro como padrão é menos arriscado: um
+    diálogo claro sobre um fundo escuro ainda é legível, o contrário pode
+    não ser.
     """
     try:
         import winreg
+
+        # Import local de propósito: winreg só existe no Windows, e um import
+        # no topo faria o módulo inteiro falhar em outra plataforma em vez de
+        # cair no except e devolver o tema claro.
 
         chave = winreg.OpenKey(
             winreg.HKEY_CURRENT_USER,
@@ -196,6 +202,7 @@ def _detectar_tema_do_windows() -> Literal["claro", "escuro"]:
 
 
 def _resolver_paleta(tema: TemaNome) -> _Paleta:
+    """Traduz "auto"/"claro"/"escuro" no objeto de paleta correspondente."""
     tema_resolvido = _detectar_tema_do_windows() if tema == "auto" else tema
     return PALETA_ESCURA if tema_resolvido == "escuro" else PALETA_CLARA
 
@@ -206,7 +213,12 @@ def _resolver_paleta(tema: TemaNome) -> _Paleta:
 
 
 def _fonte_padrao(tamanho: int = 10, negrito: bool = False) -> QFont:
-    """Monta a fonte padrão (Segoe UI Variable Text, com fallback para Segoe UI)."""
+    """Monta a fonte padrão do projeto.
+
+    A preferida é a Segoe UI Variable Text, do Windows 11; em Windows 10 ela
+    não existe e o Qt recua para a Segoe UI. ``setFamilies`` aceita a lista
+    inteira justamente para esse recuo acontecer sem código extra.
+    """
     fonte = QFont("Segoe UI", tamanho)
     fonte.setFamilies(["Segoe UI Variable Text", "Segoe UI"])
     fonte.setBold(negrito)
@@ -218,9 +230,12 @@ _GLIFO_FECHAR = "\uE8BB"  # "ChromeClose" no conjunto Segoe Fluent/MDL2
 
 
 def _fonte_icones_disponivel() -> Optional[str]:
-    """Retorna o nome da fonte de icones Fluent instalada no sistema
-    (Win10/11), ou None se nenhuma estiver disponivel - nesse caso o
-    chamador usa um glifo unicode comum como fallback."""
+    """Devolve o nome de uma fonte de ícones Fluent instalada, ou None.
+
+    None não é erro: significa que o chamador deve usar um glifo unicode
+    comum ("✕") no lugar do ícone de vetor. Sem essa checagem, o botão de
+    fechar apareceria como um retângulo vazio em sistemas sem a fonte.
+    """
     familias_instaladas = set(QFontDatabase.families())
     for familia in _FAMILIAS_ICONES_FLUENT:
         if familia in familias_instaladas:
@@ -232,7 +247,12 @@ _app: Optional[QApplication] = None
 
 
 def _garantir_app() -> QApplication:
-    """Garante uma única instância de QApplication no processo (reaproveitada entre diálogos)."""
+    """Garante uma única QApplication no processo, reaproveitada entre diálogos.
+
+    O Qt permite uma instância por processo; criar a segunda aborta o
+    programa. Como vários diálogos podem ser abertos em sequência, esta
+    função é o ponto único de checagem.
+    """
     global _app
     instancia = QApplication.instance()
     if instancia is not None:
@@ -245,6 +265,11 @@ def _garantir_app() -> QApplication:
 
 
 def _estilo_campo_texto(paleta: _Paleta, invalido: bool = False) -> str:
+    """QSS dos campos de texto do diálogo, com realce de borda quando inválido.
+
+    O parâmetro ``invalido`` troca a cor da borda pelo vermelho de aviso —
+    realce imediato no campo errado, sem esperar o usuário ler a mensagem.
+    """
     cor_borda = paleta.aviso if invalido else paleta.borda_campo
     return f"""
     QLineEdit, QTextEdit {{
@@ -287,8 +312,13 @@ def _estilo_campo_texto(paleta: _Paleta, invalido: bool = False) -> str:
 
 
 class _BarraTituloWin11(QWidget):
-    """Barra de título sem moldura nativa, com marca d'água de cor (accent dot),
-    suporte a arraste da janela e botão de fechar estilo Win11."""
+    """Barra de título própria, sem a moldura do Windows.
+
+    Traz o ponto colorido de destaque, permite arrastar a janela pelo
+    cabeçalho e fechar pelo botão no estilo Win11. Como a moldura nativa foi
+    removida, o arraste tem de ser implementado à mão: sem estes três
+    tratadores de mouse, a janela ficaria presa no lugar.
+    """
 
     def __init__(self, titulo: str, dialogo: QDialog, paleta: _Paleta):
         super().__init__(dialogo)
@@ -346,16 +376,19 @@ class _BarraTituloWin11(QWidget):
         layout.addWidget(botao_fechar)
 
     def mousePressEvent(self, evento: QMouseEvent) -> None:
+        """Guarda o deslocamento entre o cursor e o canto da janela."""
         if evento.button() == Qt.LeftButton:
             self._posicao_arraste = evento.globalPosition().toPoint() - self._dialogo.frameGeometry().topLeft()
         super().mousePressEvent(evento)
 
     def mouseMoveEvent(self, evento: QMouseEvent) -> None:
+        """Move a janela mantendo o cursor sobre o mesmo ponto do cabeçalho."""
         if self._posicao_arraste is not None and evento.buttons() & Qt.LeftButton:
             self._dialogo.move(evento.globalPosition().toPoint() - self._posicao_arraste)
         super().mouseMoveEvent(evento)
 
     def mouseReleaseEvent(self, evento: QMouseEvent) -> None:
+        """Zera o deslocamento: soltar o botão termina o arraste."""
         self._posicao_arraste = None
         super().mouseReleaseEvent(evento)
 
@@ -366,9 +399,13 @@ class _BarraTituloWin11(QWidget):
 
 
 class _DialogoBaseWin11(QDialog):
-    """Diálogo base com visual Windows 11: sem moldura nativa, cantos
-    arredondados, sombra de elevação, divisor sutil antes da área de
-    botões e animação de fade-in ao abrir."""
+    """Base de todos os diálogos: cartão arredondado, sombra, título e botões.
+
+    Reunir isso em uma classe evita repetir a mesma configuração de janela
+    sem moldura em cada diálogo derivado — e, principalmente, garante que
+    todos se comportem igual: mesma sombra, mesmo divisor antes dos botões,
+    mesma animação de entrada, mesmo Esc para cancelar.
+    """
 
     def __init__(
         self,
@@ -439,21 +476,29 @@ class _DialogoBaseWin11(QDialog):
         self._layout_botoes.addStretch(1)
         layout_cartao.addWidget(area_botoes)
 
-        # Atalho explicito: Esc cancela (QDialog ja faz isso por
-        # padrao, mas o atalho explicito garante o comportamento
-        # mesmo em subclasses que sobrescrevam keyPressEvent).
+        # Esc cancela. O QDialog já faz isso por padrão, mas o atalho
+        # explícito sobrevive a uma subclasse que sobrescreva
+        # keyPressEvent sem chamar a implementação da base - caso em que o
+        # usuário ficaria sem saída pelo teclado.
         QShortcut(QKeySequence(Qt.Key_Escape), self, activated=self.reject)
 
         self._animacao_entrada: Optional[QPropertyAnimation] = None
 
     def adicionar_conteudo(self, widget: QWidget) -> None:
+        """Encaixa um widget na área de conteúdo, acima do divisor."""
         self._layout_conteudo.addWidget(widget)
 
     def adicionar_botao(self, botao: QPushButton) -> None:
+        """Encaixa um botão na área inferior, alinhado à direita."""
         self._layout_botoes.addWidget(botao)
 
     def _criar_botao(self, texto: str, principal: bool = False) -> QPushButton:
-        """Cria um botão estilo Win11: accent (principal) ou outline (secundário)."""
+        """Cria um botão no estilo Win11.
+
+        ``principal=True`` pinta o botão com o accent, que é o caso da ação
+        que o usuário deve tomar; os demais ficam em contorno, para não
+        competir por atenção.
+        """
         paleta = self.paleta
         botao = QPushButton(texto)
         botao.setFixedHeight(34)
@@ -491,6 +536,7 @@ class _DialogoBaseWin11(QDialog):
         return botao
 
     def showEvent(self, evento) -> None:
+        """Ajusta o diálogo ao ser exibido: centraliza, traz à frente e anima."""
         super().showEvent(evento)
         self._centralizar_na_tela()
         self.raise_()
@@ -498,8 +544,11 @@ class _DialogoBaseWin11(QDialog):
         self._iniciar_animacao_entrada()
 
     def _iniciar_animacao_entrada(self) -> None:
-        """Fade-in suave (opacidade 0 -> 1) ao exibir o diálogo, em vez
-        de a janela aparecer abruptamente na tela."""
+        """Faz o diálogo surgir com opacidade de 0 a 1, em 140 ms.
+
+        Diálogo sem moldura que aparece de uma vez dá a impressão de falha
+        de desenho; a transição curta resolve isso sem atrasar o uso.
+        """
         self.setWindowOpacity(0.0)
         self._animacao_entrada = QPropertyAnimation(self, b"windowOpacity", self)
         self._animacao_entrada.setDuration(140)
@@ -509,6 +558,11 @@ class _DialogoBaseWin11(QDialog):
         self._animacao_entrada.start()
 
     def _centralizar_na_tela(self) -> None:
+        """Centraliza o diálogo na área útil da tela principal.
+
+        ``availableGeometry`` desconta a barra de tarefas; usar a geometria
+        inteira jogaria o diálogo parcialmente para baixo dela.
+        """
         tela = QApplication.primaryScreen()
         if tela is None:
             return
@@ -569,15 +623,18 @@ class _DialogoTextoWin11(_DialogoBaseWin11):
         self.campo.setFocus()
 
     def _limpar_estado_invalido(self) -> None:
+        """Retira o realce de erro assim que o usuário volta a digitar."""
         if self._rotulo_aviso.isVisible():
             self._rotulo_aviso.setVisible(False)
             self.campo.setStyleSheet(_estilo_campo_texto(self.paleta))
 
     def _confirmar(self) -> None:
+        """Guarda o texto e fecha; ``valor()`` só o devolve se o diálogo foi aceito."""
         self._valor = self.campo.text()
         self.accept()
 
     def valor(self) -> Optional[str]:
+        """Texto digitado, ou None se o usuário cancelou."""
         return self._valor if self.result() == QDialog.Accepted else None
 
 
@@ -640,9 +697,11 @@ class _DialogoPerguntasWin11(_DialogoBaseWin11):
         self.campo.setFocus()
 
     def _extrair_linhas(self) -> List[str]:
+        """Separa o texto em linhas, descartando as vazias."""
         return [linha.strip() for linha in self.campo.toPlainText().splitlines() if linha.strip()]
 
     def _atualizar_contador(self) -> None:
+        """Atualiza o contador do rodapé e limpa o aviso de campo vazio."""
         total = len(self._extrair_linhas())
         sufixo = "pergunta detectada" if total == 1 else "perguntas detectadas"
         self._rotulo_contador.setText(f"{total} {sufixo}")
@@ -652,6 +711,7 @@ class _DialogoPerguntasWin11(_DialogoBaseWin11):
             self.campo.setStyleSheet(_estilo_campo_texto(self.paleta))
 
     def _confirmar(self) -> None:
+        """Aceita apenas com ao menos uma pergunta; caso contrário, marca o campo."""
         linhas = self._extrair_linhas()
         if not linhas:
             self._rotulo_aviso.setText("É necessário informar ao menos uma pergunta.")
@@ -663,6 +723,7 @@ class _DialogoPerguntasWin11(_DialogoBaseWin11):
         self.accept()
 
     def perguntas(self) -> List[str]:
+        """Perguntas digitadas, ou lista vazia se o usuário cancelou."""
         return self._perguntas if self.result() == QDialog.Accepted else []
 
 
@@ -733,7 +794,12 @@ def pedir_texto_win11(
 def pedir_perguntas_win11(
     titulo: str, tema: TemaNome = "auto", parent: Optional[QWidget] = None
 ) -> Optional[List[str]]:
-    """Exibe um diálogo Win11 multilinha. Retorna a lista de perguntas (não vazias), ou None se cancelado."""
+    """Exibe um diálogo multilinha e devolve a lista de perguntas.
+
+    Devolve None quando o usuário cancela. As linhas em branco são
+    descartadas, de modo que a lista retornada nunca vem vazia por
+    acidente.
+    """
     _garantir_app()
     dialogo = _DialogoPerguntasWin11(titulo, tema, parent)
     dialogo.exec()
@@ -754,7 +820,12 @@ def mostrar_aviso_win11(
 def confirmar_win11(
     titulo: str, mensagem: str, tema: TemaNome = "auto", parent: Optional[QWidget] = None
 ) -> bool:
-    """Exibe um diálogo Win11 de confirmação (Sim/Não). Retorna True para 'Sim', False para 'Não'/cancelado."""
+    """Exibe um diálogo de confirmação Sim/Não.
+
+    Devolve True para 'Sim' e False para 'Não' ou janela fechada. Cancelar
+    cai no lado seguro por construção: quem chama só segue adiante com um
+    True explícito do usuário.
+    """
     _garantir_app()
     dialogo = _DialogoConfirmacaoWin11(titulo, mensagem, tema, parent)
     dialogo.exec()
@@ -789,8 +860,10 @@ def obter_paleta_ativa(tema: TemaNome = "auto") -> _Paleta:
     return _resolver_paleta(tema)
 
 
-# Alias público da fonte padrão (Segoe UI Variable Text, com fallback
-# para Segoe UI) - mesma função usada internamente pelos diálogos.
+# Alias público da fonte padrão - a mesma função que os diálogos usam
+# internamente. Sem ele, quem está fora do módulo teria de chamar uma
+# função com sublinhado no nome, que a convenção do Python marca como
+# privada.
 fonte_padrao = _fonte_padrao
 
 
@@ -799,6 +872,8 @@ fonte_padrao = _fonte_padrao
 # ============================================================================
 
 if __name__ == "__main__":
+    # Teste manual: abre um diálogo de aviso para conferir o padrão visual
+    # sem precisar subir o sistema inteiro.
     mostrar_aviso_win11(
         "TCC OpenDSS - Validacao do Modelo Computacional",
         "Teste manual do padrao visual Win11 (PySide6) do modulo de "

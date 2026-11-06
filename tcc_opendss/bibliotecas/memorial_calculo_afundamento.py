@@ -2,18 +2,16 @@ __author__ = 'Pedro Henrique Sousa Pinheiro'
 """Gerador de memorial de cálculo para o Estudo de Afundamento de Tensão
 (voltage sag) usado na Otimização de Alocação de BESS.
 
-Este módulo é puramente de RELATÓRIO/TRANSPARÊNCIA: ele NÃO refaz nenhum
-cálculo elétrico por conta própria. Todos os valores de tensão em pu
-utilizados aqui são exatamente os mesmos já calculados pelo motor
-OpenDSS dentro de estudo_afundamento.rodar_estudo() (fluxo de potência
-trifásico desequilibrado completo, não uma fórmula simplificada).
+Este módulo é de RELATÓRIO, e só. Não refaz cálculo elétrico nenhum. Toda
+tensão em pu que aparece aqui é a que o motor OpenDSS já calculou em
+estudo_afundamento.rodar_estudo(), pela resolução do fluxo de potência
+trifásico desequilibrado completo — não por fórmula simplificada.
 
-O objetivo deste memorial é permitir que o usuário AUDITE, barra a barra
-e cenário a cenário, por que cada barra foi (ou não foi) classificada
-como estando em afundamento de tensão, evitando que um resultado como
-"0 barras em afundamento" pareça uma "caixa preta" ou um possível bug -
-quando, na verdade, pode ser um resultado fisicamente correto para
-redes eletricamente "rígidas" (fonte forte / linhas curtas).
+Para que serve: permitir a auditoria, barra a barra e cenário a cenário, de
+por que cada barra entrou ou não no critério de afundamento. Um resultado
+"0 barras em afundamento" sem essa abertura parece caixa preta ou bug. Na
+maioria das vezes é resultado fisicamente correto de rede eletricamente
+rígida, com fonte forte e linhas curtas.
 
 METODOLOGIA (já documentada em estudo_afundamento.py, repetida aqui por
 completude do memorial):
@@ -39,9 +37,13 @@ def _linha_separadora(caractere="-") -> str:
 
 
 def _classificar_valor(valor: float, limite_inferior: float, limite_superior: float) -> str:
-    """Classifica um único valor de tensão (pu) segundo os limiares do
-    estudo. Usado para dar transparência total sobre CADA valor, e não
-    apenas o resultado binário "em sag / não em sag"."""
+    """Classifica um valor de tensão em pu pelos limiares do estudo.
+
+    A saída é textual, não booleana, porque a tabela precisa mostrar o que
+    aconteceu com cada valor. Um "não está em sag" pode significar tensão
+    normal ou queda tão funda que virou interrupção, e as duas leituras
+    levam a conclusões diferentes.
+    """
     if valor < limite_inferior:
         return "ABAIXO DO LIMITE (possível interrupção, fora do critério de sag)"
     if valor < limite_superior:
@@ -50,15 +52,19 @@ def _classificar_valor(valor: float, limite_inferior: float, limite_superior: fl
 
 
 def _resumir_barra(valores: List[float]) -> Optional[Dict[str, float]]:
+    # Sem valores não há o que resumir: devolve None para que o chamador
+    # escreva uma linha explicativa em vez de imprimir mínimo de lista vazia.
     if not valores:
         return None
     return {"minimo": min(valores), "maximo": max(valores)}
 
 
 def _nome_base_barra(bus: str) -> str:
-    """Remove eventuais sufixos de nó (ex.: 'barra1.1' -> 'barra1'),
-    usado para comparar com o nome da barra em falta (que é informado
-    sem sufixo de nó pelo restante do código)."""
+    """Retira o sufixo de nó do nome da barra ('barra1.1' vira 'barra1').
+
+    A comparação com a barra em falta exige nomes na mesma forma, e o
+    restante do código informa essa barra sem sufixo de nó.
+    """
     return bus.split(".")[0].lower()
 
 
@@ -109,6 +115,8 @@ def _gerar_secao_cenario(indice: int, cenario: Dict[str, Any],
     barras_em_sag_neste_cenario = []
 
     for bus in sorted(pu_por_barra.keys()):
+        # A barra em falta fica de fora: dentro dela a tensão é o próprio
+        # curto, e contá-la distorceria a estatística do cenário.
         if _nome_base_barra(bus) == nome_faltoso:
             linhas.append(f"{bus:<20}{'--':>14}{'--':>14}   (barra em falta, excluída da análise)")
             continue
@@ -149,15 +157,15 @@ def gerar_memorial_estudo(
     r_falta_alta_impedancia: float = 40.0,
     titulo: str = "Estudo de Afundamento de Tensão",
 ) -> str:
-    """Gera o texto completo do memorial de cálculo para UM resultado de
-    estudo (a saída de estudo_afundamento.rodar_estudo()).
+    """Texto completo do memorial de cálculo de UM resultado de estudo,
+    no formato devolvido por estudo_afundamento.rodar_estudo().
 
-    Este memorial mostra, cenário a cenário e barra a barra, o valor de
-    tensão mínimo/máximo em pu encontrado e sua classificação, permitindo
-    auditar exatamente por que o resultado agregado (barras_em_sag_geral)
-    chegou ao valor apresentado — incluindo o caso de resultado "0
-    barras em afundamento", que pode ser fisicamente correto para redes
-    eletricamente rígidas (fonte forte e/ou linhas curtas)."""
+    Cenário a cenário e barra a barra, o memorial traz a tensão mínima e
+    máxima em pu com a classificação correspondente. É o que permite
+    reconstruir como o resultado agregado (barras_em_sag_geral) foi
+    obtido — inclusive quando esse agregado é zero, caso fisicamente
+    plausível em rede rígida.
+    """
 
     linhas = []
     linhas.append(_linha_separadora("#"))
@@ -229,10 +237,13 @@ def gerar_memorial_comparativo(
     r_falta_solida: float = 0.0001,
     r_falta_alta_impedancia: float = 40.0,
 ) -> str:
-    """Gera um memorial ÚNICO comparando o caso base (sem BESS) com o
-    caso otimizado (com a alocação de BESS selecionada pelo MILP),
-    incluindo os dois memoriais individuais em sequência e uma seção de
-    comparação direta ao final."""
+    """Memorial único que coteja o caso base (sem BESS) com o caso
+    otimizado (alocação escolhida pelo MILP).
+
+    Os dois memoriais individuais vêm em sequência e uma seção de comparação
+    direta fecha o documento. Quem lê tem o detalhe de cada caso e o saldo
+    na mesma peça, o que evita a leitura cruzada de dois arquivos.
+    """
 
     partes = []
 
@@ -248,6 +259,8 @@ def gerar_memorial_comparativo(
 
     barras_base = set(resultado_base.get("barras_em_sag_geral", []))
     barras_otim = set(resultado_otimizado.get("barras_em_sag_geral", []))
+    # A diferença entre conjuntos separa o que o BESS resolveu do que ele
+    # eventualmente agravou — as duas leituras importam.
     barras_resolvidas = barras_base - barras_otim
     barras_novas = barras_otim - barras_base
 
@@ -296,6 +309,6 @@ def gerar_memorial_comparativo(
 
 
 def salvar_memorial(texto: str, caminho_arquivo: str) -> None:
-    """Salva o texto do memorial em um arquivo .txt no caminho informado."""
+    """Grava o texto do memorial em arquivo .txt no caminho indicado."""
     with open(caminho_arquivo, "w", encoding="utf-8") as f:
         f.write(texto)

@@ -3,26 +3,29 @@ __author__ = 'Pedro Henrique Sousa Pinheiro'
 
 Papel desta frente no TCC
 -------------------------
-O Arduino Mega representa/controla/adquire os sinais do SISTEMA DE ENERGIA
-ADJACENTE ao sistema BESS — a microrrede: cargas com curvas horárias, geração
+O Arduino Mega representa, controla e adquire os sinais do SISTEMA DE ENERGIA
+ADJACENTE ao BESS — a microrrede: cargas com curvas horárias, geração
 fotovoltaica, impedâncias dos ramos e bancos de capacitores. Ele NÃO decide
-despacho: recebe o setpoint de P/Q do ESP32 e devolve as tensões resultantes.
+despacho. Recebe o setpoint de P/Q vindo do ESP32 e devolve as tensões
+resultantes.
 
 O sketch embarcado (`hardware/arduino_microrrede/arduino_microrrede.ino`) é
-PRÉ-PRONTO: a lógica é fixa e versionada. O que este módulo gera, a cada
-projeto, é apenas o cabeçalho ``param_microrrede.h`` com os dados da rede
-desenhada no Editor.
+PRÉ-PRONTO e versionado: a lógica não muda de projeto para projeto. O que
+este módulo produz, a cada projeto, é só o cabeçalho ``param_microrrede.h``
+com os dados da rede desenhada no Editor — o sketch é o programa, o cabeçalho
+é a configuração.
 
 TRANSPARÊNCIA TÉCNICA — o que este gerador NÃO faz
 --------------------------------------------------
-- Não inventa dados. Elemento sem o campo necessário vira AVISO no retorno e
-  valor neutro no cabeçalho (0.0), nunca um chute.
-- Não resolve fluxo de potência. A aproximação usada está declarada no
-  cabeçalho C gerado e no topo do sketch.
-- A conversão para pu usa BASE_KVA = 1000 kVA (base de potência arbitrária
-  mas fixa) e as tensões em pu relativas à tensão nominal de cada barra. A
-  impedância em pu é calculada sobre a base de potência e a tensão da barra
-  de origem do ramo — é o que a varredura do sketch consome.
+- Não inventa dados. Elemento sem o campo necessário gera AVISO no retorno e
+  valor neutro (0.0) no cabeçalho; nunca um chute.
+- Não resolve fluxo de potência. A aproximação adotada está declarada no
+  cabeçalho C gerado e no topo do sketch, para que ninguém confunda a saída
+  da bancada com resultado de simulação.
+- A conversão para pu usa BASE_KVA = 1000 kVA — base de potência arbitrária,
+  porém fixa — e tensões em pu referidas à tensão nominal de cada barra. A
+  impedância em pu sai da base de potência e da tensão da barra de origem do
+  ramo, que é exatamente o que a varredura do sketch consome.
 """
 
 import os
@@ -31,21 +34,22 @@ from typing import Any, Dict, List, Optional, Tuple
 from .curvas import obter_curva
 from .modelo_rede import RedeEletrica
 
-# Base de potência única para toda a conversão em pu. Fixa por desenho: a
-# varredura do sketch soma potências de barras diferentes, o que exige uma
-# base comum. 1000 kVA = 1 MVA é a convenção usada no cabeçalho gerado.
+# Base de potência única para toda a conversão em pu. É fixa por desenho: a
+# varredura do sketch soma potências de barras diferentes, e somar em pu só
+# faz sentido sobre base comum. 1000 kVA = 1 MVA, a convenção emitida no
+# cabeçalho gerado.
 BASE_KVA = 1000.0
 
 # Pinos PWM do Arduino Mega disponíveis para o mapa de barras.
 #
-# ATENÇÃO — COLISÃO COM O ENLACE: o Mega tem PWM nos pinos 2..13, mas o
-# enlace com o ESP32 usa D2..D10 (hora, tick, V_pu, estado). Usar 2..13
-# cru colocaria uma saída PWM de barra no MESMO pino do tick de hora (D7),
-# do V_pu (D8) ou da entrada de estado (D9/D10) — a placa ficaria
-# silenciosamente errada. A lista abaixo usa os pinos com PWM que NÃO
-# participam do enlace: 11, 12 e 13.
+# ATENÇÃO — COLISÃO COM O ENLACE. O Mega tem PWM nos pinos 2..13, mas o
+# enlace com o ESP32 ocupa D2..D10 (hora, tick, V_pu, estado). Usar 2..13
+# cru colocaría uma saída PWM de barra no mesmo pino do tick de hora (D7),
+# do V_pu (D8) ou da entrada de estado (D9/D10), e a placa ficaria
+# silenciosamente errada — o sintoma apareceria na bancada, longe da causa.
+# A lista abaixo usa os pinos com PWM que sobram: 11, 12 e 13.
 #
-# São só 3 barras. Projetos maiores precisam que o pesquisador escolha:
+# São só 3 barras. Projeto maior exige uma decisão do pesquisador:
 #   (a) remover a PWM das barras excedentes (PINO_PWM_BARRA = -1, o sketch
 #       não aciona nada), ou
 #   (b) mover o enlace para outros pinos do mapa canônico, ou
@@ -54,7 +58,8 @@ BASE_KVA = 1000.0
 PINOS_PWM_MEGA = [11, 12, 13]
 
 # Pinos do Mega ocupados pelo enlace com o ESP32. Derivado do mapa canônico
-# (PINO_NUMERICO_MEGA) para não haver uma segunda lista a manter em sincronia.
+# (PINO_NUMERICO_MEGA) de propósito: uma segunda lista de pinos exigiria
+# manutenção em espelho e divergiria no primeiro esquecimento.
 def pinos_ocupados_pelo_enlace():
     """Números de pino do Mega já usados pela interface com o ESP32."""
     return {p for p in PINO_NUMERICO_MEGA.values() if p is not None}
@@ -64,29 +69,29 @@ NOME_ARQUIVO = "param_microrrede.h"
 # ---------------------------------------------------------------------------
 # MAPA CANÔNICO DA INTERFACE FÍSICA Mega <-> ESP32 (decisão do pesquisador)
 # ---------------------------------------------------------------------------
-# A ligação entre as duas placas NÃO usa UART. São conexões diretas digitais
-# e analógicas, ponto a ponto — algo que se monta em bancada com jumpers.
-# Cada placa tem alimentação INDIVIDUAL; apenas o GND é comum (referência de
-# sinal, obrigatória para o ADC e o DAC funcionarem).
+# A ligação entre as duas placas NÃO usa UART. São conexões ponto a ponto,
+# digitais e analógicas — do tipo que se monta em bancada com jumpers. Cada
+# placa tem alimentação individual; só o GND é comum, e ele é obrigatório:
+# sem referência de sinal compartilhada, ADC e DAC leem lixo.
 #
-# ESTA LISTA É A FONTE ÚNICA DA VERDADE: o exportador do ESP32 importa daqui
-# em vez de repetir os pinos. Um só caminho, dois cabeçalhos gerados —
-# impossível divergirem entre si.
+# ESTA LISTA É A FONTE ÚNICA DA VERDADE. O exportador do ESP32 importa daqui
+# em vez de repetir os pinos: um caminho, dois cabeçalhos gerados, e portanto
+# impossível os dois lados divergirem.
 #
 # Sentido do dado: Mega -> ESP32 nas ligações 1..7 (o Mega publica o estado
-# da microrrede); ESP32 -> Mega nas 8..11 (o ESP32 atua); a 12 é a
-# referência elétrica comum, sem dado.
+# da microrrede), ESP32 -> Mega nas 8..11 (o ESP32 atua) e a 12 é a
+# referência elétrica comum, que não transporta dado.
 #
 # CONDIÇÃO DE NÍVEL (decisão do pesquisador: Arduino Mega 2560 R3)
 # -----------------------------------------------------------------
 # O Mega 2560 R3 é lógica de 5 V; o ESP32 é de 3,3 V e NÃO tolera 5 V nas
-# entradas. Toda linha Mega -> ESP32 passa por DIVISOR DE TENSÃO
-# R_SERIE 10 kOhm + R_GND 20 kOhm (no lado do ESP32): 5 x 20/30 = 3,33 V.
-# A linha analógica (D8) soma um filtro RC 4,7 kOhm + 10 uF ANTES do divisor.
-# Nas linhas ESP32 -> Mega (3,3 V dentro de uma entrada de 5 V) a ligação é
-# DIRETA: 3,3 V > VIH do ATmega2560 (0,6 x 5 V = 3,0 V), margem de 0,3 V.
-# O campo "condicionamento" de cada ligação abaixo é emitido nos dois
-# cabeçalhos e conferido pelo README de bancada.
+# entradas. Toda linha Mega -> ESP32 passa por divisor de tensão com
+# R_SERIE 10 kOhm e R_GND 20 kOhm (no lado do ESP32): 5 x 20/30 = 3,33 V.
+# A linha analógica (D8) leva ainda um filtro RC de 4,7 kOhm + 10 uF ANTES
+# do divisor. Nas linhas ESP32 -> Mega a ligação é direta, porque 3,3 V já
+# supera o VIH do ATmega2560 (0,6 x 5 V = 3,0 V), com margem de 0,3 V. O
+# campo "condicionamento" de cada ligação sai nos dois cabeçalhos e é
+# conferido pelo README de bancada.
 MAPA_LIGACOES = [
  {"n": 1, "mega": "D2", "mega_papel": "saída digital",
  "esp32": "GPIO 23", "esp32_papel": "entrada",
@@ -150,19 +155,20 @@ MAPA_LIGACOES = [
  "macro_mega": None, "macro_esp32": None},
 ]
 
-# Número do pino físico no Mega para cada ligação (D2 -> 2, A0 -> 54, GND ->
-# None). O rótulo "D2"/"A0" é a serigrafia da placa; o número é o que o
-# Arduino usa em pinMode()/analogRead(). No Mega os analógicos A0..A15 são os
-# pinos digitais 54..69 — por isso A0 = 54, e não 0.
+# Número do pino físico no Mega para cada ligação (D2 -> 2, A0 -> 54,
+# GND -> None). O rótulo "D2"/"A0" é a serigrafia da placa; o número é o que
+# o Arduino quer em pinMode()/analogRead(). No Mega, A0..A15 são os pinos
+# digitais 54..69 — daí A0 = 54, e não 0. Escrever 0 ali acionaria o pino
+# digital 0 (RX da serial) em vez de ler a entrada analógica.
 PINO_NUMERICO_MEGA = {
  1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8,
  8: 54, 9: 55, 10: 9, 11: 10, 12: None,
 }
 
-# Escalas da interface analógica. São ESCOLHAS DE PROJETO declaradas, não
-# dados medidos. O ADC do Mega lê 0..5 V e o DAC do ESP32 entrega 0..3,3 V:
-# o sinal do ESP32 usa no máximo ~66% da faixa do ADC — resolução efetiva
-# menor, documentada no cabeçalho gerado e no README.
+# Escalas da interface analógica. São escolhas de projeto declaradas, não
+# dados medidos. O ADC do Mega lê 0..5 V e o DAC do ESP32 entrega 0..3,3 V,
+# então o sinal do ESP32 aproveita no máximo ~66% da faixa do ADC: resolução
+# efetiva menor, documentada no cabeçalho gerado e no README.
 VPU_ANALOG_MAX_PADRAO = 1.20 # tensão pu correspondente a 3,3 V na linha
 DAC_MIDRAIL_V_PADRAO = 1.65 # 1,65 V = zero de P/Q (metade do fundo de escala)
 VREF_MEGA_ADC_PADRAO = 5.0 # referência do ADC do Mega
@@ -172,12 +178,13 @@ FILTRO_RC_SUGERIDO = "4,7 kOhm em serie + 10 uF para GND"
 # ---------------------------------------------------------------------------
 # Condicionamento de nível Mega 2560 R3 (5 V) -> ESP32 (3,3 V)
 # ---------------------------------------------------------------------------
-# Escolhas de projeto declaradas, não medidas. O divisor 10k/20k é usado em
-# TODAS as linhas Mega -> ESP32 (6 digitais + a analógica), para um BOM
+# Escolhas de projeto declaradas, não medidas. O divisor 10k/20k aparece em
+# TODAS as linhas Mega -> ESP32 (6 digitais mais a analógica), para um BOM
 # uniforme: 5 x 20/(10+20) = 3,333 V, abaixo dos 3,6 V de entrada do ESP32 e
 # acima do VIH do ESP32 (0,75 x 3,3 = 2,475 V). A linha analógica soma o
-# filtro RC de 4,7 kOhm/10 uF ANTES do divisor — o RC precisa ver a fonte
-# do PWM a 5 V, não o nó já dividido.
+# filtro RC de 4,7 kOhm/10 uF ANTES do divisor, porque o RC precisa ver a
+# fonte do PWM a 5 V, não o nó já dividido — depois do divisor a tensão é
+# baixa e o filtro perde eficácia.
 R_SERIE_DIV_OHMS = 10000.0 # resistor em série com a linha do Mega
 R_GND_DIV_OHMS = 20000.0 # resistor de fuga para GND, no lado do ESP32
 MEGA_VCC_PWM_V_PADRAO = 5.0 # fundo de escala do PWM do Mega (lógica 5 V)
@@ -188,7 +195,8 @@ DIVISOR_LEVEL_PADRAO = round(
     R_GND_DIV_OHMS / (R_SERIE_DIV_OHMS + R_GND_DIV_OHMS), 4)
 
 #: Texto de condicionamento por ligação, indexado pelo número da ligação.
-#: Emitido como comentário nos dois cabeçalhos (fonte única).
+#: Sai como comentário nos dois cabeçalhos, mantendo Mega e ESP32 com a
+#: mesma descrição de bancada.
 CONDICIONAMENTO = {
     1: "divisor 10k/20k -> 3,33 V",
     2: "divisor 10k/20k -> 3,33 V",
@@ -204,7 +212,10 @@ CONDICIONAMENTO = {
     12: "referência de sinal comum (alimentações separadas)",
 }
 
-# Defaults de operação do ensaio (ajustáveis editando o cabeçalho gerado).
+# Defaults de operação do ensaio, ajustáveis editando o cabeçalho gerado.
+# SEGUNDOS_POR_HORA = 1 acelera o dia simulado para 24 s de bancada, o que
+# permite acompanhar um ciclo completo na sessão de laboratório; DIA_INICIAL
+# 0 corresponde a segunda-feira, alinhado com a Simulação ao Vivo.
 SEGUNDOS_POR_HORA_PADRAO = 1.0
 DIA_INICIAL_PADRAO = 0 # 0 = Segunda, consistente com a Simulação ao Vivo
 PU_PWM_MAX_PADRAO = 1.20
@@ -216,7 +227,14 @@ NUVEM_FATOR_PADRAO = 1.0 # 1.0 = céu limpo (sem atenuação da PV)
 # Utilidades de conversão
 # ---------------------------------------------------------------------------
 def _num(valor: Any, default: Optional[float] = None) -> Optional[float]:
-    """Converte para float tolerando string vazia/inválida. Nunca levanta."""
+    """Converte para float tolerando string vazia, vírgula decimal ou lixo.
+
+    Nunca levanta exceção: devolve `default` quando não consegue converter.
+    O ponto é que um campo em branco no Editor de Rede não pode impedir a
+    exportação do cabeçalho do teste. A troca de vírgula por ponto existe
+    porque o usuário digita 13,8 no padrão brasileiro e o Python leria
+    "13,8" como texto, não como número.
+    """
     if valor is None:
         return default
     if isinstance(valor, (int, float)):
@@ -234,17 +252,19 @@ def _curva_24h(pasta_curvas: Optional[str], nome: str,
                avisos: List[str], contexto: str) -> List[float]:
     """Resolve a curva diária e a expande para 24 multiplicadores horários.
 
-    Os pontos do editor têm horas irregulares (ex.: 0, 6.5, 18, 22). O sketch
-    precisa de uma tabela de 24 posições indexada pela hora inteira e, por
-    isso, o gerador INTERPOLA LINEARMENTE entre pontos vizinhos, com
-    repetição do primeiro/último valor fora da faixa coberta.
+    Os pontos do editor caem em horas irregulares (0, 6.5, 18, 22, por
+    exemplo). O sketch, porém, precisa de uma tabela de 24 posições indexada
+    pela hora inteira. Daí a interpolação linear entre pontos vizinhos, com
+    repetição do primeiro e do último valor fora da faixa coberta.
 
-    TRANSPARÊNCIA TÉCNICA: essa interpolação é uma decisão de implementação
-    desta camada, não do modelo. O OpenDSS interpola internamente do mesmo
-    modo (linear entre pontos de `hour`), então a tabela é fiel ao que o
-    motor calcula para as horas inteiras.
+    TRANSPARÊNCIA TÉCNICA: a interpolação é decisão desta camada, não do
+    modelo. O OpenDSS faz o mesmo internamente (interpolação linear entre
+    pontos de `hour`), então a tabela reflete o que o motor calcula nas
+    horas cheias.
     """
     if not nome or str(nome) == "Nenhuma":
+        # Sem curva o multiplicador é 1.0, ou seja, carga na potência
+        # nominal o dia inteiro — o default menos surpreendente.
         avisos.append(f"{contexto}: sem curva diária associada; multiplicador "
                       f"constante 1.0 em todas as horas.")
         return [1.0] * 24
@@ -267,10 +287,14 @@ def _curva_24h(pasta_curvas: Optional[str], nome: str,
         return [1.0] * 24
 
     horas = [p[0] for p in pontos]
+    # A curva guarda percentual; o sketch trabalha em multiplicador (0..N),
+    # daí a divisão por 100.
     mults = [p[1] / 100.0 for p in pontos]
 
     tabela: List[float] = []
     for h in range(24):
+        # Fora dos extremos da curva, repete-se o valor do extremo: o perfil
+        # não pode ser extrapolado para além do que o usuário desenhou.
         if h <= horas[0]:
             tabela.append(mults[0])
             continue
@@ -281,6 +305,8 @@ def _curva_24h(pasta_curvas: Optional[str], nome: str,
             if horas[i] <= h <= horas[i + 1]:
                 x0, x1 = horas[i], horas[i + 1]
                 y0, y1 = mults[i], mults[i + 1]
+                # Dois pontos no mesmo instante (degrau) dividiriam por
+                # zero; nesse caso vale o valor do primeiro ponto.
                 if x1 == x0:
                     tabela.append(y0)
                 else:
@@ -299,22 +325,26 @@ def _impedancia_pu(ramo, base_kva: float, avisos: List[str]
       - Switch -> impedância desprezível (1e-4 ohm) por construção.
       - Transformer -> `xhl` em % sobre a base do próprio trafo (kva).
 
-    TRANSPARÊNCIA TÉCNICA: para linha, R e X são multiplicados pelo
-    comprimento (`length`, em `units`). A conversão para pu usa a tensão da
+    TRANSPARÊNCIA TÉCNICA: na linha, R e X são multiplicados pelo comprimento
+    (`length`, convertido de `units`). A conversão para pu usa a tensão da
     barra de origem do ramo e BASE_KVA. Ramo sem impedância declarada recebe
-    0.0 e a omissão é registrada em `avisos` — nunca um valor inventado.
+    0.0 e a omissão vai para `avisos` — nunca um valor inventado.
     """
     p = ramo.parametros or {}
     tipo = ramo.tipo
 
     if tipo == "Switch":
+        # Chave fechada tem queda praticamente nula; o 1e-4 evita divisão
+        # por zero na varredura sem falsear a física.
         return 1e-4 / 1000.0, 1e-4 / 1000.0   # praticamente nulo, como no .dss
 
     r = _num(p.get("r1"))
     x = _num(p.get("x1"))
 
     if tipo == "Transformer":
-        # xhl em % sobre a base do trafo; aproximado como reatância pura.     #
+        # xhl em % sobre a base do próprio trafo, aproximado como reatância
+        # pura. A conversão para a base do projeto é regra de três inversa:
+        # trafo menor que a base pesa mais em pu.
         xhl = _num(p.get("xhl"), 0.0) or 0.0
         kva = _num(p.get("kva"), base_kva) or base_kva
         if kva <= 0:
@@ -327,6 +357,8 @@ def _impedancia_pu(ramo, base_kva: float, avisos: List[str]
         return 0.0, x_pu
 
     if r is None or x is None:
+        # Preferível zero declarado a um valor plausível inventado: a
+        # varredura vai subestimar a queda, e o aviso diz que subestimou.
         avisos.append(
             f"Ramo '{ramo.nome}' ({tipo}): r1/x1 ausentes no modelo; "
             f"impedância tratada como 0.0 na parametrização.")
@@ -335,8 +367,10 @@ def _impedancia_pu(ramo, base_kva: float, avisos: List[str]
     comprimento = _num(p.get("length"), 1.0) or 1.0
     unidade = str(p.get("units", "km")).strip().lower()
 
-    # Normaliza o comprimento para km, que é a unidade em que r1/x1 do
-    # OpenDSS são declarados por metro/quilômetro conforme `units`.
+    # Normaliza o comprimento para km — a unidade em que r1/x1 do OpenDSS
+    # é declarado, conforme o campo `units` do ramo. As equivalências em
+    # milha, pé, polegada e centímetro existem porque o Editor aceita essas
+    # unidades e o cálculo tem de fechar em qualquer uma.
     if unidade in ("km", ""):
         fator_km = 1.0
     elif unidade in ("m", "meter", "meters", "metro", "metros"):
@@ -360,7 +394,8 @@ def _impedancia_pu(ramo, base_kva: float, avisos: List[str]
     r_ohm = r * comprimento * fator_km
     x_ohm = x * comprimento * fator_km
 
-    # Z_base = kV² / MVA na barra de origem.
+    # Z_base = kV² / MVA na barra de origem. Sem a barra no mapa, adota-se
+    # 13,8 kV, que é a tensão típica dos alimentadores do projeto.
     kv = 13.8
     if ramo.bus1 in _BARRAS_KV:
         kv = _BARRAS_KV[ramo.bus1]
@@ -372,7 +407,8 @@ def _impedancia_pu(ramo, base_kva: float, avisos: List[str]
 
 
 # Mapa auxiliar barra -> kV, preenchido antes da conversão de impedâncias.
-# (Usado por _impedancia_pu; ver montar_dados.)
+# A variável é de módulo, e não um parâmetro, porque _impedancia_pu é
+# chamada em laço e passar o mapa adiante só poluiria a assinatura.
 _BARRAS_KV: Dict[str, float] = {}
 
 
@@ -382,10 +418,11 @@ _BARRAS_KV: Dict[str, float] = {}
 def _ordenar_barras(rede: RedeEletrica) -> List[str]:
     """Ordem estável: fonte primeiro, depois BFS a partir dela, depois o resto.
 
-    TRANSPARÊNCIA TÉCNICA: a varredura radial do sketch pressupõe uma árvore
-    a partir da barra fonte. Ordenar em BFS aqui não muda o resultado, mas
-    garante que a barra fonte fique no índice conhecido (BARRA_FONTE) e que
-    barras desconexas apareçam no fim, sinalizadas por aviso.
+    TRANSPARÊNCIA TÉCNICA: a varredura radial do sketch supõe uma árvore com
+    raiz na barra fonte. Ordenar em BFS aqui não altera o resultado do
+    cálculo, mas garante dois efeitos: a barra fonte cai no índice conhecido
+    (BARRA_FONTE) e as barras desconexas ficam no fim da lista, separadas
+    das que participam do caminho fonte-carga.
     """
     fonte = rede.obter_fonte()
     raiz = fonte.bus1 if (fonte and fonte.bus1 in rede.barras) else None
@@ -398,6 +435,8 @@ def _ordenar_barras(rede: RedeEletrica) -> List[str]:
 
     visitados = set(ordem)
     fila = list(ordem)
+    # Fila explícita em vez de recursão: rede longa em série estouraria o
+    # limite de recursão do Python.
     while fila:
         atual = fila.pop(0)
         for ramo in rede.ramos.values():
@@ -411,6 +450,9 @@ def _ordenar_barras(rede: RedeEletrica) -> List[str]:
                 fila.append(ramo.bus1)
 
     for nome in rede.barras:
+        # O que sobrou da BFS não tem caminho até a fonte. Entra na lista
+        # para que os índices do cabeçalho cubram todas as barras, e o
+        # sketch simplesmente não alcança essas barras na varredura.
         if nome not in visitados:
             ordem.append(nome)
             visitados.add(nome)
@@ -419,12 +461,16 @@ def _ordenar_barras(rede: RedeEletrica) -> List[str]:
 
 
 def _fmt_float(v: float, casas: int = 6) -> str:
+    # Formatação fixa (e não repr) para que o cabeçalho gerado saia igual a
+    # cada exportação da mesma rede — diff limpo no controle de versão.
     texto = f"{float(v):.{casas}f}"
     return texto
 
 
 def _fmt_vetor(nome_tipo: str, nome: str, valores: List[str],
                comentario: str) -> str:
+    # Vetor vazio não compila em C; o 0 de enchimento mantém o cabeçalho
+    # válido e o tamanho declarado em 1.
     corpo = ", ".join(valores) if valores else "0"
     return (f"/* {comentario} */\n"
             f"{nome_tipo} {nome}[{len(valores) if valores else 1}] = {{ "
@@ -450,6 +496,8 @@ def gerar_parametrizacao_arduino(projeto, caminho_saida: str) -> Dict[str, Any]:
     avisos: List[str] = []
 
     if isinstance(projeto, RedeEletrica):
+        # Caminho alternativo útil em teste: passar a rede em memória evita
+        # gravar rede.json só para gerar o cabeçalho.
         rede = projeto
         pasta_curvas = None
         avisos.append("Projeto recebido sem repositório de curvas: as curvas "
@@ -461,6 +509,8 @@ def gerar_parametrizacao_arduino(projeto, caminho_saida: str) -> Dict[str, Any]:
             raise ValueError("Projeto sem pasta de rede; nada a parametrizar.")
 
         caminho_json = os.path.join(caminho_rede_dir, "rede.json")
+        # Exceção, e não aviso: sem rede salva não há o que parametrizar, e
+        # um cabeçalho com zero barras seria pior que a mensagem de erro.
         if not os.path.isfile(caminho_json):
             raise ValueError(
                 f"Nenhum 'rede.json' encontrado em '{caminho_rede_dir}'. "
@@ -488,19 +538,24 @@ def gerar_parametrizacao_arduino(projeto, caminho_saida: str) -> Dict[str, Any]:
     else:
         barra_fonte = 0
         v_fonte = V_FONTE_PU_PADRAO
+        # Sem Vsource, o índice 0 serve de origem da varredura e a tensão
+        # inicial cai em 1.0 pu. A bancada roda, mas com uma referência
+        # arbitrária — daí o aviso.
         avisos.append(
             "Nenhuma fonte (Vsource) encontrada na rede; a barra de índice 0 "
             "foi adotada como origem da varredura, com 1.0 pu.")
 
     bess_bus = -1
     for der in rede.derivacoes.values():
+        # O primeiro Storage encontrado define a barra de injeção. Havendo
+        # mais de um, o protocolo de bancada admite só um ponto de BESS.
         if der.tipo == "Storage" and der.bus1 in idx:
             bess_bus = idx[der.bus1]
             break
 
-    # Potencia nominal do BESS: o Mega precisa dela para converter a tensao
-    # do DAC (A0/A1) de volta em kW/kvar. Vem do Storage do rede.json; sem
-    # valor, KW_RATING = 0 e os setpoints analogicos sao lidos como zero em
+    # Potência nominal do BESS: o Mega precisa dela para converter a tensão
+    # do DAC (A0/A1) de volta em kW/kvar. Vem do Storage no rede.json. Sem
+    # valor, KW_RATING = 0 e os setpoints analógicos são lidos como zero, em
     # vez de serem multiplicados por uma escala inventada.
     kw_bess = 0.0
     for der in rede.derivacoes.values():
@@ -522,6 +577,8 @@ def gerar_parametrizacao_arduino(projeto, caminho_saida: str) -> Dict[str, Any]:
     # --------------------------- Ramos ---------------------------------- #
     ramos_validos = []
     for ramo in rede.ramos.values():
+        # Ramo órfão (barra inexistente) já não entra na varredura; incluí-lo
+        # geraria índice inválido no vetor do cabeçalho.
         if ramo.bus1 not in idx or ramo.bus2 not in idx:
             avisos.append(
                 f"Ramo '{ramo.nome}' ignorado: referencia barra inexistente.")
@@ -553,6 +610,9 @@ def gerar_parametrizacao_arduino(projeto, caminho_saida: str) -> Dict[str, Any]:
         p = der.parametros or {}
 
         if der.tipo == "Load":
+            # Cargas na mesma barra somam nominal, mas a tabela de 24
+            # multiplicadores é uma só por barra — limitação do protocolo,
+            # tratada logo abaixo.
             load_kw[b] += _num(p.get("kw"), 0.0) or 0.0
             load_kvar[b] += _num(p.get("kvar"), 0.0) or 0.0
             nome_curva = str(p.get("daily", "Nenhuma"))
@@ -571,6 +631,8 @@ def gerar_parametrizacao_arduino(projeto, caminho_saida: str) -> Dict[str, Any]:
                     f"multiplicadores por barra.")
 
         elif der.tipo in ("PVSystem", "Generator"):
+            # PVSystem declara pico em pmpp; Generator, normalmente, em kva.
+            # A ordem de leitura reflete essa diferença.
             kw = _num(p.get("pmpp"))
             if kw is None:
                 kw = _num(p.get("kva"), 0.0) or 0.0
@@ -592,6 +654,7 @@ def gerar_parametrizacao_arduino(projeto, caminho_saida: str) -> Dict[str, Any]:
     # ----------------------- Mapa de pinos PWM --------------------------- #
     pinos: List[int] = []
     for i in range(len(nomes_barras)):
+        # -1 é o "sem canal": o sketch testa o valor antes de usar o pino.
         if i < len(PINOS_PWM_MEGA):
             pinos.append(PINOS_PWM_MEGA[i])
         else:
@@ -605,6 +668,8 @@ def gerar_parametrizacao_arduino(projeto, caminho_saida: str) -> Dict[str, Any]:
             f"sem saída analógica (PINO_PWM_BARRA = -1). O sketch não aciona "
             f"nada para elas — a tensão dessas barras não aparece na bancada.")
     ocupados = pinos_ocupados_pelo_enlace()
+    # Verificação de segurança, não de estilo: pinos repetidos entre barra e
+    # enlace produzem uma bancada que parece funcionar e mente nos dados.
     colididos = [p for p in pinos if p >= 0 and p in ocupados]
     if colididos:
         avisos.append(
@@ -614,6 +679,9 @@ def gerar_parametrizacao_arduino(projeto, caminho_saida: str) -> Dict[str, Any]:
             f"exportador_arduino.py ou reduza o número de barras.")
 
     # --------------------------- Escrita -------------------------------- #
+    # O cabeçalho é montado como lista de linhas e gravado de uma vez, em
+    # vez de escrito linha a linha: uma falha no meio não deixa arquivo
+    # pela metade, que o compilador C leria como erro de sintaxe confuso.
     linhas: List[str] = []
     linhas.append("/* ======================================================"
                   "=====================")
@@ -781,6 +849,9 @@ def gerar_parametrizacao_arduino(projeto, caminho_saida: str) -> Dict[str, Any]:
     linhas.append("")
 
     os.makedirs(os.path.dirname(os.path.abspath(caminho_saida)), exist_ok=True)
+    # newline="\n" fixo: o compilador do Arduino aceita CRLF, mas o arquivo
+    # gerado é comparado e versionado, e a quebra fixa evita diff espúrio
+    # entre máquinas Windows e Linux.
     with open(caminho_saida, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(linhas))
 
@@ -821,6 +892,9 @@ def main(argv: Optional[List[str]] = None) -> int:
           f"| BESS_BUS: {relatorio['bess_bus']}")
     for aviso in relatorio["avisos"]:
         print(f"  AVISO: {aviso}")
+    # Retorno 0 mesmo com avisos: aviso é diagnóstico da rede, não falha do
+    # gerador. Quem automatizar a bancada deve ler `avisos`, não o código
+    # de saída.
     return 0
 
 

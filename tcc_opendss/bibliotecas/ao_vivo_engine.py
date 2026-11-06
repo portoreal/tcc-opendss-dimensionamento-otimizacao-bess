@@ -2,11 +2,11 @@ __author__ = 'Pedro Henrique Sousa Pinheiro'
 """Motor da Simulação ao Vivo (QSTS animado multi-dia) — SEM Qt.
 
 Este módulo concentra TODA a lógica que toca o OpenDSS e o estado da
-simulação: QSTS horário, despacho do BESS, dias sucessivos, nuvens sobre
-a geração fotovoltaica, fatores de carga por dia da semana, economia
-acumulada por arbitragem e simulação de afundamento em contexto isolado.
-Ele é importável e testável headless (nenhum import de PySide6 ou
-matplotlib); a janela em ``ao_vivo_ui.py`` é apenas a casca visual.
+simulação: QSTS horário, despacho do BESS, dias sucessivos, nuvens sobre a
+geração fotovoltaica, fatores de carga por dia da semana, economia acumulada
+por arbitragem e simulação de afundamento em contexto isolado. Nenhum import
+de PySide6 ou matplotlib aqui: o módulo é importável e testável sem tela, e a
+janela em ``ao_vivo_ui.py`` é apenas a casca visual.
 
 REUSO DELIBERADO (nada duplicado)
 ---------------------------------
@@ -17,9 +17,9 @@ REUSO DELIBERADO (nada duplicado)
   mudar lá, esta tela acompanha (é fidelidade, não escolha).
 * Falta: ``_aplicar_falta``, ``_capturar_pu_todas_barras``,
   ``_classificar_sag`` e ``TIPOS_FALTA_DISPONIVEIS`` vêm de
-  ``estudo_afundamento``; a spec de barra/fases (``_spec_falta``) é
-  reproduzida aqui apenas porque é privada daquele módulo — é uma única
-  linha, documentada abaixo.
+  ``estudo_afundamento``. A spec de barra/fases (``_spec_falta``) é
+  reproduzida aqui porque é privada daquele módulo; é uma única linha,
+  documentada abaixo.
 * Motor: ``MotorReutilizavel`` (``estudo_afundamento``), que já usa um
   contexto isolado do Engine por instância.
 
@@ -31,11 +31,11 @@ TRANSPARÊNCIA TÉCNICA (suposições explícitas — leia antes de confiar)
    reduz a irradiância. Como o exportador cria PVSystem com
    ``irradiance=1.0`` (``exportador_dss._fmt_pvsystem``), o fator
    relativo é o próprio valor declarado. ``Generator`` usado como fonte é
-   escalado proporcionalmente no ``kW``. A "cobertura variável ao longo
-   do dia" é uma deriva suave determinística (5 âncoras cossenoidais
-   pseudoaleatórias semeadas por dia) — REPRODUTÍVEL, para que dois dias
-   diferentes possam ser comparados; não representa medição de nenhuma
-   localidade.
+   escalado proporcionalmente no ``kW``. A "cobertura variável ao longo do
+   dia" é uma deriva suave determinística, montada com 5 âncoras
+   pseudoaleatórias interpoladas por cosseno e semeadas por dia. O
+   resultado é reprodutível, o que permite comparar dois dias; não
+   representa medição de nenhuma localidade.
 2. FATORES DE CARGA POR DIA DA SEMANA = MODO DE SIMULAÇÃO. O modelo
    (``modelo_rede``) só tem UMA curva diária por elemento; não existe
    "curva de terça" e "curva de quarta". A variação entre dias é obtida
@@ -120,7 +120,8 @@ DIAS_DA_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta",
                   "Sábado", "Domingo"]
 
 # Semente base da deriva de nuvens: mudar este número muda todas as
-# séries diárias geradas. Fixo por projeto para reprodutibilidade.
+# séries diárias geradas. Fixo por projeto: é o que garante que a mesma
+# simulação, repetida, desenhe as mesmas nuvens.
 SEMENTE_NUVENS = 20261013
 
 TARIFA_PADRAO = "A4_Verde"
@@ -129,8 +130,11 @@ TARIFA_PADRAO = "A4_Verde"
 # amplitude) — mesmos defaults de ``estudo_afundamento.rodar_estudo``.
 SAG_LIMITE_INFERIOR = 0.1
 SAG_LIMITE_SUPERIOR = 0.9
-# Falta franca com arco (0,05 ohm) — o antigo 1e-4 colapsava as barras a
-# ~0,005 pu (beneficio de mitigacao estruturalmente zero); ver estudo_afundamento.
+# Impedância da falta sólida. O valor antigo (1e-4 ohm) colapsava as barras
+# a ~0,005 pu, o que zerava estruturalmente qualquer benefício de mitigação:
+# não sobrava tensão para comparar. 0,05 ohm representa uma falta franca com
+# arco, na faixa em que a diferença entre mitigar e não mitigar aparece.
+# Ver estudo_afundamento.
 R_FALTA_SOLIDA = 0.05
 R_FALTA_ALTA_IMPEDANCIA = 40.0
 
@@ -147,18 +151,19 @@ class _AdaptadorDSS:
 
     TRANSPARÊNCIA (por que não instanciar ``DSS``): o construtor de ``DSS``
     compila o circuito por conta própria e faz ``sys.exit(1)`` em caso de
-    falha — chamá-lo aqui criaria um SEGUNDO contexto e poderia encerrar o
+    falha. Chamá-lo aqui criaria um segundo contexto e poderia encerrar o
     processo sem mensagem para o usuário. Os métodos de leitura de ``DSS``
-    só usam ``self.dssCircuit``/``self.dssObj``; este adaptador expõe
-    exatamente esses atributos, reaproveitando os métodos já validados
-    pelos módulos de Validação/topologia.
+    só tocam ``self.dssCircuit``/``self.dssObj``, e é exatamente isso que
+    este adaptador expõe — reaproveitando métodos já validados pelos módulos
+    de Validação e topologia.
     """
 
     def __init__(self, motor: MotorReutilizavel):
         self.dssCircuit = motor.dssCircuit
         self.dssObj = motor.dssObj
 
-    # Delegação explícita (nada de __getattr__: falha cedo e visível).
+    # Delegação explícita, sem __getattr__: método ausente falha na hora e
+    # com nome, em vez de virar comportamento estranho em tempo de execução.
     obter_tensoes_por_barra = DSS.obter_tensoes_por_barra
     obter_linhas = DSS.obter_linhas
     obter_transformadores = DSS.obter_transformadores
@@ -170,9 +175,9 @@ def _tensoes_por_barra_max_fase(motor: MotorReutilizavel) -> Dict[str, float]:
     """Tensão pu por barra = maior valor entre as fases presentes.
 
     ``DSS.obter_tensoes_por_barra`` devolve {(barra, fase): pu}; o mapa
-    colore nós, então é preciso um escalar por barra. Usa-se o MAIOR valor
-    por ser a leitura que o operador usa para decidir; o Vmin do gráfico
-    continua sendo o mínimo entre fases, esse sim representando o pior caso.
+    colore nós, e um nó precisa de um número só. Toma-se o maior valor
+    porque é assim que o operador lê uma barra trifásica equilibrada; o Vmin
+    do gráfico continua sendo o mínimo entre fases, que é o pior caso.
     """
     bruto = _AdaptadorDSS(motor).obter_tensoes_por_barra()
     por_barra: Dict[str, float] = {}
@@ -184,7 +189,12 @@ def _tensoes_por_barra_max_fase(motor: MotorReutilizavel) -> Dict[str, float]:
 
 
 def _vmin_vmax_por_fase(motor: MotorReutilizavel):
-    """(Vmin, Vmax) do passo corrente, calculados sobre TODAS as fases."""
+    """(Vmin, Vmax) do passo corrente, sobre todas as fases.
+
+    Valores nulos ou não positivos são descartados: barra desenergizada
+    entraria como 0 pu e puxaria o mínimo para zero, escondendo afundamento
+    real nas demais.
+    """
     bruto = _AdaptadorDSS(motor).obter_tensoes_por_barra()
     valores = [v for v in bruto.values() if v is not None and v > 0]
     if not valores:
@@ -197,7 +207,7 @@ def _vmin_vmax_por_fase(motor: MotorReutilizavel):
 # ============================================================
 
 def _deriva_nuvens_por_dia(dia: int, semente: int = SEMENTE_NUVENS) -> List[float]:
-    """Fator de cobertura (0,5–1,0) para cada hora do dia — REPRODUTÍVEL.
+    """Fator de cobertura (0,5–1,0) para cada hora do dia, reprodutível.
 
     Modelo meteorológico simplificado (TRANSPARÊNCIA item 1): 5 âncoras
     pseudoaleatórias uniformes em [0,5, 1,0] são sorteadas com
@@ -205,8 +215,8 @@ def _deriva_nuvens_por_dia(dia: int, semente: int = SEMENTE_NUVENS) -> List[floa
     das 24 h. A interpolação cossenoidal gera transições suaves (nuvem
     entrando/saindo), em vez de degraus horários irreais.
 
-    A semente é um INTEIRO derivado do dia (``semente + dia * 7919``, com
-    7919 primo) — ``random.seed`` recusa tuplas desde o Python 3.11
+    A semente é um inteiro derivado do dia (``semente + dia * 7919``, com
+    7919 primo). ``random.seed`` recusa tuplas desde o Python 3.11
     (TypeError: "only supported seed types are None, int, float, str,
     bytes, bytearray"). Com inteiro, a sequência depende do dia: dois dias
     consecutivos têm curvas diferentes e o mesmo dia numa reexecução tem a
@@ -215,7 +225,8 @@ def _deriva_nuvens_por_dia(dia: int, semente: int = SEMENTE_NUVENS) -> List[floa
     gerador = random.Random(int(semente) + int(dia) * 7919)
     n_ancoras = 5
     ancoras = [gerador.uniform(0.5, 1.0) for _ in range(n_ancoras)]
-    # Âncora extra = primeira, para fechar o ciclo do dia.
+    # Âncora extra igual à primeira, para o dia fechar o ciclo sem degrau
+    # entre a hora 23 e a hora 0 do dia seguinte.
     ancoras.append(ancoras[0])
 
     serie: List[float] = []
@@ -226,7 +237,8 @@ def _deriva_nuvens_por_dia(dia: int, semente: int = SEMENTE_NUVENS) -> List[floa
         if i >= n_ancoras:
             i = n_ancoras - 1
         fracao = posicao - i
-        # Cosseno suavizado: 0 -> 1 -> 0 sem quina.
+        # Peso cossenoidal: 0 -> 1 -> 0 com derivada nula nas pontas, ou
+        # seja, a transição não faz quina na fronteira entre âncoras.
         peso = (1.0 - math.cos(math.pi * fracao)) / 2.0
         serie.append(ancoras[i] * (1.0 - peso) + ancoras[i + 1] * peso)
     return serie
@@ -254,8 +266,8 @@ class SessaoAoVivo:
         ...
         sessao.encerrar()
 
-    NÃO é thread-safe por si mesma: a serialização é responsabilidade de
-    quem a usa (a janela usa uma única thread de trabalho).
+    Não é thread-safe por si mesma. A serialização é de quem usa, e a
+    janela usa uma única thread de trabalho.
     """
 
     def __init__(self, caminho_master: str, bess_list: List[Dict[str, Any]],
@@ -280,7 +292,8 @@ class SessaoAoVivo:
         self.soc_inicial = soc_inicial
         self.chave_tarifa = chave_tarifa
         self.semente_nuvens = int(semente_nuvens)
-        # Fontes para o snapshot de exportação (opcionais).
+        # Caminhos opcionais, usados só para montar o snapshot de
+        # exportação (perfis de carga e nomes das PV).
         self.caminho_rede_json = caminho_rede_json
         self.pasta_curvas = pasta_curvas
 
@@ -304,8 +317,9 @@ class SessaoAoVivo:
         self.sinal_referencia: float = 1.0
         self._preparado = False
 
-        # Topologia e geometria são estáticas ao longo do dia: lidas uma
-        # única vez em preparar() e reaproveitadas nos 24 passos.
+        # Topologia e geometria não mudam durante o dia: são lidas uma vez
+        # em preparar() e reaproveitadas nos 24 passos. Reler a cada passo
+        # custaria uma travessia do circuito por hora simulada.
         self.linhas: List[Any] = []
         self.transformadores: List[Any] = []
         self.coordenadas: Dict[str, tuple] = {}
@@ -314,8 +328,9 @@ class SessaoAoVivo:
         # Estado de despacho do dia corrente (histórico: hora -> estados).
         self.historico_dia: Dict[int, Dict[str, Any]] = {}
 
-        # Elementos de geração fotovoltaica, com o valor ORIGINAL
-        # declarado (para restaurar ao voltar a 100% de céu limpo).
+        # Geração fotovoltaica, com o valor ORIGINAL declarado. Guardar o
+        # original é o que permite voltar a 100% de céu limpo: sem ele,
+        # "100%" significaria o último valor escrito, não o do modelo.
         self.pv_original: Dict[str, float] = {}
         self.gerador_original: Dict[str, float] = {}
 
@@ -326,10 +341,12 @@ class SessaoAoVivo:
         # Afundamento: último evento exibido (dict) ou None.
         self.evento_afundamento: Optional[Dict[str, Any]] = None
         self.log_eventos: List[Dict[str, Any]] = []
-        # Ledger contínuo de passos (atravessa dias; Reiniciar zera).
+        # Ledger contínuo de passos: atravessa dias e só o Reiniciar zera.
+        # É a fonte dos gráficos e da exportação.
         self.ledger_passos: List[Dict[str, Any]] = []
         self.passo_global = -1
-        # Cache dos multiplicadores ORIGINAIS das curvas (anti-compounding).
+        # Cache dos multiplicadores originais das curvas. Existe para evitar
+        # composição entre dias — ver _inventariar_curvas_carga.
         self.pmult_original_por_curva: Dict[str, List[float]] = {}
 
         # Economia.
@@ -352,8 +369,12 @@ class SessaoAoVivo:
         return obter_tarifa(self.chave_tarifa) or CATALOGO_TARIFAS_PADRAO[TARIFA_PADRAO]
 
     def definir_tarifa(self, chave: str) -> bool:
-        """Troca a tarifa usada dos PRÓXIMOS passos (não reescreve o
-        passado — ver TRANSPARÊNCIA item 5). Devolve True se mudou."""
+        """Troca a tarifa dos próximos passos e devolve True se mudou.
+
+        O passado não é reescrito: o acumulado de cada dia fica com a tarifa
+        vigente nos passos já executados (TRANSPARÊNCIA item 5). Chave
+        desconhecida devolve False sem alterar nada.
+        """
         if chave == self.chave_tarifa:
             return False
         if obter_tarifa(chave) is None:
@@ -364,14 +385,23 @@ class SessaoAoVivo:
         return True
 
     def definir_fatores_carga(self, fatores: Sequence[float]):
-        """Atualiza os fatores por dia da semana (aplicados no PRÓXIMO dia)."""
+        """Atualiza os fatores por dia da semana, aplicados no próximo dia.
+
+        Vale no próximo dia porque o dia corrente já teve suas curvas
+        editadas; reaplicar agora mudaria a carga no meio da simulação.
+        """
         if len(fatores) != len(DIAS_DA_SEMANA):
             raise ValueError("fatores_carga precisa de 7 valores")
         self.fatores_carga = [float(f) for f in fatores]
 
     def definir_nuvens(self, indice: int, cobertura_variavel: Optional[bool] = None):
         """Define o índice de nuvens (0–100, 100 = céu limpo) para os
-        PRÓXIMOS passos; o passo corrente já resolvido não é refeito."""
+        próximos passos.
+
+        O passo já resolvido não é refeito. Mudar nuvem depois do solve
+        exigiria recompilar para reproduzir o histórico — por isso a
+        alteração só vale adiante.
+        """
         novo = max(0, min(100, int(indice)))
         mudou = (novo != self.indice_nuvens
                  or (cobertura_variavel is not None
@@ -397,12 +427,15 @@ class SessaoAoVivo:
     # Preparação
     # ---------------------------------------------------------------- #
     def preparar(self) -> Dict[str, Any]:
-        """Recompila, insere os BESS em repouso, roda o CASO BASE (sem
-        despacho) para obter o sinal de referência e lê a topologia.
+        """Recompila, insere os BESS em repouso e roda o caso base.
+
+        O caso base (sem despacho) existe para obter o sinal de referência
+        e para ler a topologia.
 
         O caso base é obrigatório: ``_classificar_fluxo`` precisa saber
         qual sinal significa "comprando" neste circuito, informação que
-        só o cenário sem geração/armazenamento fornece.
+        só o cenário sem geração e sem armazenamento fornece. Daí a
+        sequência: 24 solves de referência antes de qualquer BESS entrar.
         """
         self.motor = MotorReutilizavel()
         self.motor.recompilar(self.caminho_master)
@@ -445,7 +478,7 @@ class SessaoAoVivo:
 
         Recompilar é o que garante SoC inicial de volta a ``soc_inicial``:
         o estado do Storage vive no circuito compilado, não em variáveis
-        Python. Isso também é o que "Reiniciar" usa.
+        Python. É o mesmo caminho que "Reiniciar" percorre.
         """
         self.motor.recompilar(self.caminho_master)
 
@@ -500,7 +533,7 @@ class SessaoAoVivo:
         }
 
     def reiniciar(self) -> Dict[str, Any]:
-        """Volta ao instante anterior ao passo 0 (recompila, Dia 1)."""
+        """Volta ao instante anterior ao passo 0: recompila no Dia 1."""
         if not self._preparado:
             return self.preparar()
         return self._repreparar_cenario()
@@ -509,8 +542,7 @@ class SessaoAoVivo:
     # Inventário de geração (PV / Generator) para o índice de nuvens
     # ---------------------------------------------------------------- #
     def _inventariar_geracao(self):
-        """Lê os valores ORIGINAIS de irradiância (PVSystem) e kW
-        (Generator) do circuito compilado.
+        """Lê os valores originais de irradiância (PVSystem) e kW (Generator).
 
         Guardar o original é o que permite restaurar o elemento ao valor
         declarado quando o usuário volta a 100% de céu limpo — sem isso,
@@ -521,15 +553,15 @@ class SessaoAoVivo:
         if self.motor is None:
             return
 
-        # PVSystem: kW de saída cresce praticamente linear com
+        # PVSystem: a potência de saída cresce praticamente linear com
         # irradiance, então o fator é multiplicativo sobre o declarado.
         try:
             circuit = self.motor.dssCircuit
-            # A API não permite atribuir First (property sem setter);
-            # o idioma correto é LER First (posiciona no 1º elemento e
-            # devolve 0 se não houver). CORREÇÃO DE BUG: a grafia antiga
-            # levantava AttributeError (engolido pelo except abaixo) e
-            # deixava pv_original vazio — nuvens sem efeito na PV.
+            # A API não deixa atribuir First (property sem setter). O
+            # idioma correto é LER First: posiciona no primeiro elemento e
+            # devolve 0 se não houver nenhum. CORREÇÃO DE BUG: a grafia
+            # antiga levantava AttributeError, o except abaixo engolia, e
+            # pv_original ficava vazio — nuvem sem efeito nenhum na PV.
             tem_pv = bool(circuit.PVSystems.First)
             while True:
                 if not tem_pv:
@@ -542,9 +574,9 @@ class SessaoAoVivo:
                 except Exception:
                     kva = 0.0
                 if kva > 0:
-                    # irradiance declarado: kVA do elemento é nominal;
-                    # o exportador usa irradiance=1.0 por padrão, mas
-                    # guardamos o valor efetivo lido do motor.
+                    # Guarda a irradiância efetiva lida do motor, e não o
+                    # default do exportador: se o .dss declarar outro
+                    # valor, é esse que precisa ser restaurado.
                     try:
                         irrad = float(circuit.PVSystems.Irradiance)
                     except Exception:
@@ -577,11 +609,12 @@ class SessaoAoVivo:
             self.gerador_original = {}
 
     def _aplicar_nuvens(self, dia: int, hora: int):
-        """Aplica o índice de nuvens ao PASSO seguinte.
+        """Aplica o índice de nuvens ao passo seguinte.
 
-        ``hora`` é a hora que SERÁ resolvida (a UI chama antes do solve do
-        passo). Com cobertura variável, o fator é multiplicado pela deriva
-        do dia naquela hora (TRANSPARÊNCIA item 1).
+        ``hora`` é a hora que será resolvida — a UI chama antes do solve do
+        passo, para que a irradiância do passo seja a do passo. Com
+        cobertura variável, o fator é multiplicado pela deriva do dia
+        naquela hora (TRANSPARÊNCIA item 1).
         """
         if self.motor is None:
             return
@@ -604,9 +637,10 @@ class SessaoAoVivo:
                 continue
 
     def _inventariar_curvas_carga(self):
-        """Cacheia os multiplicadores ORIGINAIS das curvas de carga.
+        """Cacheia os multiplicadores originais das curvas de carga.
 
-        CORREÇÃO DE BUG (compounding): ``Edit Loadshape mult=`` SUBSTITUI o
+        CORREÇÃO DE BUG (composição entre dias): ``Edit Loadshape mult=``
+        substitui o
         vetor; reler o valor compilado no dia seguinte traria o vetor já
         escalado pelo fator do dia anterior. O cache é lido uma única vez,
         imediatamente após a compilação (valor de arquivo).
@@ -626,7 +660,12 @@ class SessaoAoVivo:
                 self.pmult_original_por_curva[curva] = valores
 
     def fator_nuvens_da_hora(self, dia: int, hora: int) -> float:
-        """Fator efetivo (0–1) aplicado às PVSystems naquele passo."""
+        """Fator efetivo (0–1) aplicado às PVSystems naquele passo.
+
+        Repete o cálculo de _aplicar_nuvens de propósito, para o ledger
+        registrar o fator que foi de fato usado sem precisar guardá-lo
+        durante o passo.
+        """
         fator = max(0.0, min(1.0, self.indice_nuvens / 100.0))
         if self.cobertura_variavel and 0 <= hora < HORAS_POR_DIA:
             fator *= _deriva_nuvens_por_dia(dia, self.semente_nuvens)[hora]
@@ -638,11 +677,11 @@ class SessaoAoVivo:
     def _aplicar_fatores_carga(self, dia: int):
         """Multiplica cada LoadShape de carga pelo fator do dia.
 
-        CORREÇÃO DE BUG: a API expõe ``Pmult`` (m minúsculo); a grafia
+        CORREÇÃO DE BUG: a API expõe ``Pmult`` (m minúsculo). A grafia
         antiga ``PMult`` levantava AttributeError, engolido pelo
-        ``except: continue`` — os fatores por dia eram INERTES
-        silenciosamente. Os multiplicadores partem AGORA do cache dos
-        valores originais (anti-compounding entre dias).
+        ``except: continue``, e os fatores por dia ficavam inertes sem
+        qualquer sinal. Os multiplicadores partem do cache dos valores
+        originais, o que impede a composição entre dias.
         """
         if self.motor is None or not self.curva_carga_por_elemento:
             return
@@ -669,9 +708,9 @@ class SessaoAoVivo:
         """Fecha o dia corrente e prepara o seguinte.
 
         PRESERVA: SoC (vem do próprio motor/Storage), economia total e o
-        log de eventos. ZERA: séries do dia (responsabilidade do chamador,
-        que recebe o dict de virada), histórico de despacho do dia e
-        economia do dia (acumulada em ``economia_total``).
+        log de eventos. ZERA: séries do dia (o chamador recebe o dict de
+        virada e trata isso), histórico de despacho do dia e economia do
+        dia, que já foi acumulada em ``economia_total``.
         """
         if self.motor is None:
             raise RuntimeError("avancar_dia() antes de preparar().")
@@ -691,7 +730,8 @@ class SessaoAoVivo:
         self.evento_afundamento = None
 
         # Fatores de carga do novo dia. O solve é feito DEPOIS da edição
-        # para que o passo 0 do novo dia já reflita a nova carga.
+        # para que o passo 0 do novo dia já reflita a nova carga; resolver
+        # antes deixaria a primeira hora do dia na carga antiga.
         self._aplicar_fatores_carga(self.dia_atual)
         self.motor.dssSolution.Solve()
 
@@ -720,14 +760,14 @@ class SessaoAoVivo:
 
         A regra de despacho é a MESMA de ``economia_energia._simular_dia``
         — ver o comentário de reuso no topo do módulo. Qualquer divergência
-        aqui seria um erro de fidelidade, não uma escolha.
+        aqui seria erro de fidelidade, não escolha.
         """
         if self.motor is None:
             raise RuntimeError("SessaoAoVivo.executar_passo() antes de preparar().")
         if not (0 <= hora <= HORAS_POR_DIA - 1):
             raise ValueError(f"hora fora de 0..{HORAS_POR_DIA - 1}: {hora}")
 
-        # Nuvens ANTES do solve: a irradiância do passo é a do passo.
+        # Nuvens antes do solve: a irradiância do passo é a do passo.
         self._aplicar_nuvens(self.dia_atual, hora)
 
         ponta = _eh_hora_ponta(
@@ -736,6 +776,10 @@ class SessaoAoVivo:
         estados_aplicados: Dict[str, Dict[str, Any]] = {}
         if self.controlar and self.nomes_bess:
             for nome in self.nomes_bess:
+                # Mesma decisão da simulação de economia: descarrega na
+                # ponta enquanto houver carga acima do mínimo, carrega fora
+                # dela enquanto houver espaço abaixo do máximo. Fora dessas
+                # condições, repouso.
                 soc_atual = _ler_soc(self.motor, nome)
                 if ponta and soc_atual > self.soc_min:
                     novo_estado = "discharging"
@@ -758,6 +802,8 @@ class SessaoAoVivo:
 
         try:
             perdas_kw = _AdaptadorDSS(self.motor).obter_perdas_totais_kw()
+        # Perda indisponível não invalida o passo: vira NaN, e o ledger
+        # grava None nesse campo em vez de um número falso.
         except Exception:
             perdas_kw = float("nan")
 
@@ -776,8 +822,8 @@ class SessaoAoVivo:
             "soc_depois": soc_depois,
         }
 
-        # Ledger contínuo (atravessa dias) — base dos gráficos e da
-        # exportação. Tipos nativos (JSON-serializável).
+        # Ledger contínuo (atravessa dias): base dos gráficos e da
+        # exportação. Só tipos nativos, para o snapshot sair direto em JSON.
         self.passo_global += 1
         fator_nuvem_passo = self.fator_nuvens_da_hora(self.dia_atual, hora)
         kw_por_bess = {}
@@ -839,15 +885,17 @@ class SessaoAoVivo:
 
     def _contabilizar_economia(self, estados_aplicados: Dict[str, Dict[str, Any]],
                                ponta: bool):
-        """Economia do passo por ARBITRAGEM (escopo — TRANSPARÊNCIA item 3).
+        """Economia do passo por arbitragem (escopo: TRANSPARÊNCIA item 3).
 
-        Energia despachada = potência NOMINAL do BESS × 1 h, com o sinal
+        Energia despachada = potência nominal do BESS × 1 h, com o sinal
         dado pelo estado aplicado (descarga = +kW, carga = −kW). Usar a
         nominal (``bess_list[i]["kw"]``) e não a leitura do terminal é
-        deliberado: ``%charge/%discharge=100`` garante despacho nominal, e
-        a leitura do terminal fica contaminada pela tensão do momento.
+        deliberado: ``%charge/%discharge=100`` já garante despacho nominal,
+        e a leitura do terminal fica contaminada pela tensão do momento.
 
         ``valor = descarga_kwh × tarifa_ponta − carga_kwh × tarifa_fora``.
+        O argumento ``ponta`` não entra na conta: o sinal já vem do estado,
+        e a tarifa aplicada é a do posto correspondente.
         """
         if not self.controlar or not self.nomes_bess:
             return 0.0, 0.0, 0.0
@@ -883,14 +931,14 @@ class SessaoAoVivo:
     # Afundamento de tensão (contexto ISOLADO)
     # ---------------------------------------------------------------- #
     def simular_afundamento(self, bus: str, tipo_falta: str) -> Dict[str, Any]:
-        """Reproduz uma falta no passo corrente em motor SEPARADO.
+        """Reproduz uma falta no passo corrente, em motor separado.
 
         Por que separado (TRANSPARÊNCIA item 4): ``Set Mode=Daily`` faz
         ``Solve()`` avançar o relógio do QSTS. Aplicar a falta no motor
         vivo saltaria uma hora. Aqui um segundo ``MotorReutilizavel``
         recompila o mesmo master, refaz o dia até a hora corrente
-        (reinserindo os BESS com o SoC lido agora e reaplicando o
-        despacho histórico), aplica a falta, captura e é descartado.
+        (reinserindo os BESS com o SoC lido agora e reaplicando o despacho
+        histórico), aplica a falta, captura e é descartado.
 
         Retorna o dict do evento, também guardado em
         ``self.evento_afundamento`` e no log.
@@ -910,8 +958,8 @@ class SessaoAoVivo:
                    if tipo_falta == "monofasica_alta_impedancia"
                    else R_FALTA_SOLIDA)
 
-        # SoC de partida = o que o motor vivo reporta AGORA (fim do passo
-        # corrente). Assim o replay começa com a mesma energia armazenada.
+        # SoC de partida = o que o motor vivo reporta agora, ao fim do passo
+        # corrente. Assim o replay começa com a mesma energia armazenada.
         socs_agora = {nome: _ler_soc(self.motor, nome) for nome in self.nomes_bess}
         soc_replay = (sum(socs_agora.values()) / len(socs_agora)
                       if socs_agora else self.soc_inicial)
@@ -937,7 +985,8 @@ class SessaoAoVivo:
             self._replay_ate_hora(
                 motor_isolado, dia, hora, nomes_bess, avisos)
 
-            # Registra a tensão ANTES da falta, no mesmo contexto.
+            # Tensão antes da falta, no mesmo contexto: é o termo de
+            # comparação para saber quanto a falta afundou cada barra.
             pu_antes = _capturar_pu_todas_barras(motor_isolado.dssCircuit)
             _aplicar_falta(motor_isolado, bus, tipo_falta_dss, r_falta)
             motor_isolado.dssSolution.Solve()
@@ -948,9 +997,10 @@ class SessaoAoVivo:
                 barras_sag = _classificar_sag(
                     pu, bus, SAG_LIMITE_INFERIOR, SAG_LIMITE_SUPERIOR)
             else:
-                # Não convergência sob falta severa = colapso de tensão
-                # local (mesmo critério conservador do estudo de
-                # afundamento): reporta TODAS as barras em falta.
+                # Não convergir sob falta severa indica colapso de tensão
+                # local. Mesmo critério conservador do estudo de
+                # afundamento: reporta todas as barras em falta, exceto a
+                # da própria falta.
                 pu = {}
                 barras_sag = set(b for b in self.coordenadas if b != bus)
                 avisos.append(
@@ -970,6 +1020,8 @@ class SessaoAoVivo:
                 if valores:
                     tensoes_evento[barra_nome] = max(valores)
 
+        # finalizar() no finally para que a falha do replay não deixe um
+        # segundo contexto do Engine aberto na sessão.
         finally:
             motor_isolado.finalizar()
 
@@ -1003,7 +1055,7 @@ class SessaoAoVivo:
         """Refaz no motor isolado os passos 0..hora_alvo do dia corrente.
 
         O replay reaplica, para cada hora do histórico: nuvens do dia,
-        SoC lido na sessão viva ANTES do despacho daquela hora e o estado
+        SoC lido na sessão viva antes do despacho daquela hora e o estado
         de despacho aplicado. O SoC é reimposto por
         ``Edit Storage.x %stored`` — sem isso os BESS do contexto novo
         começariam todos no SoC inicial em vez de reproduzir o dia.
@@ -1017,6 +1069,8 @@ class SessaoAoVivo:
         for hora in range(hora_alvo + 1):
             registro = self.historico_dia.get(hora)
 
+            # Nuvens primeiro: a irradiância precisa estar posta antes do
+            # solve, igual ao passo ao vivo.
             fator = self.fator_nuvens_da_hora(dia, hora)
             for nome, original in self.pv_original.items():
                 motor_isolado.dssText.Command = (
@@ -1045,7 +1099,11 @@ class SessaoAoVivo:
                 "do replay — os BESS partiram do SoC médio atual.")
 
     def fechar_evento_afundamento(self):
-        """Descarta o evento corrente (a sessão viva nunca foi tocada)."""
+        """Descarta o evento corrente.
+
+        Não há nada a desfazer: a simulação da falta nunca tocou a sessão
+        viva. Só o destaque no mapa é retirado.
+        """
         self.evento_afundamento = None
         self._registrar_evento(
             "afundamento_fim",
@@ -1055,12 +1113,13 @@ class SessaoAoVivo:
     def cargas_por_barra_dia(self, dia: int) -> Dict[str, List[float]]:
         """Perfil de carga analítico por barra para o dia dado (kW/h).
 
-        TRANSPARÊNCIA: cálculo ANALÍTICO (nominal × curva × fator do dia).
-        Nuvens NÃO afetam carga (só geração). Carga SEM curva = constante
-        (o fator do dia só edita LoadShapes, como no motor). Curvas com
-        pontos em todas as horas são exatas; irregulares interpoladas
-        linearmente (aproximação declarada, resolução de 1 h do QSTS).
-        Requer caminho_rede_json e pasta_curvas; sem eles, {}.
+        TRANSPARÊNCIA: o cálculo é analítico (nominal × curva × fator do
+        dia), feito fora do motor. Nuvem não afeta carga, só geração. Carga
+        sem curva fica constante, porque o fator do dia só edita LoadShapes
+        — igual ao que acontece no motor. Curvas com ponto em toda hora são
+        exatas; nas demais há interpolação linear, aproximação declarada e
+        compatível com a resolução de 1 h do QSTS. Sem ``caminho_rede_json``
+        ou ``pasta_curvas``, devolve {}.
         """
         if (not self.caminho_rede_json
                 or not os.path.exists(self.caminho_rede_json)

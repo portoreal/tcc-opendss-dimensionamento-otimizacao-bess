@@ -1,11 +1,13 @@
 __author__ = 'Pedro Henrique Sousa Pinheiro'
-"""Gerador de memorial de cálculo para a Análise de Economia de Energia
-(arbitragem tarifária ponta/fora ponta) do Sistema BESS.
+"""Memorial de cálculo da análise de economia de energia — a arbitragem
+tarifária entre ponta e fora ponta com o BESS.
 
-Inclui, para cada hora, o ESTADO comandado, o SoC resultante e a
-CLASSIFICAÇÃO DO FLUXO (comprando da rede vs. exportando para a rede),
-permitindo auditar plenamente o comportamento do BESS e identificar
-casos de superdimensionamento em relação à carga do sistema."""
+O documento traz, hora a hora, o estado comandado ao BESS, o SoC resultante
+e a classificação do fluxo: se o sistema compra da rede ou exporta para ela.
+Com essas três colunas lado a lado, dá para auditar o comportamento do
+equipamento sem reabrir o modelo, e o superdimensionamento aparece na cara:
+BESS que exporta é BESS maior que a carga local.
+"""
 
 from typing import Dict, Any
 
@@ -35,6 +37,10 @@ def gerar_memorial_economia(resultado: Dict[str, Any]) -> str:
     linhas.append("")
 
     if resultado.get("alerta_superdimensionamento"):
+        # O alerta existe porque o modelo não monetiza energia exportada.
+        # Sem esse texto, um resultado econômico nulo seria lido como
+        # "BESS inútil", quando na verdade é "BESS grande demais para esta
+        # análise".
         linhas.append(_linha_separadora("!"))
         linhas.append("⚠ ALERTA DE ENGENHARIA: SUPERDIMENSIONAMENTO DETECTADO")
         linhas.append(_linha_separadora("!"))
@@ -81,6 +87,9 @@ def gerar_memorial_economia(resultado: Dict[str, Any]) -> str:
         pc = perfil_bess.get(hora, {})
         periodo = "PONTA" if pb.get("ponta") else "fora ponta"
 
+        # Uma linha por hora, com um único BESS por vez. Se o projeto tiver
+        # mais de um, a tabela mostra o primeiro em ordem de dicionário e o
+        # restante continua disponível nos dados, apenas fora do memorial.
         estados = pc.get("estados_aplicados", {})
         socs = pc.get("soc_depois", {})
         primeiro_nome = next(iter(estados), None)
@@ -88,6 +97,8 @@ def gerar_memorial_economia(resultado: Dict[str, Any]) -> str:
         estado_texto = estados.get(primeiro_nome, {}).get("estado", "-") if primeiro_nome else "-"
         soc_texto = f"{socs.get(primeiro_nome, 0) * 100:.1f}" if primeiro_nome else "-"
 
+        # Fluxo exportado é sinal de que a descarga do BESS passou da carga
+        # do sistema naquela hora.
         exportando = pc.get("kw_exportada", 0) > 0
         fluxo_texto = f"EXPORTANDO {pc.get('kw_exportada', 0):.1f}kW" if exportando else "importando"
 
@@ -132,6 +143,9 @@ def gerar_memorial_economia(resultado: Dict[str, Any]) -> str:
             f"R$ {resultado['economia_demanda_mensal_estimada']:.2f}")
         linhas.append("")
 
+    # Payback depende de custo informado e de economia positiva. Sem os dois,
+    # o memorial diz por que não calculou, em vez de imprimir um número
+    # enganoso.
     if resultado.get("custo_bess_brl"):
         linhas.append(f"Custo do BESS considerado: R$ {resultado['custo_bess_brl']:,.2f}")
         if resultado.get("payback_anos") is not None:
@@ -148,5 +162,7 @@ def gerar_memorial_economia(resultado: Dict[str, Any]) -> str:
 
 
 def salvar_memorial_economia(texto: str, caminho_arquivo: str) -> None:
+    # O texto é montado como string e só aqui vai para o disco, o que permite
+    # mostrar o memorial na tela antes de qualquer gravação.
     with open(caminho_arquivo, "w", encoding="utf-8") as f:
         f.write(texto)

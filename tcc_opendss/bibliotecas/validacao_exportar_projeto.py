@@ -1,39 +1,37 @@
 __author__ = 'Pedro Henrique Sousa Pinheiro'
-"""Conversor: a partir de um sistema de referencia IEEE ja compilado e
-resolvido (instancia dss_engine.DSS, ver validacao_ieee.py), monta um
-modelo RedeEletrica equivalente e o salva como um novo Projeto,
-permitindo abri-lo no Editor de Rede Eletrica para continuar o
-trabalho - por exemplo, inserir um Sistema BESS e rodar os demais
-modulos do software (Dimensionamento, Otimizacao de Alocacao de BESS).
+"""Conversor: a partir de um sistema de referência IEEE já compilado e
+resolvido (instância dss_engine.DSS, ver validacao_ieee.py), monta um
+modelo RedeEletrica equivalente e o salva como um novo Projeto. O projeto
+abre então no Editor de Rede Elétrica, onde o trabalho continua — inserir
+um Sistema BESS, rodar o Dimensionamento, rodar a Otimização de Alocação
+de BESS.
 
-LIMITACOES METODOLOGICAS (ler antes de interpretar o resultado):
+LIMITAÇÕES METODOLÓGICAS (ler antes de interpretar o resultado):
 
-(1) ENDERECAMENTO DE FASE: o modelo RedeEletrica representa cada
-elemento apenas pela QUANTIDADE de fases (1, 2 ou 3), nao por QUAL
-fase especificamente (A, B ou C). Os sistemas IEEE possuem diversos
-elementos monofasicos/bifasicos conectados a fases especificas; essa
-informacao nao e preservada na conversao. A topologia (barras e
-conectividade) e fiel; o padrao exato de desequilibrio entre fases,
-nao necessariamente, apos uma eventual reexportacao para .dss.
+(1) ENDEREÇAMENTO DE FASE: o modelo RedeEletrica representa cada elemento
+pela QUANTIDADE de fases (1, 2 ou 3), não por QUAL fase (A, B ou C). Os
+sistemas IEEE têm vários elementos monofásicos e bifásicos ligados a fases
+específicas, e essa informação não é preservada na conversão. A topologia
+— barras e conectividade — é fiel. O padrão exato de desequilíbrio entre
+fases já não é garantido numa reexportação para .dss.
 
-(2) REGULADORES DE TENSAO: o elemento Transformer do modelo nao possui
-conceito de controle automatico de tap (RegControl). Cada banco de
-reguladores monofasicos do sistema original (ex.: Reg1/Reg2/Reg3) e
-convertido em um unico transformador trifasico equivalente, de
-impedancia minima, preservando a conectividade da rede, mas sem a
-funcao de regulacao automatica de tensao.
+(2) REGULADORES DE TENSÃO: o elemento Transformer do modelo não tem
+controle automático de tap (RegControl). Cada banco de reguladores
+monofásicos do sistema original (Reg1/Reg2/Reg3) é convertido num único
+transformador trifásico equivalente, de impedância mínima. A conectividade
+da rede se preserva; a função de regulação automática de tensão, não.
 
-(3) IMPEDANCIA DE LINHA: o modelo armazena apenas R1/X1/R0/X0 (valores
-agregados), nao a matriz de impedancia completa por fase utilizada
-pelos sistemas IEEE. R1/X1 sao aproximados pela media dos elementos
-proprios (diagonal) da matriz de cada linha; R0 e aproximado como
-3xR1 - mesma aproximacao de engenharia ja utilizada em
-dimensionamento_regras.py para linhas dimensionadas manualmente.
+(3) IMPEDÂNCIA DE LINHA: o modelo guarda apenas R1/X1/R0/X0, valores
+agregados, e não a matriz de impedância completa por fase usada pelos
+sistemas IEEE. R1/X1 saem da média dos elementos próprios (diagonal) da
+matriz de cada linha; R0 é aproximado como 3xR1 — a mesma aproximação de
+engenharia já usada em dimensionamento_regras.py para linhas dimensionadas
+manualmente.
 
-Este conversor NAO deve ser utilizado como substituto da Validacao do
-Modelo Computacional (validacao_ieee.py); seu proposito e fornecer uma
-base de rede topologicamente realista para experimentos de alocacao e
-dimensionamento de sistemas de armazenamento de energia.
+Este conversor substitui a Validação do Modelo Computacional
+(validacao_ieee.py)? Não. O papel dele é outro: fornecer base de rede
+topologicamente realista para experimentos de alocação e dimensionamento
+de armazenamento.
 """
 
 import os
@@ -47,19 +45,28 @@ from .projeto import criar_ou_abrir_projeto_por_nome, Projeto
 # ============================================================
 
 def _nome_base_barra(bus_completo: str) -> str:
-    """Remove o sufixo de no (ex.: '634.1' -> '634')."""
+    """Retira o sufixo de nó ('634.1' vira '634')."""
     return bus_completo.split(".")[0]
 
 
 def _kv_ll(objeto_dss, bus: str) -> float:
-    """Tensao base de linha (LL), em kV, a partir da base LN do no."""
+    """Tensão base de linha (LL), em kV, derivada da base fase-neutro do nó.
+
+    O retorno 0.0 quando a base é nula deixa o chamador decidir o valor
+    padrão; converter aqui esconderia barra sem tensão definida.
+    """
     objeto_dss.dssCircuit.SetActiveBus(bus)
     kv_ln = objeto_dss.dssCircuit.ActiveBus.kVBase
     return round(kv_ln * (3 ** 0.5), 4) if kv_ln else 0.0
 
 
 def _bus_ativo(objeto_dss) -> str:
-    """Retorna o nome base da primeira barra do elemento ativo."""
+    """Nome base da primeira barra do elemento ativo.
+
+    Devolve string vazia se o elemento não tiver barras legíveis: o
+    chamador então simplesmente não cria o ramo, em vez de quebrar a
+    conversão inteira por causa de um elemento atípico.
+    """
     try:
         nomes = objeto_dss.dssCktElement.BusNames
         return _nome_base_barra(nomes[0])
@@ -68,6 +75,8 @@ def _bus_ativo(objeto_dss) -> str:
 
 
 def _bus_ativo_todos(objeto_dss) -> list:
+    # Variante que devolve todas as barras do elemento ativo — usada pelos
+    # transformadores, que precisam dos dois terminais.
     try:
         return [_nome_base_barra(b) for b in objeto_dss.dssCktElement.BusNames]
     except Exception:
@@ -75,9 +84,13 @@ def _bus_ativo_todos(objeto_dss) -> list:
 
 
 def _r1_x1_aproximados(objeto_dss) -> tuple:
-    """Aproxima R1/X1 (ohm/milha) pela media dos elementos proprios
-    (diagonal) da matriz de impedancia da linha ativa. Ver nota de
-    transparencia metodologica no topo do arquivo (item 3)."""
+    """Aproxima R1/X1 (ohm/milha) pela média dos elementos próprios
+    (diagonal) da matriz de impedância da linha ativa.
+
+    A matriz vem achatada em lista, então o elemento da diagonal i é
+    acessado em i*nfases + i. Ver a nota de transparência metodológica no
+    topo do arquivo, item 3.
+    """
     try:
         nfases = objeto_dss.dssCktElement.NumPhases
         rmatrix = list(objeto_dss.dssCircuit.Lines.RMatrix)
@@ -90,7 +103,9 @@ def _r1_x1_aproximados(objeto_dss) -> tuple:
         x1 = sum(diagonais_x) / len(diagonais_x)
         return round(r1, 4), round(x1, 4)
     except Exception:
-        # Fallback conservador caso a matriz nao esteja acessivel.
+        # Fallback conservador para quando a matriz não está acessível.
+        # Valores neutros de linha de distribuição; a aproximação fica
+        # registrada no item 3 da nota metodológica.
         return 0.3, 0.3
 
 
@@ -101,6 +116,8 @@ def _r1_x1_aproximados(objeto_dss) -> tuple:
 def _converter_barras(objeto_dss, rede: RedeEletrica):
     for nome_barra in objeto_dss.dssCircuit.AllBusNames:
         nome_base = _nome_base_barra(nome_barra)
+        # Vários nós da mesma barra viram uma barra só; o teste evita
+        # recriar a barra a cada fase.
         if nome_base in rede.barras:
             continue
         kv_base = _kv_ll(objeto_dss, nome_barra)
@@ -121,6 +138,8 @@ def _converter_linhas(objeto_dss, rede: RedeEletrica):
         unidade = dssLines.Units or "km"
 
         r1, x1 = _r1_x1_aproximados(objeto_dss)
+        # Mesma regra prática de dimensionamento_regras.py: sequência zero
+        # como 3x a sequência positiva.
         r0, x0 = round(r1 * 3, 4), round(x1 * 3, 4)
 
         if bus1 in rede.barras and bus2 in rede.barras and bus1 != bus2:
@@ -130,6 +149,8 @@ def _converter_linhas(objeto_dss, rede: RedeEletrica):
                     {"phases": fases, "length": comprimento, "units": unidade,
                      "linecode": "", "r1": r1, "x1": x1, "r0": r0, "x0": x0})
             except ValueError:
+                # Ramo duplicado ou inválido: a linha é descartada sem
+                # interromper a conversão do restante do sistema.
                 pass
 
         if dssLines.Next == 0:
@@ -137,10 +158,12 @@ def _converter_linhas(objeto_dss, rede: RedeEletrica):
 
 
 def _converter_transformadores(objeto_dss, rede: RedeEletrica):
-    """Agrupa transformadores por par de barras (base), colapsando
-    bancos de reguladores monofasicos em um unico transformador
-    trifasico equivalente de impedancia minima. Ver nota de
-    transparencia metodologica no topo do arquivo (item 2)."""
+    """Agrupa transformadores por par de barras e colapsa bancos de
+    reguladores monofásicos num único transformador trifásico equivalente,
+    de impedância mínima.
+
+    Ver a nota de transparência metodológica no topo do arquivo, item 2.
+    """
 
     dssTransf = objeto_dss.dssCircuit.Transformers
     grupos = {}
@@ -194,6 +217,8 @@ def _converter_capacitores(objeto_dss, rede: RedeEletrica):
             kvar_total = sum(dssCap.kvar) if hasattr(dssCap.kvar, "__iter__") else dssCap.kvar
         except Exception:
             kvar_total = 300.0
+        # Em banco trifásico a tensão informada é de linha; no monofásico é
+        # fase-neutro, daí a divisão por raiz de 3.
         kv = _kv_ll(objeto_dss, bus1) if fases == 3 else _kv_ll(objeto_dss, bus1) / (3 ** 0.5)
 
         if bus1 in rede.barras:
@@ -228,6 +253,8 @@ def _converter_cargas(objeto_dss, rede: RedeEletrica):
         try:
             conn = "delta" if dssLoads.IsDelta else "wye"
         except Exception:
+            # Ligação em estrela é a hipótese segura quando a propriedade
+            # não está disponível no binding.
             conn = "wye"
 
         if bus1 in rede.barras and (kw or kvar):
@@ -253,6 +280,7 @@ def _converter_fonte(objeto_dss, rede: RedeEletrica):
         basekv = dssV.BasekV
         pu = dssV.pu
     except Exception:
+        # Sem leitura da fonte, usa-se a tensão da própria barra com 1,0 pu.
         basekv = _kv_ll(objeto_dss, bus1) or 13.8
         pu = 1.0
 
@@ -271,8 +299,12 @@ def _converter_fonte(objeto_dss, rede: RedeEletrica):
 # ============================================================
 
 def converter_sistema_para_rede(objeto_dss) -> RedeEletrica:
-    """Monta uma RedeEletrica equivalente ao circuito ja compilado e
-    resolvido em objeto_dss (instancia dss_engine.DSS)."""
+    """Monta uma RedeEletrica equivalente ao circuito já compilado e
+    resolvido em objeto_dss (instância dss_engine.DSS).
+
+    A ordem importa: as barras precisam existir antes dos ramos e das
+    derivações, que validam suas extremidades contra elas.
+    """
 
     rede = RedeEletrica()
     _converter_barras(objeto_dss, rede)
@@ -285,9 +317,8 @@ def converter_sistema_para_rede(objeto_dss) -> RedeEletrica:
 
 
 def exportar_sistema_como_projeto(objeto_dss, nome_projeto: str) -> Projeto:
-    """Converte o sistema e salva como um novo Projeto (rede.json),
-    pronto para ser aberto no Editor de Rede Eletrica. Retorna o
-    Projeto criado."""
+    """Converte o sistema e grava como novo Projeto (rede.json), pronto
+    para abrir no Editor de Rede Elétrica. Devolve o Projeto criado."""
 
     rede = converter_sistema_para_rede(objeto_dss)
 

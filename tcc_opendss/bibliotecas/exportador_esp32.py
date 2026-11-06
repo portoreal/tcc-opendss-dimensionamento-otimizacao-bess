@@ -5,14 +5,14 @@ __author__ = 'Pedro Henrique Sousa Pinheiro'
 
 CONTEXTO ARQUITETURAL (definido com o pesquisador):
 o código embarcado do ESP32 NÃO é regenerado a cada projeto. O repositório
-contém um sketch PRÉ-PRONTO e fixo
-(``hardware/esp32_controle_bess/esp32_controle_bess.ino``) que implementa a
-lógica de controle (despacho de potência ativa por tabela horária + controle
-de reativa Volt-Var/Volt-Watt do sistema de armazenamento para qualidade de
-energia). O que ESTE módulo gera, a cada projeto, é apenas o cabeçalho C
-``param_esp32.h`` com as constantes e tabelas daquele projeto — preenchido
-DEPOIS de concluído o estudo de otimização de alocação de BESS (a janela de
-resultados da Otimização é quem dispara a geração, ver ``otimizacao_ui.py``).
+guarda um sketch pré-pronto e fixo
+(``hardware/esp32_controle_bess/esp32_controle_bess.ino``) com a lógica de
+controle: despacho de potência ativa por tabela horária e controle de reativa
+Volt-Var/Volt-Watt do armazenamento para qualidade de energia. Este módulo
+gera apenas o cabeçalho C ``param_esp32.h`` com as constantes e tabelas
+daquele projeto. Ele é preenchido DEPOIS de concluído o estudo de otimização
+de alocação de BESS — a janela de resultados da Otimização é quem dispara a
+geração (ver ``otimizacao_ui.py``).
 
 DE ONDE VEM CADA DADO (nenhum valor é inventado):
 
@@ -22,19 +22,19 @@ DE ONDE VEM CADA DADO (nenhum valor é inventado):
   efetivamente avaliou. Quando o projeto tem o Sistema BESS desenhado no
   Editor de Rede, o elemento Storage do ``rede.json`` é consultado como
   fonte complementar (kVA, curva diária, limites de SoC).
-- Tabela de despacho 24 h: REUTILIZA a regra dos módulos de simulação
+- Tabela de despacho 24 h: reutiliza a regra dos módulos de simulação
   (``_eh_hora_ponta`` de ``economia_energia``; limites de SoC padrão
   0,2/0,95/0,5), aplicada hora a hora com realimentação de SoC — a mesma
   forma de ``economia_energia._simular_dia``. Duas saídas:
-    * ``DESPACHO_ESTADO[24]`` / ``DESPACHO_KW[24]``: o despacho OBSERVADO na
+    * ``DESPACHO_ESTADO[24]`` / ``DESPACHO_KW[24]``: o despacho observado na
       regra sem realimentação (esta tabela é documental/histórica);
     * ``SOC_MIN`` / ``SOC_MAX`` / ``SOC_INICIAL`` + a mesma regra de decisão,
       que o sketch reaplica com o SoC que ele próprio integra. Isto é
-      necessário porque a regra real é FECHADA EM MALHA: se a bateria
+      necessário porque a regra real é fechada em malha: se a bateria
       atingir o limite de SoC, o módulo de simulação passa a ``idling``. Uma
       tabela estática divergiria da simulação exatamente nos horários em que
       a bateria satura.
-- Curvas Volt-Var/Volt-Watt: os PONTOS REAIS da ``XYCurve`` do projeto
+- Curvas Volt-Var/Volt-Watt: os pontos reais da ``XYCurve`` do projeto
   (``rede.json`` → ``curvas_xy``), referenciados pelo ``InvControl`` do
   Sistema BESS via ``vvc_curve1``/``voltwatt_curve``. Nada de curva
   "padrão" hardcoded aqui: se a curva não existir no projeto, a parametrização
@@ -43,16 +43,16 @@ DE ONDE VEM CADA DADO (nenhum valor é inventado):
 
 TRANSPARÊNCIA TÉCNICA (limitações declaradas, não escondidas):
 
-1) O controle de reativa é implementado no sketch como INTERPOLAÇÃO LINEAR
+1) O controle de reativa é implementado no sketch como interpolação linear
    sobre a curva do projeto. O OpenDSS faz o mesmo tipo de interpolação,
    mas os demais parâmetros do InvControl (``RefReactivePower``,
-   ``VoltWattCH_Curve``, dinâmica de atuação, atrasos) NÃO são replicados.
+   ``VoltWattCH_Curve``, dinâmica de atuação, atrasos) não são replicados.
 2) O SoC é integrado no firmware como P×Δt/Energia nominal. Um BMS real
    informa o SoC por outro caminho (CAN/Modbus) — o SoC do firmware é
    apropriado para o experimento, não é um substituto do BMS.
 3) A telemetria é JSON por porta serial (1 Hz). WiFi/MQTT está fora desta
    versão (``WIFI_SSID`` vazio = desabilitado no sketch).
-4) A interface com o Arduino Mega é FÍSICA e direta: 12 ligações digitais
+4) A interface com o Arduino Mega é física e direta: 12 ligações digitais
    e analógicas ponto a ponto (mapa canônico em `exportador_arduino.
    MAPA_LIGACOES`, emitido como #define nos dois cabeçalhos). Não há
    protocolo serial entre as placas. Ver `hardware/README.md`.
@@ -83,6 +83,8 @@ from .modelo_rede import RedeEletrica
 # ---------------------------------------------------------------------------
 
 #: Limites de SoC padrão de `economia_energia` / `ao_vivo_engine` (frações 0-1).
+#: Têm de coincidir com os dos módulos de simulação: o firmware precisa
+#: reproduzir a mesma decisão hora a hora, senão a bancada mede outra coisa.
 SOC_MIN_PADRAO = 0.20
 SOC_MAX_PADRAO = 0.95
 SOC_INICIAL_PADRAO = 0.50
@@ -93,7 +95,8 @@ PONTA_INICIO_PADRAO = 18
 PONTA_FIM_PADRAO = 21
 
 #: Códigos de estado usados no cabeçalho C (o sketch mapeia para os comandos
-#: do inversor). NÃO reordene: os números estão gravados no contrato do .ino.
+#: do inversor). Não reordene: os números estão gravados no contrato do .ino,
+#: e trocar a ordem faria o ESP32 carregar quando deveria descarregar.
 ESTADO_IDLING = 0
 ESTADO_CHARGING = 1
 ESTADO_DISCHARGING = 2
@@ -116,8 +119,13 @@ ADC_AMOSTRAS_PADRAO = 8
 # ---------------------------------------------------------------------------
 
 def _to_float(valor: Any, padrao: float) -> float:
-    """Conversão tolerante de valores do rede.json (que são gravados como
-    texto pelo Editor) para float. O Editor grava "" para vazio."""
+    """Converte valor do rede.json para float, sem estourar.
+
+    O Editor grava esses parâmetros como texto, e "" quando o campo ficou
+    vazio — daí o tratamento. A vírgula decimal é trocada por ponto porque
+    o usuário digita 0,5 no padrão brasileiro e o Python leria isso como
+    texto.
+    """
     if valor is None:
         return padrao
     if isinstance(valor, (int, float)):
@@ -136,9 +144,11 @@ def _carregar_rede(projeto: Any) -> Optional[RedeEletrica]:
 
     Aceita um caminho direto do ``rede.json``, um objeto ``Projeto`` (usa
     ``caminho_rede/rede.json``, como em ``ao_vivo_ui``) ou qualquer objeto com
-    ``caminho_rede_json``. Devolve ``None`` (com aviso do chamador) se não
-    houver rede: a parametrização ainda é possível a partir da config
-    vencedora, mas sem curvas e sem kVA — o que precisa ser dito, não mascarado.
+    ``caminho_rede_json``.
+
+    Devolve ``None`` quando não há rede, e o chamador registra o aviso. A
+    parametrização continua possível a partir da config vencedora, porém sem
+    curvas e sem kVA — uma degradação que precisa ser dita, não mascarada.
     """
     caminho = _resolver_caminho_rede(projeto)
 
@@ -146,6 +156,8 @@ def _carregar_rede(projeto: Any) -> Optional[RedeEletrica]:
         return None
     try:
         return RedeEletrica.carregar_json(caminho)
+    # JSON corrompido ou de versão antiga não pode derrubar a geração do
+    # cabeçalho: o chamador trata None com o aviso adequado.
     except Exception:
         return None
 
@@ -184,7 +196,7 @@ def _localizar_sistema_bess(rede: Optional[RedeEletrica],
          dicionário de avisos do chamador).
 
     Retorna ``(nome_grupo, derivacao_storage, derivacao_invcontrol)``; os
-    itens ausentes vêm como ``None``. NÃO inventa elementos: se não houver
+    itens ausentes vêm como ``None``. Não inventa elementos: se não houver
     Storage desenhado, devolve ``(None, None, None)``.
     """
     if rede is None:
@@ -214,6 +226,9 @@ def _localizar_sistema_bess(rede: Optional[RedeEletrica],
     grupo = getattr(escolhido, "grupo", None)
     invcontrol = None
     if grupo:
+        # O InvControl se liga ao Storage pelo campo "grupo", não pela barra
+        # — ele não é equipamento de rede. É o mesmo campo gravado por
+        # sistema_bess.montar_elementos_sistema_bess().
         for derivacao in getattr(rede, "derivacoes", {}).values():
             if (getattr(derivacao, "tipo", "") == "InvControl"
                     and getattr(derivacao, "grupo", None) == grupo):
@@ -229,7 +244,7 @@ def _extrair_curva(projeto_rede: Optional[RedeEletrica],
     Devolve ``(xs, ys, encontrada)``. Quando a curva não existe (ou o nome
     não foi declarado no InvControl), devolve um único ponto neutro
     ``(1.0, 0.0)`` — Q = 0 em toda a faixa, isto é, controle de reativa
-    INERTE — e sinaliza ``encontrada=False`` para que o chamador registre o
+    inerte — e sinaliza ``encontrada=False`` para que o chamador registre o
     aviso. Preferimos um controle desligado e explícito a uma curva
     fictícia agindo sobre o conversor.
     """
@@ -243,10 +258,14 @@ def _extrair_curva(projeto_rede: Optional[RedeEletrica],
 
     xs = [float(v) for v in getattr(curva, "xarray", []) or []]
     ys = [float(v) for v in getattr(curva, "yarray", []) or []]
+    # xarray e yarray podem ter tamanhos diferentes se o arquivo foi editado
+    # à mão; pareia-se só até o menor, e o excedente é descartado.
     n = min(len(xs), len(ys))
     if n == 0:
         return [1.0], [0.0], False
 
+    # Ordena por tensão: a interpolação no firmware supõe x crescente, e
+    # nada garante que os pontos tenham sido digitados em ordem.
     pontos = sorted(zip(xs[:n], ys[:n]), key=lambda par: par[0])
     return [p[0] for p in pontos], [p[1] for p in pontos], True
 
@@ -281,21 +300,26 @@ def _simular_soc_da_tabela(kw_nominal: float, kwh_nominal: float,
                            soc_min: float, soc_max: float, soc_inicial: float,
                            ponta_inicio: int, ponta_fim: int
                            ) -> Tuple[List[int], List[float]]:
-    """Percorre as 24 h aplicando a regra com realimentação de SoC, para
-    obter a tabela REALMENTE observada na simulação (com saturação) e o SoC
-    resultante ao final de cada hora.
+    """Percorre as 24 h com realimentação de SoC.
 
-    A regra é a LITERAL de ``economia_energia._simular_dia``:
+    Devolve a tabela realmente observada na simulação (com saturação) e o
+    SoC resultante ao final de cada hora.
+
+    A regra é a de ``economia_energia._simular_dia``, reproduzida aqui sem
+    alteração:
         hora de ponta e soc > soc_min -> DISCHARGING
         fora de ponta  e soc < soc_max -> CHARGING
         caso contrário                 -> IDLING
 
     O SoC é integrado com passo de 1 h a plena carga (``kW/kWh``), pois
     ``%Charge``/``%Discharge`` = 100% na criação do elemento (ver
-    ``economia_energia._inserir_bess_idling``). É a INTEGRAÇÃO que faz a
+    ``economia_energia._inserir_bess_idling``). É a integração que faz a
     tabela fechar em malha: ao saturar, a hora seguinte vira IDLING.
     """
     if kwh_nominal <= 0 or kw_nominal <= 0:
+        # Sem nominal não há como integrar SoC; devolve repouso e registra o
+        # SoC inicial em todas as horas, para o cabeçalho não sair com zeros
+        # que pareçam leitura.
         return [ESTADO_IDLING] * 24, [soc_inicial] * 24
 
     passo_soc = kw_nominal / kwh_nominal  # fração de SoC em 1 hora a plena carga
@@ -314,6 +338,8 @@ def _simular_soc_da_tabela(kw_nominal: float, kwh_nominal: float,
             estado = ESTADO_IDLING
 
         if estado == ESTADO_DISCHARGING:
+            # max/min aplicam a saturação: a bateria não passa do limite de
+            # SoC, mesmo que a regra mande continuar carregando.
             soc = max(soc_min, soc - passo_soc)
         elif estado == ESTADO_CHARGING:
             soc = min(soc_max, soc + passo_soc)
@@ -329,6 +355,8 @@ def _simular_soc_da_tabela(kw_nominal: float, kwh_nominal: float,
 # ---------------------------------------------------------------------------
 
 def _formatar_vetor_float(valores: List[float], casas: int = 4) -> str:
+    # Casas fixas para o cabeçalho sair idêntico a cada geração da mesma
+    # entrada, o que mantém o diff limpo.
     return ", ".join(f"{v:.{casas}f}" for v in valores)
 
 
@@ -337,7 +365,12 @@ def _formatar_vetor_int(valores: List[int]) -> str:
 
 
 def _montar_cabecalho(dados: dict) -> str:
-    """Monta o texto do ``param_esp32.h``."""
+    """Monta o texto do ``param_esp32.h``.
+
+    A montagem é feita linha a linha numa lista e unida no fim. Além de
+    legível, isso evita que o arquivo fique pela metade caso algo falhe no
+    meio — o C leria isso como erro de sintaxe sem relação com a causa.
+    """
     linhas: List[str] = []
     add = linhas.append
 
@@ -521,6 +554,8 @@ def gerar_parametrizacao_esp32(projeto: Any, config_vencedora: Optional[dict],
 
     # -------- validação do gatilho (após a otimização) -------- #
     if not config_vencedora:
+        # Exceção, não aviso: sem alocação vencedora não existe padrão
+        # sensato para o firmware. Adivinhar seria pior que falhar.
         raise ValueError(
             "Nenhuma alocação selecionada pelo estudo de otimização. "
             "A parametrização do ESP32 é gerada APÓS a otimização do Sistema "
@@ -535,6 +570,8 @@ def gerar_parametrizacao_esp32(projeto: Any, config_vencedora: Optional[dict],
         )
 
     modelo = config_vencedora.get("modelo_bess") or {}
+    # Aceita as duas formas de contrato que o otimizador já produziu: kW e
+    # kWh no nível de cima ou dentro de modelo_bess.
     kw = _to_float(config_vencedora.get("kw", modelo.get("kw")), 0.0)
     kwh = _to_float(config_vencedora.get("kwh", modelo.get("kwh")), 0.0)
     if kw <= 0 or kwh <= 0:
@@ -592,7 +629,8 @@ def gerar_parametrizacao_esp32(projeto: Any, config_vencedora: Optional[dict],
     soc_max = _to_float(params_storage.get("socmax"), SOC_MAX_PADRAO)
     soc_ini_bruto = _to_float(params_storage.get("pctstored"), SOC_INICIAL_PADRAO * 100.0)
     # O Editor grava %STORED em porcentagem (50); os módulos de simulação
-    # usam fração (0,5). Normaliza como _normalizar_soc de economia_energia.
+    # usam fração (0,5). Normaliza como _normalizar_soc de economia_energia:
+    # acima de 1,5 o número só pode estar em porcentagem.
     soc_inicial = soc_ini_bruto / 100.0 if soc_ini_bruto > 1.5 else soc_ini_bruto
     if not (0.0 < soc_min < soc_max <= 1.0):
         avisos.append(
@@ -602,6 +640,8 @@ def gerar_parametrizacao_esp32(projeto: Any, config_vencedora: Optional[dict],
         )
         soc_min, soc_max = SOC_MIN_PADRAO, SOC_MAX_PADRAO
     if not (soc_min <= soc_inicial <= soc_max):
+        # SoC inicial fora da faixa deixaria o primeiro despacho inválido;
+        # trazer para dentro do intervalo é a correção mínima.
         avisos.append(
             f"SoC inicial ({soc_inicial:.3f}) fora da faixa operacional "
             f"[{soc_min:.2f}, {soc_max:.2f}]; ajustado para dentro da faixa."
@@ -638,7 +678,7 @@ def gerar_parametrizacao_esp32(projeto: Any, config_vencedora: Optional[dict],
         (kw if estado != ESTADO_IDLING else 0.0) for estado in estados
     ]
 
-    # Índice da barra no rede.json. NÃO é mais usado para endereçar
+    # Índice da barra no rede.json. Não é mais usado para endereçar
     # mensagens (não há protocolo serial), mas é emitido para o log de
     # bancada conferir que o cabeçalho corresponde à rede certa.
     indice_barra = -1
@@ -721,7 +761,7 @@ def gerar_parametrizacao_esp32_do_resultado(projeto: Any, resultado_otimizacao: 
     """Variante que consome diretamente o dicionário devolvido por
     ``otimizacao_bess.executar_estudo_completo`` (``resultado["selecionados"]``).
 
-    Usa a PRIMEIRA alocação selecionada como a alocação de referência do
+    Usa a primeira alocação selecionada como referência do firmware.
     firmware. Se houver mais de uma, registra aviso: o sketch pré-pronto
     controla UM Sistema BESS; múltiplas unidades exigem múltiplos ESP32,
     decisão de projeto que não é tomada aqui.
@@ -753,7 +793,7 @@ def caminho_padrao_param_esp32(projeto: Any) -> str:
 
     A raiz é a pasta do projeto (``Projeto.caminho_raiz``), a mesma que
     contém ``rede/``, ``curvas/`` e ``dimensionamento/`` — o diretório
-    ``hardware/`` nasce ao lado delas. É deliberadamente DENTRO do projeto:
+    ``hardware/`` nasce ao lado delas. É deliberadamente dentro do projeto:
     a parametrização de um ensaio pertence àquele projeto, não ao repositório
     (o sketch pré-pronto é que fica versionado no repositório).
     """

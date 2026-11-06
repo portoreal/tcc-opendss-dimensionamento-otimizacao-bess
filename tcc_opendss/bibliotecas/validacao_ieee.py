@@ -32,6 +32,9 @@ Referências bibliográficas:
 
 TRANSPARÊNCIA METODOLÓGICA (ler antes de confiar nos resultados):
 
+As notas abaixo custaram medição. Cada uma registra uma hipótese testada,
+com o resultado que a confirmou ou a refutou, e não uma suposição.
+
 1) Para os sistemas de 13, 34 e 123 nós, os resultados oficiais do IEEE
    foram publicados com os TAPS dos reguladores FIXADOS nos valores
    reportados, e com o controle automático de tensão DESLIGADO.
@@ -68,23 +71,23 @@ TRANSPARÊNCIA METODOLÓGICA (ler antes de confiar nos resultados):
    B-C=1,0250 pu). Uma SEGUNDA CORREÇÃO, travando esses taps, foi MEDIDA
    em erro máximo de 1,38% - PIOR que a primeira. Uma TERCEIRA CORREÇÃO,
    com o controle automático de tensão (LDC) ativo, mediu 0,7464% -
-   ainda REPROVADO (tolerância 0,5%). O DIAGNÓSTICO FINAL, CONFIRMADO
-   POR EXPERIMENTO CONTROLADO, identificou que a causa raiz do resíduo
-   era uma PARTICULARIDADE DO MOTOR OpenDSS: em transformadores de DOIS
-   enrolamentos, a resistência série efetiva do modelo é alimentada pelo
-   parâmetro %LoadLoss (DEFAULT 1,5556%), e NÃO pelos %r dos
-   enrolamentos. O enrijecimento das correções anteriores era, portanto,
-   ILUSÓRIO quanto à resistência - o SubXF mantinha R série = 1,5556%
-   (default não tocado), e os reguladores (XHL=1, SEM %LoadLoss)
-   herdavam o mesmo default. Os sistemas que APROVAM declaram impedância
-   quase nula de forma explícita (123-bus: "XHL=.001 %LoadLoss=0.00001
-   ppm=0.0", comentário "KERSTING ASSUMES NO IMPEDANCE IN THE REGULATOR";
-   13-bus: "XHL=0.01 %LoadLoss=0.01"), reproduzindo a premissa do
-   gabarito oficial (fonte rígida, regulador SEM impedância). QUARTA E
-   ATUAL CORREÇÃO: SubXF com %LoadLoss enrijecido por /1000; reguladores
-   com XHL=.001 e %LoadLoss=0.00001 (técnica do 123-bus); taps oficiais
-   7/4 travados; controle global desligado. RESULTADO MEDIDO: erro máximo
-   de 0,0147% - APROVADO.
+   ainda REPROVADO (frente à tolerância de 0,5%). O DIAGNÓSTICO FINAL,
+   CONFIRMADO POR EXPERIMENTO CONTROLADO, identificou que a causa raiz
+   do resíduo era uma PARTICULARIDADE DO MOTOR OpenDSS: em
+   transformadores de DOIS enrolamentos, a resistência série efetiva do
+   modelo é alimentada pelo parâmetro %LoadLoss (DEFAULT 1,5556%), e NÃO
+   pelos %r dos enrolamentos. O enrijecimento das correções anteriores
+   era, portanto, ILUSÓRIO quanto à resistência - o SubXF mantinha R
+   série = 1,5556% (default não tocado), e os reguladores (XHL=1, SEM
+   %LoadLoss) herdavam o mesmo default. Os sistemas que APROVAM declaram
+   impedância quase nula de forma explícita (123-bus: "XHL=.001
+   %LoadLoss=0.00001 ppm=0.0", comentário "KERSTING ASSUMES NO
+   IMPEDANCE IN THE REGULATOR"; 13-bus: "XHL=0.01 %LoadLoss=0.01"),
+   reproduzindo a premissa do gabarito oficial (fonte rígida, regulador
+   SEM impedância). QUARTA E ATUAL CORREÇÃO: SubXF com %LoadLoss
+   enrijecido por /1000; reguladores com XHL=.001 e %LoadLoss=0.00001
+   (técnica do 123-bus); taps oficiais 7/4 travados; controle global
+   desligado. RESULTADO MEDIDO: erro máximo de 0,0147% - APROVADO.
 
    ACHADO INVESTIGADO E DESCARTADO COMO ERRO: observou-se inicialmente
    que os valores R/X do compensador do RegControl no '.dss' (R=-0,201/
@@ -219,6 +222,8 @@ _CANDIDATOS_DIR_FEEDERS = [
     os.path.join(OPEN_DSS_DIR, "IEEETestCases"),  # desenvolvimento
 ]
 if _CONGELADO:
+    # Distribuição congelada: "IEEE/" fica ao lado do .exe, e não dentro da
+    # pasta do projeto como no repositório.
     _CANDIDATOS_DIR_FEEDERS.append(
         os.path.join(os.path.dirname(os.path.abspath(_sys.executable)), "IEEE")
     )  # distribuição congelada (IEEE/ ao lado do .exe)
@@ -607,8 +612,12 @@ SISTEMAS_DISPONIVEIS = {
 # ============================================================
 
 def carregar_referencia(nome_sistema: str):
-    """Lê o CSV de referência oficial. Retorna None se o arquivo ainda
-    não existir (sistema pendente de transcrição do .doc original)."""
+    """Lê o CSV de referência oficial.
+
+    Devolve None quando o arquivo ainda não existe — situação de sistema
+    pendente de transcrição do .doc original. É None, e não exceção, de
+    propósito: pendência de transcrição não é falha do software.
+    """
     info = SISTEMAS_DISPONIVEIS[nome_sistema]
     caminho = os.path.join(DIR_REFERENCIAS, info["referencia_csv"])
 
@@ -633,17 +642,17 @@ def carregar_referencia(nome_sistema: str):
 
 def comparar_resultados(resultado_simulado: dict, referencia: dict,
                           excecoes_documentadas: dict = None):
-    """Calcula o erro percentual de tensão, barra a barra e fase a
-    fase, retornando o detalhamento completo e o erro máximo
-    encontrado.
+    """Calcula o erro percentual de tensão por barra e por fase, devolvendo
+    o detalhamento completo e os erros máximos.
 
-    Barras listadas em 'excecoes_documentadas' (dict {barra: texto de
-    justificativa}) aparecem no detalhamento com seu valor e erro reais,
-    mas NÃO são contabilizadas no erro máximo usado para a decisão de
-    aprovação/reprovação - apenas para situações com causa raiz
-    tecnicamente identificada e documentada (ver notas em
-    SISTEMAS_DISPONIVEIS), nunca para "esconder" divergências não
-    investigadas."""
+    Barras listadas em 'excecoes_documentadas' ({barra: justificativa})
+    aparecem no detalhamento com valor e erro reais, mas NÃO entram no erro
+    máximo que decide aprovação ou reprovação. O uso dessa válvula é
+    restrito a causas raiz tecnicamente identificadas e documentadas (ver
+    notas em SISTEMAS_DISPONIVEIS). Nunca serve para esconder divergência
+    não investigada — dois erros máximos são devolvidos justamente para que
+    o valor com exceções continue visível.
+    """
 
     excecoes_documentadas = excecoes_documentadas or {}
 
@@ -673,6 +682,8 @@ def comparar_resultados(resultado_simulado: dict, referencia: dict,
         erro_pct = abs(tensao_sim - tensao_ref) / tensao_ref * 100
 
         if em_excecao:
+            # Segrega para o erro máximo secundário. O valor real continua no
+            # detalhamento, marcado com o prefixo de exceção.
             erros_excecao.append(erro_pct)
             observacao = f"[EXCEÇÃO DOCUMENTADA] {excecoes_documentadas[barra]}"
         else:
@@ -699,11 +710,14 @@ def comparar_resultados(resultado_simulado: dict, referencia: dict,
 # ============================================================
 
 def validar_sistema(nome_sistema: str, tolerancia_percentual: float = 0.5):
-    """Executa a validação de UM sistema. Retorna um dicionário com o
-    status, o erro máximo, o detalhamento por barra/fase, observações
-    de transparência (ex.: referência ainda não disponível, exceções
-    documentadas, notas de sistema) e a instância DSS já resolvida
-    (chave 'objeto_dss'), reaproveitável para o desenho de topologia."""
+    """Executa a validação de UM sistema de referência.
+
+    Devolve status, erro máximo, detalhamento por barra e fase, as
+    observações de transparência (referência indisponível, exceções
+    documentadas, notas do sistema) e a instância DSS já resolvida, em
+    'objeto_dss', que o desenho de topologia reaproveita para não recompilar
+    o circuito.
+    """
 
     info = SISTEMAS_DISPONIVEIS[nome_sistema]
     caminho_master = os.path.join(DIR_FEEDERS, info["pasta"], info["master"])
@@ -737,6 +751,9 @@ def validar_sistema(nome_sistema: str, tolerancia_percentual: float = 0.5):
             desligar_controle_global=info["desligar_controle_global"],
         )
 
+        # O sistema de 37 nós é delta sem neutro aterrado; comparar em
+        # tensão fase-neutro ali seria comparar com uma referência
+        # matemática. Por isso o tipo vem da configuração do sistema.
         if info["tipo_tensao_referencia"] == "LL":
             resultado_simulado = objeto_dss.obter_tensoes_LL_por_barra()
         else:
@@ -786,8 +803,9 @@ def validar_sistema(nome_sistema: str, tolerancia_percentual: float = 0.5):
 
 
 def executar_validacao(sistemas_selecionados, tolerancia_percentual: float = 0.5):
-    """Executa a validação para todos os sistemas selecionados.
-    Retorna {nome_sistema: resultado}."""
+    """Valida todos os sistemas selecionados e devolve
+    {nome_sistema: resultado}. O diretório de saída é criado antes, para
+    que a exportação posterior não falhe por pasta inexistente."""
     os.makedirs(DIR_SAIDA, exist_ok=True)
     return {
         nome: validar_sistema(nome, tolerancia_percentual)
@@ -864,5 +882,7 @@ def gerar_memorial_validacao(resultados: dict) -> str:
 
 
 def salvar_memorial_validacao(texto: str, caminho_arquivo: str):
+    # O texto é montado em memória e só aqui chega ao disco, o que permite
+    # exibir o memorial antes de gravar.
     with open(caminho_arquivo, "w", encoding="utf-8") as f:
         f.write(texto)

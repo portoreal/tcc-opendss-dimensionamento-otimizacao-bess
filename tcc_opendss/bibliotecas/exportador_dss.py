@@ -1,10 +1,19 @@
 __author__ = 'Pedro Henrique Sousa Pinheiro'
-"""Exporter: converte o Model (RedeEletrica) em arquivos .dss reais,
-seguindo a sintaxe oficial do OpenDSS (opendss.epri.com), incluindo as
-curvas características (LoadShape) associadas a Cargas, Geradores,
-PVSystems e Storage, e as curvas XY (XYCurve) associadas ao InvControl
-(Volt-Var / Volt-Watt), usadas pelo Sistema BESS composto."""
+"""Tradução do modelo da rede (RedeEletrica) para arquivos .dss do OpenDSS.
 
+O OpenDSS não é programado no sentido usual: ele lê um arquivo de texto em
+que cada linha é um comando ("New Line.L1 bus1=B1 bus2=B2 ..."). Este módulo
+é o tradutor entre o grafo que o editor mantém em memória e esse texto.
+Ao final sai um Master.dss que apenas encadeia os demais arquivos (via
+Redirect) e manda o motor resolver o circuito. A sintaxe dos comandos segue
+a documentação oficial do EPRI (opendss.epri.com).
+
+Dois tipos de curva entram junto com os elementos. As LoadShape (curva de
+24 h) descrevem o comportamento diário de Cargas, Geradores, PVSystems e
+Storage. As XYCurve são outra coisa: relacionam duas grandezas quaisquer e
+aqui servem às leis Volt-Var e Volt-Watt do InvControl que acompanha o
+Sistema BESS.
+"""
 import os
 from typing import Dict, Any, Set
 
@@ -17,42 +26,47 @@ from .curvas_padrao import criar_curva_padrao
 # ============================================================
 # TRANSPARÊNCIA TÉCNICA — defaults NÃO-nulos do motor (medidos)
 # ============================================================
-# Medido no motor real (dss-python 0.15.7) nesta revisão, via read-back e por
-# efeito nas perdas/na carga capacitiva:
+# O motor do OpenDSS preenche sozinho os parâmetros que o usuário não
+# declarou — e nem sempre com zero. Dois desses defaults mexem em resultados
+# de perdas e de reativo sem aparecer em lugar nenhum do arquivo .dss. Foram
+# medidos no motor real (dss-python 0.15.7) nesta revisão, por leitura de
+# volta dos valores internos e pelo efeito nas perdas e na carga capacitiva:
 #
-#   * Transformer de 2 enrolamentos SEM %loadloss declarado: o motor aplica
-#     dois %r default de 0,2 % (um por enrolamento), o que resulta numa
-#     R série efetiva ≈ 0,4043 % (referida ao próprio trafo). O trafo que o
-#     usuário desenhou como "ideal" perde, silenciosamente, ~0,4 %.
-#   * Line SEM c1/c0 declarados: o motor aplica C1 = 3,4 nF/km e
-#     C0 = 1,6 nF/km. A linha carrega capacitância mesmo sem ninguém pedir.
+#   * Transformer de 2 enrolamentos sem %loadloss: o motor aplica %r = 0,2 %
+#     em CADA enrolamento, o que soma uma resistência série de
+#     aproximadamente 0,4043 % referida ao próprio trafo. Aquele trafo que o
+#     usuário desenhou como ideal perde uns 0,4 % em silêncio.
+#   * Line sem c1/c0: o motor aplica C1 = 3,4 nF/km e C0 = 1,6 nF/km. A
+#     linha passa a ter capacitância sem ninguém ter pedido.
 #
-# Por isso os parâmetros c1/c0 (Line) e loadloss/noloadloss (Transformer) são
-# emitidos SOMENTE quando o usuário os informa, com dado REAL de placa,
-# ensaio ou catálogo do fabricante — é o que remove o fantasma. Nenhuma
-# estimativa é inventada por este módulo: chave ausente ou vazia não vira
-# comando, e o default do motor (acima) é o que vale. O que este bloco faz é
-# documentar o default; não é o exportador quem o impõe.
+# A consequência para o exportador é uma regra só: c1/c0 (Line) e
+# loadloss/noloadloss (Transformer) saem no comando APENAS quando o usuário
+# informa um valor, e esse valor precisa vir de placa, ensaio ou catálogo do
+# fabricante. Nada é estimado aqui. Chave ausente ou vazia simplesmente não
+# vira comando e o default acima é o que vale — este bloco documenta o
+# default, não o impõe.
 #
-# Sintaxe validada funcionalmente no motor real: c1=/c0= em Line e
-# %loadloss=/%noloadloss= em Transformer (o "%" é aceito e o nome da
-# propriedade é insensível a caixa; aqui o dict usa a chave sem "%" e o "%" é
-# recolocado na emissão — precedente: "pctstored" -> "%stored=").
+# A sintaxe foi validada no motor real: c1=/c0= em Line e %loadloss=/
+# %noloadloss= em Transformer, com o "%" aceito e o nome da propriedade
+# insensível a maiúsculas. Os dicts do modelo guardam a chave sem "%" e o
+# símbolo é recolocado na hora de emitir, do mesmo jeito que "pctstored" vira
+# "%stored=" em _fmt_storage.
 #
-# Hierarquia medida: %r explícito (inclusive %r=0) ANULA %loadloss. Como o
-# editor não expõe %r em trafo, essa armadilha não é alcançável por esta via
-# (e é por isso que ela não é guardada aqui).
+# Há uma hierarquia entre esses parâmetros, medida no motor: um %r explícito
+# (mesmo %r=0) ANULA o %loadloss. O editor não expõe %r em trafo, então essa
+# armadilha não é alcançável por aqui — e é por isso que não há guarda para
+# ela no código.
 #
-# ARMADILHA MEDIDA no motor real, e o motivo de %noloadloss NÃO ser a via de
-# correção das perdas: %noloadloss (sozinho) desloca o ponto de operação do
-# trafo. Medido em trafo 100 kVA 13,8/0,4 kV xhl=5 %: com %noloadloss=0,25
-# e SEM %loadloss, o motor passou a apresentar R = 0,2 ohm (o mesmo %r
-# default), mas as perdas de série subiram de 454,7 W para 1.387,5 W — a
-# perda a vazio virou parcela em série. Com %loadloss=1,2 declarado, as
-# perdas ficam coerentes (série 1.393,6 W + núcleo 235,7 W para 100 kVA).
-# Regra prática desta revisão: declare %loadloss SEMPRE que declarar
-# %noloadloss (os dois formam um par no ensaio do trafo). O exportador apenas
-# emite o que o usuário informou — não inventa o par.
+# E há uma armadilha que explica por que %noloadloss não serve, sozinho, para
+# corrigir perdas: ele desloca o ponto de operação do trafo. Medição em trafo
+# de 100 kVA 13,8/0,4 kV com xhl=5 %: declarando %noloadloss=0,25 e nada de
+# %loadloss, o motor apresentou R = 0,2 ohm (o mesmo %r default) e as perdas
+# de série saltaram de 454,7 W para 1.387,5 W — a perda a vazio tinha virado
+# parcela em série. Declarando %loadloss=1,2 os números voltam a fazer
+# sentido: 1.393,6 W em série mais 235,7 W no núcleo, para 100 kVA. Daí a
+# recomendação prática: %loadloss sempre que houver %noloadloss, porque no
+# ensaio de trafo os dois andam juntos. O exportador emite o que o usuário
+# informou e não completa o par por conta própria.
 
 
 # ============================================================
@@ -60,8 +74,12 @@ from .curvas_padrao import criar_curva_padrao
 # ============================================================
 
 def _sufixo_curva(p: Dict[str, Any]) -> str:
-    """Retorna ' daily=<nome>' se o elemento tiver uma curva associada,
-    ou string vazia caso contrário."""
+    """Devolve ' daily=<nome>' quando o elemento aponta para uma curva
+    diária, e string vazia quando não aponta.
+
+    'Nenhuma' é o texto que o formulário grava quando o usuário desmarca a
+    curva, por isso conta como ausência de curva.
+    """
     nome_curva = p.get("daily")
     if nome_curva and str(nome_curva).strip() and str(nome_curva) != "Nenhuma":
         return f" daily={nome_curva}"
@@ -69,21 +87,29 @@ def _sufixo_curva(p: Dict[str, Any]) -> str:
 
 
 def _tem_curva_projeto(p: Dict[str, Any]) -> bool:
-    """Mesma semântica de _sufixo_curva, em forma booleana: True quando o
-    elemento referencia uma curva diária de projeto (não vazia/'Nenhuma')."""
+    """A mesma pergunta de _sufixo_curva, respondida com sim ou não.
+
+    Serve para decidir, antes de montar o comando, se o elemento já tem curva
+    própria, caso em que a curva padrão embutida não deve ser injetada.
+    """
     nome_curva = str(p.get("daily", "") or "").strip()
     return bool(nome_curva) and nome_curva != "Nenhuma"
 
 
 def _opcionais(p: Dict[str, Any], pares) -> str:
-    """Monta o sufixo dos parâmetros declarados pelo usuário.
+    """Monta o sufixo do comando com os parâmetros que o usuário declarou.
 
-    `pares` é uma sequência de (chave_no_dict, texto_no_comando). Só entra no
-    comando o par cuja chave exista em `p` E cujo valor, convertido por str()
-    e aparado, não seja vazio. Chave ausente ou vazia = o parâmetro NÃO é
-    emitido, e o motor aplica o default dele (ver TRANSPARÊNCIA TÉCNICA no
-    topo do módulo). O mapeamento sem "%" no dict -> com "%" no comando segue
-    o precedente de "pctstored" -> "%stored=" em _fmt_storage.
+    `pares` é uma sequência de (chave_no_dict, texto_no_comando). Um par entra
+    no comando apenas se a chave existir em `p` e se o valor, convertido em
+    texto e aparado, não estiver vazio. Faltando a chave ou estando o valor em
+    branco, o parâmetro não é emitido e quem decide é o motor, com o default
+    dele — o bloco TRANSPARÊNCIA TÉCNICA no topo do módulo lista os que não
+    são zero. Esse é o mecanismo que mantém o exportador fora da decisão sobre
+    perdas e capacitância: ele não inventa, e o que não foi dado não aparece.
+
+    Quem chama informa o nome de cada chave sem o "%" e o nome do comando com
+    ele, porque o dict do modelo e a propriedade do OpenDSS não usam a mesma
+    grafia. O caso equivalente em _fmt_storage é "pctstored" -> "%stored=".
     """
     partes = []
     for chave, comando in pares:
@@ -176,19 +202,29 @@ def _fmt_storage(nome, bus1, p: Dict[str, Any]) -> str:
 
 
 def _fmt_reactor(nome, bus1, p: Dict[str, Any]) -> str:
-    """Sintaxe confirmada por documentação oficial EPRI
-    (opendss.epri.com/Reactor.html), colada pelo usuário nesta sessão."""
+    """Reator em derivação (banco de indutância), tipicamente para compensar
+    reativo capacitivo da linha em regime leve.
+
+    Sintaxe conforme a documentação do EPRI
+    (opendss.epri.com/Reactor.html).
+    """
     return (f"New Reactor.{nome} bus1={bus1} phases={p.get('phases', 3)} "
             f"kv={p.get('kv', 13.8)} kvar={p.get('kvar', 300)}")
 
 
 def _fmt_invcontrol(nome, bus1, p: Dict[str, Any]) -> str:
-    """InvControl NÃO se conecta a uma barra própria (o parâmetro 'bus1'
-    é ignorado aqui de propósito) — a referência ao elemento controlado
-    (ex.: um Storage) é feita através da propriedade DERList.
+    """Comando do InvControl, o controlador que impõe a lei de tensão ao
+    inversor de um Storage.
 
-    Sintaxe confirmada por documentação oficial colada pelo usuário
-    nesta sessão (fonte: EPRI / dss-extensions.org)."""
+    O InvControl não ocupa barra nenhuma: recebe `bus1` na assinatura apenas
+    para respeitar o formato dos demais formatadores e não o usa. Quem ele
+    controla vem em DERList, que aponta para o elemento (em geral um Storage).
+    As curvas de Volt-Var e Volt-Watt entram por vvc_curve1 e pelas chaves de
+    curva de Watt, que precisam já existir como XYCurve quando este comando
+    for lido.
+
+    Sintaxe conforme a documentação do EPRI e da dss-extensions.org.
+    """
     partes = [f"New InvControl.{nome}"]
 
     if "DERList" in p:
@@ -208,9 +244,30 @@ def _fmt_circuit(nome_circuito, bus1, p: Dict[str, Any]) -> str:
             f"MVAsc3={p.get('mvasc3', 2000)} MVAsc1={p.get('mvasc1', 2100)}")
 
 
+def _fmt_energymeter(nome, elemento, terminal) -> str:
+    """Medidor de energia: o 2º argumento do comando é o ELEMENTO
+    monitorado (ex.: Line.L1), não uma barra — é o ponto da rede onde a
+    medição de energia fica, normalmente o ramo da subestação.
+
+    Sintaxe verificada no motor real (dss-python 0.15.7) e no exemplo
+    oficial IEEE 123 deste repositório (Run_IEEE123Bus.DSS, linha 45:
+    "New EnergyMeter.Feeder Line.L115 1"). Aqui o comando sai na forma
+    nomeada (element=/terminal=), seguindo o padrão dos demais
+    formatadores do módulo. O motor só aceita elemento de entrega de
+    potência no alvo: a validação de existência é feita antes, na
+    geração do Master (um medidor órfão não pode virar .dss quebrado em
+    silêncio).
+    """
+    return f"New EnergyMeter.{nome} element={elemento} terminal={terminal}"
+
+
 def _fmt_loadshape(curva) -> str:
-    """Gera 'New Loadshape...' usando hour= e mult= (aceita pontos com
-    intervalos irregulares, exatamente o que o editor gráfico produz)."""
+    """Comando New Loadshape, a curva de 24 h de um elemento.
+
+    Sai com hour= e mult= em vez de npts= e interval=, porque hour aceita
+    pontos em instantes irregulares — que é exatamente o que o editor gráfico
+    do usuário produz quando ele arrasta um ponto para as 18h30, por exemplo.
+    """
     horas = curva.horas()
     mults = curva.multiplicadores()
     npts = len(horas)
@@ -220,8 +277,13 @@ def _fmt_loadshape(curva) -> str:
 
 
 def _fmt_xycurve(curva) -> str:
-    """Gera 'New XYCurve...', usada pelas curvas Volt-Var/Volt-Watt do
-    InvControl. Sintaxe padrão OpenDSS (npts/xarray/yarray)."""
+    """Comando New XYCurve: pares (x, y) que descrevem uma relação, não uma
+    variação no tempo.
+
+    No Sistema BESS, x é a tensão em pu e y é a potência reativa (Volt-Var) ou
+    a potência ativa (Volt-Watt) pedida ao inversor. Sintaxe padrão do
+    OpenDSS: npts, xarray, yarray.
+    """
     xstr = ", ".join(f"{x:g}" for x in curva.xarray)
     ystr = ", ".join(f"{y:g}" for y in curva.yarray)
     return f"New XYCurve.{curva.nome} npts={curva.npts} xarray=({xstr}) yarray=({ystr})"
@@ -254,12 +316,20 @@ ARQUIVO_POR_TIPO = {
     "Storage": "storage.dss",
     "Reactor": "reatores.dss",
     "InvControl": "invcontrol.dss",
+    "EnergyMeter": "medidores.dss",
 }
 
-# IMPORTANTE: storage.dss e curvas_xy.dss precisam vir ANTES de
-# invcontrol.dss, pois o InvControl referencia um Storage (via DERList)
-# e/ou uma XYCurve (via vvc_curve1/voltwatt_curve) que precisam já
-# existir no momento da compilação.
+# A ordem abaixo não é cosmética. O OpenDSS compila os Redirect na sequência
+# em que aparecem, e um comando que cita outro elemento exige que o citado já
+# tenha sido definido. Por isso storage.dss e curvas_xy.dss vêm antes de
+# invcontrol.dss: o InvControl referencia um Storage em DERList e/ou uma
+# XYCurve em vvc_curve1 e voltwatt_curve.
+#
+# medidores.dss fecha a lista pelo mesmo motivo. O EnergyMeter aponta para um
+# elemento que já precisa existir (um Line.L1, por exemplo) e, ao ser criado,
+# reorganiza a zona do circuito em torno de si — então ele entra depois dos
+# elementos e antes do Solve. O exemplo oficial IEEE 123 que acompanha este
+# repositório faz igual.
 ORDEM_REDIRECT = [
     "curvas.dss",        # LoadShapes (Load/Generator/PVSystem/Storage)
     "curvas_xy.dss",     # XYCurves (Volt-Var/Volt-Watt do InvControl)
@@ -272,6 +342,7 @@ ORDEM_REDIRECT = [
     "storage.dss",
     "reatores.dss",
     "invcontrol.dss",
+    "medidores.dss",
 ]
 
 TIPOS_COM_CURVA = {"Load", "Generator", "PVSystem", "Storage"}
@@ -281,31 +352,41 @@ def gerar_arquivos_dss(rede: RedeEletrica, pasta_destino: str,
                         nome_circuito: str = "MeuCircuito",
                         pasta_curvas: str = None,
                         dia_curvas_padrao: str = None) -> str:
-    """Gera os arquivos .dss (um por categoria) + o Master.dss que os une.
+    """Escreve os arquivos .dss da rede e devolve o caminho do Master.dss.
+
+    O resultado é um arquivo por categoria de elemento (linhas.dss,
+    cargas.dss, transformadores.dss, medidores.dss...) mais curvas.dss,
+    curvas_xy.dss e buscoords.dss. O Master.dss não contém elemento nenhum:
+    ele encadeia os outros por Redirect, define as bases de tensão e pede o
+    Solve.
 
     Parameters
     ----------
     pasta_curvas : str, opcional
-        Pasta onde estão salvas as curvas características do projeto
-        (Projeto.caminho_curvas). Necessária apenas se algum elemento
-        fizer referência a uma curva diária ('daily').
+        Pasta onde estão as curvas características do projeto
+        (Projeto.caminho_curvas). Só é necessária quando algum elemento
+        aponta para uma curva diária; sem essa referência, pode vir None.
     dia_curvas_padrao : str, opcional
-        Dia da semana (ex.: 'Segunda') para injetar as CURVAS PADRÃO
-        embutidas da ferramenta em elementos Load/PVSystem SEM curva de
-        projeto vinculada.
+        Dia da semana (por exemplo 'Segunda'). Preenchido, a função injeta as
+        curvas padrão embutidas da ferramenta nos elementos Load e PVSystem
+        que estiverem sem curva de projeto vinculada.
 
         TRANSPARÊNCIA TÉCNICA — precedência e não-mutação:
-            Precedência: curva de projeto vinculada ('daily' preenchido)
-            SEMPRE prevalece sobre a curva padrão embutida. A injeção
-            acontece apenas em Load e PVSystem sem vínculo; Generator e
-            Storage nunca recebem curva padrão. O parâmetro 'daily' é
-            adicionado numa CÓPIA dos parâmetros do elemento para a
-            emissão — o modelo em memória (rede.json) NUNCA é mutado.
-            Com dia_curvas_padrao=None, o comportamento é exatamente o
-            histórico (nenhuma injeção). Os LoadShapes sintéticos usam o
-            prefixo '__Padrao_' para não colidir com curvas do usuário, e
-            são resolvidos da biblioteca embutida (criar_curva_padrao) —
-            não exigem pasta de curvas do projeto.
+            Curva vinculada ao projeto sempre ganha. A injeção só acontece em
+            Load e PVSystem sem vínculo; Generator e Storage nunca recebem
+            curva padrão, porque a curva de um gerador despachável não é
+            dada pela ferramenta.
+
+            A injeção acontece sobre uma CÓPIA dos parâmetros do elemento,
+            feita só para a emissão. O modelo em memória — o que está em
+            rede.json — não é tocado, de modo que exportar duas vezes com
+            dias diferentes não contamina o projeto.
+
+            Com dia_curvas_padrao=None nada é injetado e o resultado é o
+            mesmo de antes de a opção existir. Os LoadShapes sintéticos levam
+            o prefixo '__Padrao_' para não colidirem com curva criada pelo
+            usuário, e vêm da biblioteca interna (criar_curva_padrao), sem
+            exigir pasta de curvas do projeto.
 
     Retorna o caminho completo do Master.dss gerado.
     """
@@ -319,7 +400,10 @@ def gerar_arquivos_dss(rede: RedeEletrica, pasta_destino: str,
             "na rede antes de exportar."
         )
 
-    # -------- 1) Agrupa comandos por arquivo de destino -------- #
+    # -------- 1) Distribui os comandos pelos arquivos de destino -------- #
+    # Cada categoria de elemento tem seu arquivo, e o dicionário abaixo é o
+    # que faz essa separação: a chave é o nome do arquivo, o valor é a lista
+    # de linhas que vão para ele.
     conteudo_por_arquivo: Dict[str, list] = {}
     nomes_curvas_referenciadas: Set[str] = set()
     nomes_curvas_padrao: Dict[str, Any] = {}
@@ -333,7 +417,11 @@ def gerar_arquivos_dss(rede: RedeEletrica, pasta_destino: str,
         conteudo_por_arquivo.setdefault(arquivo, []).append(linha)
 
     for der in rede.derivacoes.values():
-        if der.tipo == "Vsource":
+        # Dois tipos de derivação não passam por aqui. A Vsource não é um
+        # elemento do circuito, é a própria barra de referência: ela vira o
+        # comando New Circuit do Master. O EnergyMeter precisa validar antes
+        # qual elemento pretende medir, e essa checagem mora no bloco 1b.
+        if der.tipo in ("Vsource", "EnergyMeter"):
             continue
         formatador = FORMATADORES_DERIVACAO.get(der.tipo)
         if not formatador:
@@ -344,9 +432,9 @@ def gerar_arquivos_dss(rede: RedeEletrica, pasta_destino: str,
             if nome_curva and str(nome_curva) != "Nenhuma":
                 nomes_curvas_referenciadas.add(str(nome_curva))
 
-        # Injeção de curva padrão: apenas Load/PVSystem SEM curva de
-        # projeto. Emite com uma CÓPIA dos parâmetros — der.parametros
-        # (o modelo do chamador) permanece intocado.
+        # Injeção de curva padrão, restrita a Load e PVSystem sem curva de
+        # projeto. A emissão usa uma CÓPIA dos parâmetros: o dict do chamador
+        # fica intocado e a curva padrão não contamina o rede.json.
         if (dia_curvas_padrao and der.tipo in ("Load", "PVSystem")
                 and not _tem_curva_projeto(der.parametros)):
             natureza = "geracao" if der.tipo == "PVSystem" else "carga"
@@ -364,7 +452,28 @@ def gerar_arquivos_dss(rede: RedeEletrica, pasta_destino: str,
         arquivo = ARQUIVO_POR_TIPO[der.tipo]
         conteudo_por_arquivo.setdefault(arquivo, []).append(linha)
 
-    # -------- 2) Gera curvas.dss (LoadShapes, se houver referenciadas) -------- #
+    # -------- 1b) Medidores de energia (EnergyMeter) -------- #
+    # Fora do laço genérico de propósito. O comando do medidor não aponta para
+    # uma barra, e sim para outro elemento do circuito, então ele carrega um
+    # risco que nenhum outro formatador carrega: o alvo pode ter sido
+    # excluído ou renomeado e o medidor ficar apontando para o vazio. Um
+    # Master.dss assim chega ao motor e falha com mensagem genérica, longe da
+    # causa. Aqui a conferência acontece antes de escrever qualquer arquivo e
+    # a exceção diz qual medidor e qual elemento estão em desacordo.
+    for der in rede.derivacoes.values():
+        if der.tipo != "EnergyMeter":
+            continue
+        elemento = str(der.parametros.get("element", "") or "").strip()
+        if rede.resolver_alvo_medidor(elemento, der.parametros.get("terminal", 1)) is None:
+            raise ValueError(
+                f"O medidor '{der.nome}' monitora o elemento "
+                f"'{elemento or '(vazio)'}', que não existe mais na rede. "
+                "Edite ou exclua o medidor antes de exportar.")
+        terminal = int(float(der.parametros.get("terminal", 1)))
+        conteudo_por_arquivo.setdefault("medidores.dss", []).append(
+            _fmt_energymeter(der.nome, elemento, terminal))
+
+    # -------- 2) curvas.dss: as LoadShapes citadas pelos elementos -------- #
     curvas_dss_gerado = False
     if nomes_curvas_referenciadas or nomes_curvas_padrao:
         if nomes_curvas_referenciadas and not pasta_curvas:
@@ -374,8 +483,8 @@ def gerar_arquivos_dss(rede: RedeEletrica, pasta_destino: str,
 
         linhas_curvas = []
 
-        # Curvas padrão embutidas (prefixo __Padrao_): resolvidas da
-        # biblioteca interna, NÃO exigem pasta de curvas do projeto.
+        # Primeiro as curvas padrão embutidas (prefixo __Padrao_), que saem da
+        # biblioteca interna e por isso não dependem da pasta do projeto.
         for nome_sintetico in sorted(nomes_curvas_padrao):
             natureza, dia = nomes_curvas_padrao[nome_sintetico]
             curva = criar_curva_padrao(nome_sintetico, natureza, dia)
@@ -384,7 +493,9 @@ def gerar_arquivos_dss(rede: RedeEletrica, pasta_destino: str,
                     f"A curva '{nome_sintetico}' possui menos de 2 pontos definidos.")
             linhas_curvas.append(_fmt_loadshape(curva))
 
-        # Curvas de projeto referenciadas: exigem pasta e devem existir.
+        # Depois as curvas do projeto. Aqui a pasta é obrigatória: se o
+        # elemento cita uma curva e ela não está no repositório do projeto, o
+        # .dss sairia com um daily= apontando para o nada.
         for nome_curva in sorted(nomes_curvas_referenciadas):
             curva = obter_curva(pasta_curvas, nome_curva)
             if not curva:
@@ -401,7 +512,7 @@ def gerar_arquivos_dss(rede: RedeEletrica, pasta_destino: str,
             f.write("\n".join(linhas_curvas) + "\n")
         curvas_dss_gerado = True
 
-    # -------- 3) Gera curvas_xy.dss (XYCurves, ex.: usadas pelo InvControl) -------- #
+    # -------- 3) curvas_xy.dss: as XYCurves (Volt-Var e Volt-Watt) -------- #
     curvas_xy_dss_gerado = False
     if rede.curvas_xy:
         linhas_xy = [_fmt_xycurve(curva) for curva in rede.curvas_xy.values()]
@@ -410,13 +521,16 @@ def gerar_arquivos_dss(rede: RedeEletrica, pasta_destino: str,
             f.write("\n".join(linhas_xy) + "\n")
         curvas_xy_dss_gerado = True
 
-    # -------- 4) Escreve cada arquivo de elementos -------- #
+    # -------- 4) Escreve um arquivo por categoria de elemento -------- #
     for arquivo, linhas in conteudo_por_arquivo.items():
         caminho = os.path.join(pasta_destino, arquivo)
         with open(caminho, "w", encoding="utf-8") as f:
             f.write("\n".join(linhas) + "\n")
 
-    # -------- 5) Escreve o BusCoords.dss usando o layout automático -------- #
+    # -------- 5) buscoords.dss: posição de cada barra para o desenho -------- #
+    # O OpenDSS só usa este arquivo para desenhar o diagrama na interface
+    # dele; não entra em cálculo nenhum. As coordenadas vêm do layout
+    # automático, o mesmo que posiciona as barras no editor.
     posicoes = calcular_posicoes(rede)
     caminho_coords = os.path.join(pasta_destino, "buscoords.dss")
     with open(caminho_coords, "w", encoding="utf-8") as f:
@@ -425,6 +539,9 @@ def gerar_arquivos_dss(rede: RedeEletrica, pasta_destino: str,
             f.write(f"{nome} {x} {y}\n")
 
     # -------- 6) Monta o Master.dss -------- #
+    # Uma base de tensão por valor de kV distinto na rede, da maior para a
+    # menor. O motor precisa dessa lista para montar as matrizes por nível de
+    # tensão antes de resolver.
     kvs_base = sorted({b.kv_base for b in rede.barras.values()}, reverse=True)
     voltagebases = ", ".join(str(kv) for kv in kvs_base)
 
@@ -437,6 +554,8 @@ def gerar_arquivos_dss(rede: RedeEletrica, pasta_destino: str,
     ]
 
     for arquivo in ORDEM_REDIRECT:
+        # curvas.dss e curvas_xy.dss só entram quando foram de fato escritos;
+        # um Redirect para arquivo inexistente derrubaria a compilação.
         if arquivo == "curvas.dss":
             if curvas_dss_gerado:
                 linhas_master.append(f"Redirect {arquivo}")

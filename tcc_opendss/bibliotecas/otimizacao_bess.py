@@ -1,14 +1,16 @@
 __author__ = 'Pedro Henrique Sousa Pinheiro'
-"""Orquestrador do estudo de otimização de alocação de BESS: executa o
-caso base (sem BESS), varre todas as combinações (barra candidata x
-opção de catálogo) — calculando para CADA candidato tanto o benefício
-de qualidade de energia (métrica binária E métrica contínua de
-severidade, em pu·barra) quanto a economia anual estimada da arbitragem
-tarifária —, delega a seleção ótima MULTI-CRITÉRIO para o MILP e, por fim,
-executa uma simulação de verificação conjunta da configuração vencedora,
-a análise de necessidade de compensação reativa, E a análise de economia
-de energia (arbitragem tarifária ponta/fora ponta) para essa mesma
-configuração vencedora.
+"""Orquestrador do estudo de otimização de alocação de BESS.
+
+A sequência tem cinco etapas. Primeiro o caso base, sem BESS. Depois a
+varredura exaustiva de todas as combinações barra candidata x opção de
+catálogo, calculando para cada uma o benefício de qualidade de energia
+(métrica binária e métrica contínua de severidade em pu·barra) e a economia
+anual estimada da arbitragem tarifária. A seleção ótima multicritério fica
+com o MILP. Em seguida vêm a verificação conjunta da configuração
+vencedora, a análise de compensação reativa e a análise de economia de
+energia para essa mesma configuração. Ao final, cada análise anterior deixa
+um memorial de cálculo textual (ver memorial_calculo_afundamento.py e
+memorial_calculo_economia.py).
 
 REVISÃO 2026-10-27 (vigésima primeira sessão): a seleção do MILP passou
 a combinar qualidade de energia E economia de energia (além do custo).
@@ -16,9 +18,7 @@ O fluxo de verificação do vencedor (verificação conjunta, reativo,
 economia completa e memoriais) permanece INALTERADO — a diferença é que
 ele agora sempre roda, porque a seleção vazia deixou de ser ótima.
 Ver o diagnóstico completo no docstring de otimizacao_milp.py.
-
-Gera também um MEMORIAL DE CÁLCULO textual para cada uma dessas análises
-(ver memorial_calculo_afundamento.py e memorial_calculo_economia.py)."""
+"""
 
 from typing import Optional
 
@@ -33,14 +33,14 @@ from .tarifas_energia import TarifaEnergia
 
 
 def _profundidades_por_barra(resultado, limite_superior):
-    """Profundidade de afundamento (pu) por barra, a partir do resultado
-    de estudo_afundamento.rodar_estudo.
+    """Profundidade de afundamento (pu) por barra, obtida do resultado de
+    estudo_afundamento.rodar_estudo.
 
-    TRANSPARÊNCIA TÉCNICA (métrica contínua de severidade): a métrica
-    binária 'beneficio' só reconhece a barra que SAI da janela de
-    afundamento (0,1 a 0,9 pu) — um BESS que eleva uma barra de 0,35 pu
-    para 0,88 pu não recebe NENHUM crédito, embora tenha melhorado 0,53 pu
-    de tensão. Aqui a severidade é contínua:
+    MÉTRICA CONTÍNUA DE SEVERIDADE. A métrica binária 'beneficio' só
+    reconhece a barra que SAI da janela de afundamento (0,1 a 0,9 pu). Um
+    BESS que eleva uma barra de 0,35 pu para 0,88 pu não recebe NENHUM
+    crédito, embora tenha melhorado 0,53 pu de tensão. Aqui a severidade é
+    contínua:
 
         profundidade(barra, cenário) = max(0, limite_superior - min(pu))
         profundidade(barra) = MÉDIA entre os cenários de falta
@@ -51,32 +51,30 @@ def _profundidades_por_barra(resultado, limite_superior):
     representa o que o BESS consegue mitigar).
 
     CORREÇÃO 2026-10-30 (semântica de COLAPSO em cenários não
-    convergentes — ver estudo_afundamento.rodar_estudo): o código
-    anterior entrava com 'pu' vazio no cenário divergente, que então NÃO
-    contribuía para a profundidade — mas o candidato divergente ainda
-    herdava a profundidade total do baseline como "benefício" (crédito
-    sem medição nenhuma). Agora cada cenário divergente é tratado como
-    COLAPSO DE TENSÃO: cada barra monitorada (exceto a faltosa) recebe
-    o SENTINEL pu = limite_inferior, logo CONTRIBUI com profundidade de
-    janela completa (limite_superior - limite_inferior) — o candidato
-    que diverge passa a ser PENALIZADO (S_i <= 0), nunca mais creditado
-    por um cenário que não foi medido. A flag 'convergiu' em
-    detalhe_por_falta registra quais cenários são sentinels de colapso
-    e quais são medições reais.
+    convergentes — ver estudo_afundamento.rodar_estudo): o código anterior
+    entrava com 'pu' vazio no cenário divergente, que então NÃO contribuía
+    para a profundidade — e o candidato divergente ainda assim herdava a
+    profundidade total do baseline como "benefício", crédito concedido sem
+    medição nenhuma. Agora cada cenário divergente é tratado como COLAPSO
+    DE TENSÃO: cada barra monitorada, exceto a faltosa, recebe o SENTINEL
+    pu = limite_inferior e portanto CONTRIBUI com profundidade de janela
+    completa (limite_superior - limite_inferior). O candidato que diverge
+    passa a ser PENALIZADO (S_i <= 0) e nunca mais é creditado por cenário
+    que não foi medido. A flag 'convergiu' em detalhe_por_falta registra
+    quais cenários são sentinelas de colapso e quais são medição real.
 
     CORREÇÃO 2026-10-27 (vigésima segunda sessão) — AGREGAÇÃO POR MÉDIA,
-    NÃO POR MÁXIMO: a agregação por MÁXIMO saturava a métrica quando
-    existe um cenário em que TODA a rede colapsa. Defeito medido no
-    projeto projetos/teste: a falta trifásica sólida na barra da FONTE
-    (B1) levava todas as barras a ~0,001 pu, logo a profundidade de cada
-    barra saturava em ~0,899 pu (o limite da janela) naquele cenário; com
-    o máximo entre cenários, nenhum candidato podia mover a métrica
+    NÃO POR MÁXIMO: agregar por máximo satura a métrica quando existe um
+    cenário em que TODA a rede colapsa. O defeito foi medido no projeto
+    projetos/teste: a falta trifásica sólida na barra da FONTE (B1) levava
+    todas as barras a ~0,001 pu, então a profundidade de cada barra
+    saturava em ~0,899 pu (o limite da janela) naquele cenário. Com o
+    máximo entre cenários, nenhum candidato conseguia mover a métrica
     (todos empatavam) e o benefício máximo de severidade caía para
-    9,4e-05 pu·barra. A MÉDIA entre cenários representa a redução média
-    de profundidade de afundamento ao longo dos cenários simulados —
-    cenário em que nada é mitigável (falta na fonte) contribui com um
-    valor constante para todos os candidatos, em vez de apagar a
-    sensibilidade dos demais.
+    9,4e-05 pu·barra. A MÉDIA entre cenários representa a redução média de
+    profundidade ao longo dos cenários simulados. Cenário em que nada é
+    mitigável, como a falta na fonte, contribui com um valor constante para
+    todos os candidatos, em vez de apagar a sensibilidade dos demais.
 
     A média é tomada sobre o número de cenários COM medição de 'pu'
     para aquela barra — que, desde 2026-10-30, inclui os sentinels de
@@ -88,6 +86,8 @@ def _profundidades_por_barra(resultado, limite_superior):
     for detalhe in resultado.get("detalhe_por_falta", []):
         nome_faltoso = detalhe["bus_falta"].split(".")[0].lower()
         for bus, valores in detalhe.get("pu", {}).items():
+            # Duas exclusões: a barra em falta no cenário e a barra sem
+            # nenhum nó energizado. Nenhuma das duas mede o que o BESS faz.
             if bus.split(".")[0].lower() == nome_faltoso:
                 continue
             if not valores:
@@ -130,18 +130,20 @@ def executar_estudo_completo(caminho_master, barras_candidatas, barras_falta,
     profundidade_baseline = _profundidades_por_barra(resultado_baseline, limite_superior)
 
     # -------- 1b) Escalas físicas de normalização (auditoria/MILP) -------- #
-    # Os divisores dos termos de qualidade e economia NÃO devem ser o
+    # Os divisores dos termos de qualidade e de economia NÃO podem ser o
     # máximo observado entre candidatos (ver MOTIVO no docstring de
-    # otimizacao_milp.py: máximo outlier de 9,4e-05 pu·barra amplificou o
-    # termo de qualidade ~10.000x contra uma economia de R$ 98 mil/ano).
-    # São usados LIMITES SUPERIORES FÍSICOS do que cada critério pode
-    # valer neste estudo, tornando os pesos comparáveis:
+    # otimizacao_milp.py: um máximo atípico de 9,4e-05 pu·barra amplificou
+    # o termo de qualidade ~10.000x contra uma economia de R$ 98 mil/ano).
+    # Usam-se LIMITES SUPERIORES FÍSICOS do que cada critério pode valer
+    # neste estudo, o que torna os pesos comparáveis entre si:
     #   qualidade: profundidade total removível = janela de sag x barras.
     #   economia:  arbitragem teórica máxima do caso base.
     escala_qualidade = float(
         max(limite_superior - limite_inferior, 0.0)
         * max(len(barras_em_sag_baseline), 1))
 
+    # A escala de economia exige tarifa. Sem ela o MILP cai no fallback por
+    # máximo observado, que é caminho de exceção (ver otimizacao_milp.py).
     escala_economia = None
     if tarifa is not None:
         _status("Calculando o potencial teórico de arbitragem (caso base)...")
@@ -158,6 +160,9 @@ def executar_estudo_completo(caminho_master, barras_candidatas, barras_falta,
             (float(p.get("kw_comprada", 0.0) or 0.0)
              for p in economia_base.get("perfil_base", [])),
             default=0.0)
+        # Potencial teórico da arbitragem: todo o excedente de custo da ponta
+        # sobre a fora ponta, sobre a demanda máxima do caso base, pelo
+        # número de horas de ponta e pela extrapolação anual.
         spread = float(tarifa.tarifa_ponta_kwh) - float(tarifa.tarifa_fora_ponta_kwh)
         duracao_ponta = max(horario_ponta_fim - horario_ponta_inicio, 0)
         if demanda_max_base > 0 and spread > 0 and duracao_ponta > 0:
@@ -166,6 +171,8 @@ def executar_estudo_completo(caminho_master, barras_candidatas, barras_falta,
                 * dias_equivalentes_mes * 12)
 
     # -------- 2) Varredura exaustiva barra x catálogo -------- #
+    # N x M combinações, cada uma exigindo um estudo de afundamento completo.
+    # O custo computacional cresce com o produto, não com a soma.
     candidatos = []
     total_passos = len(barras_candidatas) * len(catalogo_bess)
     passo_atual = 0
@@ -182,6 +189,8 @@ def executar_estudo_completo(caminho_master, barras_candidatas, barras_falta,
                 limite_inferior=limite_inferior, limite_superior=limite_superior)
 
             barras_resolvidas = barras_em_sag_baseline - resultado["barras_em_sag_geral"]
+            # Métrica binária: quantas barras saíram do sag. Fica registrada
+            # por compatibilidade e para leitura direta do resultado.
             beneficio = len(barras_resolvidas)
 
             # Benefício de SEVERIDADE (métrica contínua, pu·barra):
@@ -193,13 +202,12 @@ def executar_estudo_completo(caminho_master, barras_candidatas, barras_falta,
                 profundidade_baseline.get(b, 0.0) - profundidade_candidato.get(b, 0.0)
                 for b in set(profundidade_baseline) | set(profundidade_candidato))
 
-            # Economia estimada DESTE candidato (arbitragem tarifária).
-            # Necessária para o critério multi-critério do MILP: sem ela,
-            # candidatos empatados em qualidade (inclusive com todos os
-            # benefícios nulos, caso diagnosticado) não produzem seleção.
-            # callback_status=None evita poluir o painel de progresso
-            # com 48 pares de mensagens; o tick de progresso abaixo já
-            # cobre um passo por candidato (após sag + economia).
+            # Economia estimada DESTE candidato (arbitragem tarifária). É o
+            # que permite ao MILP desempatar candidatos de mesma qualidade —
+            # inclusive no caso diagnosticado em que todos os benefícios são
+            # nulos. callback_status=None evita inundar o painel de progresso
+            # com 48 pares de mensagens; o tick abaixo já cobre um passo por
+            # candidato (após sag mais economia).
             economia_candidato = None
             beneficio_econ_anual = 0.0
             if tarifa is not None:
@@ -255,6 +263,9 @@ def executar_estudo_completo(caminho_master, barras_candidatas, barras_falta,
         escala_economia=escala_economia)
 
     # -------- 4) Verificação conjunta (benefício real) -------- #
+    # O MILP somou benefícios de candidatos que foram medidos
+    # isoladamente; aqui a combinação vencedora é simulada junta, e o
+    # número que sai daqui é o benefício de fato.
     resultado_conjunto = None
     beneficio_conjunto_real = 0
     analise_reativo = None

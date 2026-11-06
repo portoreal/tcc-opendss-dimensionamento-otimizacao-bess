@@ -1,34 +1,38 @@
 __author__ = 'Pedro Henrique Sousa Pinheiro'
-"""View: Módulo de Otimização de Alocação de BESS (PLIM), integrando o
-motor de afundamento de tensão, o catálogo de BESS, o solver MILP e a
-análise de economia de energia (arbitragem tarifária ponta/fora ponta).
-Executa em thread separada para não travar a interface, com barra de
-progresso e relatório final navegável.
+"""Interface do Módulo de Otimização de Alocação de BESS (PLIM).
 
-MUDANÇA DE MOTOR (registrada por transparência metodológica):
-Após a migração de estudo_afundamento.py de win32com/COM para a
-biblioteca DSS-Python (projeto DSS-Extensions), a thread de execução do
-estudo não precisa mais inicializar/finalizar o contexto COM
-(pythoncom.CoInitialize()/CoUninitialize()).
+Este módulo costura quatro peças que existem separadas: o motor de
+afundamento de tensão, o catálogo de BESS, o solver MILP e a análise de
+economia de energia (arbitragem tarifária entre ponta e fora ponta). A
+otimização roda em thread separada, com barra de progresso e relatório
+final navegável, porque uma execução completa leva minutos — na thread
+principal, a janela ficaria branca até o resultado.
 
-MEMORIAL DE CÁLCULO: as abas "Memorial de Cálculo" e "Economia de
-Energia" exibem, de forma auditável, os valores que fundamentaram os
-resultados agregados de cada análise.
+MUDANÇA DE MOTOR (registro de transparência metodológica): depois que
+estudo_afundamento.py migrou de win32com/COM para a biblioteca DSS-Python
+(projeto DSS-Extensions), a thread de execução não precisa mais abrir e
+fechar o contexto COM (pythoncom.CoInitialize()/CoUninitialize()).
 
-MIGRAÇÃO DE INTERFACE (Tkinter -> PySide6/Qt): a camada visual deste
-módulo foi reescrita em Qt (QDialog/QTabWidget/QTreeWidget), mantendo
-inalterados os textos, as validações, as chaves do dicionário de
-configuração e o contrato de retorno das funções de domínio. Consequência
-direta: `abrir_dialogo_configuracao()` não recebe mais um widget Tk como
-`parent` - passou a aceitar um `parent` QWidget opcional. O laço de
-bombeamento de eventos da fila da thread de execução deixou de usar
-`parent.after()` (Tk) e passou a usar `QTimer.singleShot()` sobre o laço
-de eventos do Qt, que precisa estar ativo para que o estudo progrida.
+MEMORIAL DE CÁLCULO: as abas "Memorial de Cálculo" e "Economia de Energia"
+mostram, de forma auditável, os valores que sustentaram os resultados
+agregados de cada análise. Sem elas, o número final seria uma caixa-preta
+— justamente o que a banca questiona.
+
+MIGRAÇÃO DE INTERFACE (Tkinter -> PySide6/Qt): a camada visual foi
+reescrita em Qt (QDialog/QTabWidget/QTreeWidget). Ficaram inalterados os
+textos, as validações, as chaves do dicionário de configuração e o contrato
+de retorno das funções de domínio. A consequência direta é que
+`abrir_dialogo_configuracao()` já não recebe um widget Tk como `parent`, e
+sim um QWidget opcional. O bombeamento da fila da thread de execução
+também mudou de dono: era `parent.after()` (Tk) e agora é
+`QTimer.singleShot()` sobre o laço do Qt — que precisa estar ativo para o
+estudo progrida, o que explica o cuidado com o laço nos pontos abaixo.
 """
 
-# O backend do matplotlib PRECISA ser definido antes de qualquer import
-# que arraste o pyplot para este processo (os módulos de domínio não o
-# importam, mas a fixação antecipada elimina a dependência da ordem).
+# O backend do matplotlib precisa ser definido antes de qualquer import que
+# arraste o pyplot para este processo. Os módulos de domínio não o importam
+# hoje, mas fixar a ordem aqui elimina a dependência de quem importa o quê
+# primeiro - que é o tipo de acoplamento que quebra meses depois.
 import os
 
 os.environ.setdefault("MPLBACKEND", "QtAgg")
@@ -114,11 +118,13 @@ _captura_excecoes_instalada = False
 _erro_ja_exibido = False
 _raiz_projeto_log = [None]
 
-# Referências vivas dos ResultadosDialog em exibição: um QDialog top-level
-# (parent=None) criado em variável local de um callback é coletado pelo GC
-# quando o callback retorna — a janela "pisca e fecha" (causa raiz
-# comprovada por reprodução offscreen; ver registro de depuração). A
-# referência é solta no `finished` do diálogo.
+# Referências vivas dos ResultadosDialog em exibição.
+#
+# Um QDialog top-level (parent=None) guardado apenas em variável local de
+# um callback é coletado pelo coletor de lixo assim que o callback
+# retorna: a janela "pisca e fecha". A causa raiz foi comprovada por
+# reprodução offscreen, e a lista abaixo é a correção. A referência é
+# solta no sinal `finished` do diálogo.
 _dialogos_resultado = []
 
 
@@ -189,9 +195,10 @@ def instalar_captura_excecoes(raiz_projeto: str) -> None:
             f"thread '{argumentos.thread.name}'"
             if argumentos.thread is not None else "thread (desconhecida)",
             argumentos.exc_type, argumentos.exc_value, argumentos.exc_traceback)
-        # SEM QMessageBox aqui: erros da thread do estudo já são reportados
-        # pela própria fila de eventos (resultado_container['erro'] →
-        # QMessageBox em processar_fila); um modal aqui duplicaria o aviso.
+        # Sem QMessageBox aqui: erros da thread do estudo já são reportados
+        # pela fila de eventos (resultado_container['erro'] → QMessageBox em
+        # processar_fila). Um modal neste ponto duplicaria o aviso, e o
+        # usuário fecharia o mesmo erro duas vezes.
         hook_threads_original(argumentos)
 
     threading.excepthook = hook_threads
@@ -334,13 +341,20 @@ def _rotulo_dica(texto: str) -> QLabel:
 
 
 def _lista_multiselecao(nomes: list[str], altura_linhas: int = 6) -> QListWidget:
-    """ListBox Tk (selectmode="extended") -> QListWidget com seleção múltipla."""
+    """Monta uma lista de seleção múltipla, equivalente ao ListBox do Tk.
+
+    A altura é calculada a partir da altura real da fonte vezes o número de
+    linhas desejado, mais uma folga. Fixar altura em pixels daria uma lista
+    cortada ou sobrando, dependendo do DPI do monitor.
+    """
     lista = QListWidget()
     lista.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
     lista.setUniformItemSizes(True)
     for nome in nomes:
         lista.addItem(QListWidgetItem(nome))
-    # Equivalente ao `lista.selection_set(0, "end")` do Tk original.
+    # Equivalente ao `lista.selection_set(0, "end")` do Tk original: os
+    # itens já nascem todos selecionados, porque o caso comum é validar
+    # todos os sistemas, não escolher um a um.
     if lista.count():
         lista.setCurrentRow(0)
         for indice in range(lista.count()):
@@ -552,12 +566,14 @@ class ConfiguracaoEstudoDialog(QDialog):
 
     # ------------------------------------------------------------------ #
     def _abrir_curvas_semanais(self) -> None:
+        """Abre o editor de curvas semanais por cima deste diálogo."""
         from .curvas_semanais_ui import CurvasSemanaisDialog
         dialogo = CurvasSemanaisDialog(self, self.projeto, self.rede)
         dialogo.exec()
 
     # ------------------------------------------------------------------ #
     def _ao_selecionar_tarifa(self, indice=None) -> None:
+        """Preenche os campos de tarifa com os valores do catálogo escolhido."""
         rotulo = self.combo_tarifa.currentText()
         chave = self._mapa_tarifa_rotulo_para_chave.get(rotulo)
         if not chave:
@@ -569,10 +585,12 @@ class ConfiguracaoEstudoDialog(QDialog):
         self.campo_tarifa_fora.setText(f"{tarifa.tarifa_fora_ponta_kwh:.5f}")
 
     def _alternar_campos_economia(self) -> None:
+        """Habilita o bloco de economia apenas quando a caixa está marcada."""
         self.grupo_economia.setEnabled(self.caixa_habilitar_economia.isChecked())
 
     # ------------------------------------------------------------------ #
     def _confirmar(self) -> None:
+        """Valida a seleção do usuário e fecha devolvendo a configuração."""
         barras_candidatas = [item.text() for item in self.lista_candidatas.selectedItems()]
         barras_falta = [item.text() for item in self.lista_falta.selectedItems()]
 
@@ -683,6 +701,11 @@ class ProgressoDialog(QDialog):
         layout.addStretch(1)
 
     def atualizar(self, percentual, status=None) -> None:
+        """Atualiza barra, percentual e mensagem de status de uma vez.
+
+        O percentual é limitado a 0..100: o cálculo de progresso vem da
+        thread e um arredondamento pode devolver 100,4 no último passo.
+        """
         valor = int(round(percentual))
         self.barra.setValue(max(0, min(100, valor)))
         self.label_percentual.setText(f"{percentual:.0f}%")
@@ -691,7 +714,9 @@ class ProgressoDialog(QDialog):
 
     def closeEvent(self, evento) -> None:
         # Equivalente ao `protocol("WM_DELETE_WINDOW", lambda: None)` do Tk:
-        # o progresso só some quando o estudo termina.
+        # o "X" da janela de progresso é ignorado. Fechá-la no meio deixaria
+        # o estudo rodando sem nenhuma indicação de que roda - e sem barra
+        # para acompanhar. Fechar só acontece pelo código, ao concluir.
         evento.ignore()
 
     def keyPressEvent(self, evento) -> None:
@@ -1358,21 +1383,25 @@ def abrir_dialogo_configuracao(projeto: Projeto, rede: RedeEletrica,
                                caminho_master: str, parent=None):
     """Ponto de entrada do Módulo de Otimização de Alocação de BESS.
 
-    TRANSPARÊNCIA (migração Tkinter -> PySide6): a assinatura anterior era
+    Condição de uso que precisa ficar clara: esta função exige um laço de
+    eventos Qt ativo. A configuração é resolvida de forma modal via
+    ``exec()``, mas o avanço do progresso e a abertura dos resultados
+    dependem do laço do chamador - chamá-la de um processo sem laço deixa a
+    janela de progresso parada.
+
+    Na migração Tkinter -> PySide6 a assinatura era
     ``abrir_dialogo_configuracao(parent_tk, projeto, rede, caminho_master)``.
-    O ``parent`` Tk deixou de existir; no lugar há um ``parent`` QWidget
-    opcional (usado apenas como ancestral dos diálogos). O bombeamento da
-    fila de eventos da thread de execução passou de ``parent.after(100, ...)``
-    para ``QTimer.singleShot(100, ...)``, portanto ESTA FUNÇÃO REQUER UM LAÇO
-    DE EVENTOS Qt ATIVO (a configuração é resolvida de forma modal via
-    ``exec()``; o progresso e os resultados dependem do laço do chamador).
+    O ``parent`` Tk não existe mais; no lugar há um ``parent`` QWidget
+    opcional, usado apenas como ancestral dos diálogos. O bombeamento da
+    fila da thread também mudou: era ``parent.after(100, ...)`` e agora é
+    ``QTimer.singleShot(100, ...)``.
     """
 
     config_dialog = ConfiguracaoEstudoDialog(parent, projeto, rede)
     config_dialog.exec()
     config = config_dialog.resultado
     if config is None:
-        return  # usuário cancelou
+        return  # usuário cancelou a configuração: nada a executar
 
     app = QApplication.instance()
 
@@ -1389,9 +1418,15 @@ def abrir_dialogo_configuracao(projeto: Projeto, rede: RedeEletrica,
         fila_eventos.put(("status", None, mensagem))
 
     def tarefa_em_thread():
-        # O estudo roda sobre uma exportação TEMPORÁRIA da rede (rede.json é
-        # a fonte da verdade): assim as curvas padrão do dia escolhido entram
-        # na simulação sem tocar em nenhum artefato .dss do projeto.
+        """Corpo do estudo, executado fora da thread da interface.
+
+        O estudo roda sobre uma exportação temporária da rede. O rede.json é
+        a fonte da verdade; gerar os .dss em pasta temporária permite que as
+        curvas padrão do dia escolhido entrem na simulação sem tocar em
+        nenhum artefato .dss do projeto. Um erro aqui é guardado no
+        container, e não levantado: quem o transforma em mensagem para o
+        usuário é o laço principal, no passo "concluido".
+        """
         pasta_temp = None
         try:
             pasta_temp = tempfile.mkdtemp(prefix="otim_bess_")
@@ -1450,11 +1485,11 @@ def abrir_dialogo_configuracao(projeto: Projeto, rede: RedeEletrica,
                         dialogo = ResultadosDialog(
                             parent, projeto, rede, resultado_container["valor"])
                     except Exception:
-                        # Sem este tratamento, uma exceção na construção do
-                        # relatório matava o processo em silêncio (o módulo
-                        # roda em subprocesso sem captura de saída) — o
-                        # usuário via a janela "piscar e fechar" sem
-                        # diagnóstico. Registrou, avisou, o processo segue.
+                        # Sem este tratamento, uma exceção ao montar o
+                        # relatório matava o processo em silêncio: o módulo
+                        # roda em subprocesso sem captura de saída, e o
+                        # usuário via só a janela "piscar e fechar". Aqui se
+                        # registra a exceção, avisa e segue vivo.
                         _, caminho_log = _registrar_excecao(
                             "construção do ResultadosDialog",
                             *sys.exc_info())
@@ -1465,17 +1500,19 @@ def abrir_dialogo_configuracao(projeto: Projeto, rede: RedeEletrica,
                                if caminho_log else ""))
                         return
 
-                    # CAUSA RAIZ do "pisca e fecha" (comprovada por
-                    # reprodução offscreen): diálogo top-level (parent=None)
-                    # criado em variável LOCAL de um callback — ao retornar,
-                    # o GC coletava o wrapper e destruía a janela. A
-                    # referência abaixo mantém a janela viva até o fechamento.
+                    # Causa raiz do "pisca e fecha", comprovada por
+                    # reprodução offscreen: o diálogo top-level (parent=None)
+                    # nasce em variável local do callback e, ao retornar, o
+                    # coletor de lixo leva o wrapper e destrói a janela. A
+                    # referência abaixo a mantém viva até o fechamento.
                     _dialogos_resultado.append(dialogo)
                     dialogo.finished.connect(
                         lambda *_: _remover_dialogo_resultado(dialogo))
                     dialogo.show()
                     return
         except queue.Empty:
+            # Fila vazia é o caso normal: a thread ainda não produziu nada
+            # neste intervalo. O laço apenas reagenda.
             pass
 
         QTimer.singleShot(_INTERVALO_FILA_MS, processar_fila)

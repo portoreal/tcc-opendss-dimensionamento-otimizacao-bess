@@ -1,43 +1,45 @@
 __author__ = 'Pedro Henrique Sousa Pinheiro'
 """Módulo lançador do Editor de Rede Elétrica — PySide6.
 
-TRANSPARÊNCIA TÉCNICA (migração Tkinter → PySide6):
+Este arquivo não desenha o editor: ele monta a janela em volta do widget
+que o `editor_ui.py` constrói. Serve tanto para uso pela linha de comando
+quanto para o menu principal abrir o editor.
 
-- A versão Tkinter criava um `tk.Toplevel(parent)` (ou `tk.Tk()` sem parent) e
-  instanciava `EditorRede(janela, projeto=projeto)`, entrando em `mainloop()`
-  apenas quando não havia parent. Aqui:
+O que mudou na migração Tkinter -> PySide6:
 
-    * `abrir_editor(projeto=None)` garante a QApplication singleton
+    * `abrir_editor(projeto=None)` garante a QApplication única do processo
       (`QApplication.instance() or QApplication(sys.argv)`), cria uma
-      `QMainWindow` com o MESMO título do original
-      ("Editor de Redes Elétricas - TCC OpenDSS", acrescido de
-      " | Projeto: {nome}" quando há projeto) e o mesmo tamanho (1200x720).
+      `QMainWindow` com o mesmo título de antes
+      ("Editor de Redes Elétricas - TCC OpenDSS", mais
+      " | Projeto: {nome}" quando há projeto) e o mesmo tamanho, 1200x720.
 
-    * O conteúdo do editor NÃO é reimplementado neste arquivo: a
-      `QMainWindow` embute `EditorRede` como widget central, construído por
-      outro módulo (`editor_ui.py`) na assinatura Qt
+    * O conteúdo do editor não é reimplementado aqui: a `QMainWindow`
+      embute `EditorRede` como widget central, construído por
+      `editor_ui.py` na assinatura Qt
       `EditorRede(rede=None, projeto=projeto)`.
 
-    * O menu "Arquivo" pertence à `QMainWindow` (barra de menus), não ao
-      widget central; por isso `configurar_menu(qmainwindow)` é chamado
-      logo após criar o widget central.
+    * O menu "Arquivo" pertence à `QMainWindow` (a barra de menus), não ao
+      widget central. Por isso `configurar_menu(qmainwindow)` é chamado
+      logo depois de o widget central existir: quem sabe montar o menu é o
+      editor, mas quem o hospeda é a janela.
 
-    * O modal/modalidade e o `mainloop()` do Tk não têm equivalente direto:
-      `show()` exibe a janela e `app.exec()` roda o laço de eventos.
+    * O `mainloop()` do Tk não tem equivalente direto: `show()` exibe a
+      janela e `app.exec()` roda o laço de eventos.
 
-- DIFERENÇA DE COMPORTAMENTO DELIBERADA: no original, quando havia
-  `parent`, a janela era um `Toplevel` e NÃO se chamava `mainloop()` (o laço
-  já estava rodando na aplicação hospedeira). Aqui `show()` sempre exibe a
-  janela, mas `app.exec()` só é chamado quando esta função criou a
-  QApplication — evita reentrância de laço de eventos quando o editor é
-  aberto a partir de uma janela principal já existente.
+DIFERENÇA DE COMPORTAMENTO DELIBERADA: antes, quando havia `parent`, a
+janela era um `Toplevel` e o `mainloop()` não era chamado - o laço já
+estava rodando na aplicação hospedeira. Aqui `show()` sempre exibe a janela,
+mas `app.exec()` só roda quando foi esta função que criou a QApplication.
+Sem essa distinção, abrir o editor a partir do menu aninharia um laço de
+eventos dentro do outro.
 
-- Contrato de linha de comando preservado para uso pelo menu do sistema:
+Linha de comando, usada pelo menu do sistema:
 
       [sys.executable, "-m", "bibliotecas.editor_rede", "--projeto", "<caminho>"]
 
-  O caminho é resolvido por `projeto.abrir_projeto_por_caminho` (domínio
-  intocado). Sem `--projeto`, o editor abre sem projeto.
+O caminho é resolvido por `projeto.abrir_projeto_por_caminho`. Sem
+`--projeto`, o editor abre sem projeto - útil para desenhar uma rede do
+zero.
 """
 
 import argparse
@@ -50,7 +52,12 @@ from .projeto import Projeto, abrir_projeto_por_caminho
 
 
 def _garantir_app() -> tuple:
-    """Garante uma QApplication. Retorna (app, criada_agora)."""
+    """Garante uma QApplication e informa se esta chamada a criou.
+
+    O segundo valor da tupla é o que decide quem roda o laço de eventos:
+    quem cria a aplicação é dono do laço; quem só a encontra, devolve o
+    controle para quem já estava rodando.
+    """
     app = QApplication.instance()
     if app is None:
         return QApplication(sys.argv), True
@@ -63,24 +70,25 @@ def abrir_editor(parent=None, projeto: Projeto = None):
     Parameters
     ----------
     parent : QWidget, opcional
-        Janela principal já existente (usada apenas como referência de
-        empilhamento; a QMainWindow é independente).
+        Janela principal já existente, usada apenas como referência de
+        empilhamento. A QMainWindow é independente dela.
     projeto : Projeto, opcional
-        Projeto ativo. Se informado, o editor salva/exporta diretamente
-        na pasta 'rede' do projeto, e passa a oferecer modelos
-        dimensionados salvos ao criar elementos.
+        Projeto ativo. Se informado, o editor salva e exporta na pasta
+        'rede' do projeto e passa a oferecer os modelos dimensionados
+        salvos na hora de criar elementos.
 
     Returns
     -------
     QMainWindow
-        A janela criada (já visível).
+        A janela criada, já visível.
     """
     app, criada_agora = _garantir_app()
 
     janela = QMainWindow(parent)
     if parent is not None:
-        # Mesma ideia do tk.Toplevel(parent): janela independente, mas
-        # transiente em relação à janela principal.
+        # Mesma ideia do tk.Toplevel(parent): janela independente, porém
+        # transiente em relação à principal. NonModal (0) porque o editor
+        # não deve bloquear o menu enquanto está aberto.
         janela.setWindowModality(0)  # Qt.NonModal == 0
 
     titulo = "Editor de Redes Elétricas - TCC OpenDSS"
@@ -93,12 +101,15 @@ def abrir_editor(parent=None, projeto: Projeto = None):
     janela.setCentralWidget(editor)
 
     # O menu "Arquivo" é configurado na QMainWindow (menuBar), não no widget
-    # central — o EditorRede expõe essa função justamente para isso.
+    # central. O EditorRede expõe essa função justamente para que a janela
+    # hospedeira a chame depois de ter o widget nas mãos.
     if hasattr(editor, "configurar_menu"):
         editor.configurar_menu(janela)
 
     janela.show()
 
+    # Só assume o laço de eventos se foi esta chamada que criou a
+    # aplicação e não há janela hospedeira rodando um laço.
     if criada_agora and parent is None:
         app.exec()
 
@@ -106,6 +117,11 @@ def abrir_editor(parent=None, projeto: Projeto = None):
 
 
 def main(argv=None):
+    """Entrada de linha de comando: abre o editor com o projeto informado.
+
+    Sem ``--projeto``, abre vazio. Caminho inválido vira mensagem no stderr
+    e código 1 - quem chama é outro processo e precisa saber da falha.
+    """
     parser = argparse.ArgumentParser(
         prog="bibliotecas.editor_rede",
         description="Abre o Editor de Rede Elétrica do TCC OpenDSS.",

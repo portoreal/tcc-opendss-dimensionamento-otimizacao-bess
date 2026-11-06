@@ -1,16 +1,20 @@
 __author__ = 'Pedro Henrique Sousa Pinheiro'
 """Editor gráfico de Curvas Características (LoadShape do OpenDSS) — PySide6.
 
-TRANSPARÊNCIA TÉCNICA (migração Tkinter → PySide6):
+Uma LoadShape do OpenDSS é a curva que diz quanto de carga (ou de geração)
+existe em cada instante: cada ponto é um par tempo-valor, e o valor é um
+percentual da potência nominal do elemento. É o que transforma uma carga de
+100 kW fixos em uma carga que sobe e desce ao longo do dia.
 
-- Este módulo era um `tk.Toplevel` modal. Agora é um `QDialog` modal
-  (`setModal(True)` + `exec()`), preservando exatamente o MESMO contrato
-  público de `abrir_editor_curva(parent, pasta_curvas, natureza, modo,
-  nome_inicial=None)`, que continua retornando o nome da curva salva ou
-  None se o usuário cancelar.
+O que mudou na migração Tkinter -> PySide6:
 
-- Mapeamento de widgets aplicado (equivalência 1:1, sem mudança de
-  comportamento):
+- Era um `tk.Toplevel` modal; agora é um `QDialog` modal
+  (`setModal(True)` + `exec()`), com o mesmo contrato público:
+  `abrir_editor_curva(parent, pasta_curvas, natureza, modo,
+  nome_inicial=None)`, que devolve o nome da curva salva, ou None quando o
+  usuário cancela.
+
+- Widgets trocados um a um, sem mudança de comportamento:
     tk.Toplevel          → QDialog
     ttk.Combobox (readonly) → QComboBox (setEditable(False))
     tk.Listbox           → QListWidget (selectionMode = SingleSelection)
@@ -19,37 +23,38 @@ TRANSPARÊNCIA TÉCNICA (migração Tkinter → PySide6):
     tk.Label/Tk.Entry    → QLabel/QLineEdit
     messagebox.showwarning/showerror/showinfo → mostrar_aviso_win11
     messagebox.askyesno  → confirmar_win11
-    FigureCanvasTkAgg    → FigureCanvasQTAgg (mesma Figure/Axes criados aqui;
-                           mpl_connect("button_press_event") alimenta o mesmo
-                           _ao_clicar_grafico, que não foi alterado)
+    FigureCanvasTkAgg    → FigureCanvasQTAgg (a Figure/Axes continuam sendo
+                           criados aqui; mpl_connect("button_press_event")
+                           alimenta o mesmo _ao_clicar_grafico, inalterado)
 
-- Matemática preservada VERBATIM: HORAS_POR_UNIDADE, OFFSET_UNIDADE,
+- A matemática não foi tocada: HORAS_POR_UNIDADE, OFFSET_UNIDADE,
   CONFIG_MODO, unidade_para_horas(), horas_para_unidade(), o snap do clique,
   a tolerância de remoção, a ordenação por hora e todas as conversões
-  unidade↔horas. Nenhum valor de constante foi alterado.
+  unidade↔horas seguem com os mesmos valores.
 
-- `os.environ.setdefault("MPLBACKEND", "QtAgg")` é aplicado ANTES de
-  importar o matplotlib (e antes de qualquer figura ser criada), para que o
-  backend interativo seja o do Qt e não o do Tk.
+- `os.environ.setdefault("MPLBACKEND", "QtAgg")` roda antes de importar o
+  matplotlib e antes de qualquer figura existir, para o backend interativo
+  ser o do Qt e não o do Tk.
 
-Suporta três modos, correspondentes às propriedades do OpenDSS:
+Três modos, correspondentes às propriedades do OpenDSS:
     - daily  : perfil ao longo de 24 horas
     - duty   : ciclo curto, com duração total configurável (em minutos)
     - yearly : perfil sazonal, representado por dia do ano (1 a 365)
 
-Os pontos podem ser definidos de duas formas complementares:
+Os pontos entram por dois caminhos que se completam:
     1) Clicando com o mouse no gráfico (grade principal + secundária).
     2) Digitando os valores exatos em campos numéricos (QDoubleSpinBox) e
        clicando em "Adicionar / Atualizar ponto".
 
-O snap (arredondamento) de cada clique no gráfico é configurado em
-CONFIG_MODO, individualmente por modo (ex.: 5 minutos para 'daily').
+O snap — o arredondamento de cada clique — fica em CONFIG_MODO, ajustado
+modo a modo (5 minutos para 'daily', por exemplo).
 """
 
 import os
 
-# O backend do matplotlib precisa ser definido ANTES do import de pyplot/Figure
-# para que o canvas interativo seja o do Qt (FigureCanvasQTAgg).
+# O backend do matplotlib precisa ser definido ANTES de importar
+# pyplot/Figure, senão o canvas interativo nasce no toolkit errado e a
+# figura aparece em uma janela separada do diálogo.
 os.environ.setdefault("MPLBACKEND", "QtAgg")
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
@@ -75,6 +80,10 @@ from .ui_win11 import confirmar_win11, mostrar_aviso_win11
 # ============================================================
 
 CONFIG_MODO = {
+    # Cada modo tem o seu próprio conjunto de marcações: unidade do eixo X,
+    # snap do clique, passo do campo numérico, tolerância para remover um
+    # ponto e casas decimais na exibição. Manter tudo em um dicionário evita
+    # espalhar "if modo == 'daily'" pelo código inteiro.
     "daily": {
         "rotulo": "Diária (daily) - 24 horas",
         "eixo_x": "Hora do dia (formato decimal, ex.: 13.5 = 13h30)",
@@ -114,23 +123,31 @@ CONFIG_MODO = {
     },
 }
 
-# Fator de conversão entre a unidade exibida no eixo X e HORAS (formato
-# sempre usado internamente para os pontos, compatível com a propriedade
-# 'hour' de um Loadshape do OpenDSS).
+# Fator de conversão entre a unidade exibida no eixo X e horas. O
+# armazenamento interno é sempre em horas, porque é o que a propriedade
+# 'hour' de uma LoadShape do OpenDSS espera; a unidade do eixo é só a forma
+# de mostrar ao usuário.
 HORAS_POR_UNIDADE = {"daily": 1.0, "duty": 1.0 / 60.0, "yearly": 24.0}
 OFFSET_UNIDADE = {"daily": 0.0, "duty": 0.0, "yearly": 1.0}  # "dia 1" = hora 0
 
 
 def unidade_para_horas(modo: str, valor: float) -> float:
+    """Converte a coordenada X do gráfico para horas (formato interno)."""
     return (valor - OFFSET_UNIDADE[modo]) * HORAS_POR_UNIDADE[modo]
 
 
 def horas_para_unidade(modo: str, horas: float) -> float:
+    """Converte horas no valor que o eixo X do modo exibe."""
     return horas / HORAS_POR_UNIDADE[modo] + OFFSET_UNIDADE[modo]
 
 
 class EditorCurvaDialog(QDialog):
-    """Diálogo modal de edição/criação de uma Curva Característica."""
+    """Diálogo modal de edição e criação de uma curva característica.
+
+    Modal porque a janela que o chamou espera o nome da curva para seguir
+    adiante; enquanto o diálogo está aberto, não há o que fazer naquela
+    janela.
+    """
 
     def __init__(self, parent, pasta_curvas: str, natureza: str, modo: str,
                  nome_inicial: str = None):
@@ -159,6 +176,7 @@ class EditorCurvaDialog(QDialog):
 
     # ------------------------------------------------------------------ #
     def _montar_widgets(self):
+        """Monta a janela de cima para baixo: seleção, gráfico, painel manual, rodapé."""
         layout_raiz = QVBoxLayout(self)
 
         # ---------------- topo: curva salva / nova / excluir / nome ----
@@ -261,6 +279,11 @@ class EditorCurvaDialog(QDialog):
 
     # ------------------------------------------------------------------ #
     def _montar_painel_manual(self, container):
+        """Monta a seção numérica, para quem prefere digitar em vez de clicar.
+
+        Os saltos do mouse são arredondados pelo snap; digitar aqui é o
+        caminho para chegar a um valor exato que o snap não permitiria.
+        """
         config = CONFIG_MODO[self.modo]
 
         grupo = QGroupBox("Adicionar/editar ponto manualmente (via teclado)")
@@ -311,6 +334,12 @@ class EditorCurvaDialog(QDialog):
 
     # ------------------------------------------------------------------ #
     def _x_max_atual(self) -> float:
+        """Limite superior do eixo X para o modo em uso.
+
+        Nos modos daily e yearly é fixo (24 h e 365 dias). No modo duty vem
+        da duração configurada pelo usuário, e por isso precisa ser lido a
+        cada consulta: a duração muda enquanto o diálogo está aberto.
+        """
         config = CONFIG_MODO[self.modo]
         if config["permite_duracao_customizada"]:
             try:
@@ -320,6 +349,11 @@ class EditorCurvaDialog(QDialog):
         return config["x_max_fixo"]
 
     def _ao_mudar_duracao(self):
+        """Reajusta o eixo e avisa sobre pontos que passaram da nova duração.
+
+        Os pontos fora do intervalo continuam salvos de propósito: encolher
+        a duração para olhar de perto um trecho não deve apagar trabalho.
+        """
         try:
             nova_duracao = float(self.spin_duracao.value())
         except (TypeError, ValueError, RuntimeError):
@@ -348,6 +382,7 @@ class EditorCurvaDialog(QDialog):
 
     # ------------------------------------------------------------------ #
     def _atualizar_lista_combobox(self):
+        """Recarrega a lista de curvas salvas do modo, mantendo a seleção atual."""
         nomes = [c.nome for c in listar_curvas_por_modo(self.pasta_curvas, self.modo)]
         selecionado = self.combo_curvas.currentText() if hasattr(
             self, "combo_curvas") else ""
@@ -419,7 +454,15 @@ class EditorCurvaDialog(QDialog):
 
     # ------------------------------------------------------------------ #
     def _ao_clicar_grafico(self, event):
+        """Trata um clique no gráfico.
+
+        Botão esquerdo adiciona ou move um ponto, já arredondado pelo snap
+        do modo; botão direito remove o ponto mais próximo, desde que dentro
+        da tolerância — assim um clique perdido no vazio não apaga nada.
+        """
         if event.xdata is None or event.ydata is None:
+            # Clique fora da área de plotagem: o matplotlib devolve None no
+            # lugar de coordenadas.
             return
 
         config = CONFIG_MODO[self.modo]
@@ -453,6 +496,7 @@ class EditorCurvaDialog(QDialog):
         self._redesenhar()
 
     def _ao_selecionar_ponto_lista(self):
+        """Leva o ponto escolhido na lista para os campos numéricos."""
         selecionados = self.lista_pontos.selectedItems()
         if not selecionados:
             return
@@ -471,6 +515,7 @@ class EditorCurvaDialog(QDialog):
         self.spin_percentual.setValue(percentual)
 
     def _adicionar_ou_atualizar_ponto_manual(self):
+        """Aplica os valores digitados, substituindo o ponto em edição."""
         config = CONFIG_MODO[self.modo]
 
         try:
@@ -504,6 +549,7 @@ class EditorCurvaDialog(QDialog):
         self._redesenhar()
 
     def _remover_ponto_selecionado(self):
+        """Remove da curva os pontos selecionados na lista (lista, não gráfico)."""
         selecionados = self.lista_pontos.selectedItems()
         if not selecionados:
             return
@@ -521,18 +567,21 @@ class EditorCurvaDialog(QDialog):
         self._redesenhar()
 
     def _limpar_pontos(self):
+        """Zera a curva inteira, sem confirmação: o Cancelar ainda desfaz tudo."""
         self.pontos = []
         self._hora_em_edicao = None
         self._redesenhar()
 
     # ------------------------------------------------------------------ #
     def _pontos_em_unidade(self):
+        """Devolve os pontos em coordenadas do eixo, ordenados por tempo."""
         pontos_ordenados = sorted(self.pontos, key=lambda p: p[0])
         xs = [horas_para_unidade(self.modo, h) for h, _ in pontos_ordenados]
         ys = [p for _, p in pontos_ordenados]
         return xs, ys
 
     def _redesenhar(self):
+        """Redesenha o gráfico e recria a lista de pontos a partir do estado atual."""
         self.eixo.clear()
         config = CONFIG_MODO[self.modo]
 
@@ -580,6 +629,7 @@ class EditorCurvaDialog(QDialog):
 
     # ------------------------------------------------------------------ #
     def _salvar_e_confirmar(self):
+        """Valida nome e quantidade de pontos antes de gravar a curva."""
         if len(self.pontos) < 2:
             mostrar_aviso_win11(
                 "Pontos insuficientes",
@@ -615,14 +665,18 @@ class EditorCurvaDialog(QDialog):
         self.accept()
 
     def _cancelar(self):
+        """Fecha sem gravar: ``resultado`` fica None e o chamador não usa nada."""
         self.resultado = None
         self.reject()
 
 
 def abrir_editor_curva(parent, pasta_curvas: str, natureza: str, modo: str,
                       nome_inicial: str = None):
-    """Abre o editor gráfico (modal) e retorna o nome da curva salva,
-    ou None se o usuário cancelar."""
+    """Abre o editor gráfico e devolve o nome da curva salva.
+
+    Devolve None quando o usuário cancela — e o chamador deve então manter
+    a curva que já estava em uso, sem alterar nada.
+    """
     dialogo = EditorCurvaDialog(parent, pasta_curvas, natureza, modo, nome_inicial)
     dialogo.exec()
     return dialogo.resultado

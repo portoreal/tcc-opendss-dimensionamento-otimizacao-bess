@@ -1,20 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-Módulo de exportação dos resultados da Validação do Modelo Computacional
-para planilha Excel (.xlsx), via openpyxl.
+Exporta os resultados da Validação do Modelo Computacional para planilha
+Excel (.xlsx), via openpyxl.
 
-SEM dependência de GUI: este módulo é puramente de apresentação/gravação,
-mantendo a separação entre a camada de dados (validação_ieee.py) e a
-camada de apresentação (validacao_ui.py). Esse padrão de separação segue
-a convenção adotada no formatador_tabela do projeto de referência
-"gerenciamento_de_demandas".
+O módulo não depende de GUI. Ele é só apresentação e gravação, o que
+mantém separadas a camada de dados (validacao_ieee.py) e a de apresentação
+(validacao_ui.py). A convenção vem do formatador_tabela do projeto de
+referência "gerenciamento_de_demandas".
 
 Estrutura do arquivo gerado:
   - Aba "Resumo"       : uma linha por sistema, com status colorido,
                          erro máximo, contagem de barras comparadas,
                          exceções documentadas, mensagem e nota do sistema.
   - Aba "Detalhamento" : uma linha por (barra, fase) de cada sistema,
-                         com tensões de referência/simulada e erro.
+                         com tensões de referência e simulada, mais o erro.
   - Aba "Memorial"     : o memorial de cálculo, linha a linha.
 
 Formato de entrada (contrato de dados):
@@ -37,16 +36,16 @@ Formato de entrada (contrato de dados):
     memorial_texto: str  (memorial de cálculo completo, texto corrido)
     caminho_destino: str  (caminho do arquivo .xlsx a ser gravado)
 
-TRANSPARÊNCIA TÉCNICA:
-- A identidade visual do projeto usa o azul institucional (#004587) nos cabeçalhos,
-  de forma coerente com os demais artefatos do TCC.
-- O campo "observacao" do detalhamento JÁ pode vir prefixado com
+NOTAS DE IMPLEMENTAÇÃO
+- O azul institucional (#004587) nos cabeçalhos é a identidade visual do
+  projeto, coerente com os demais artefatos do TCC.
+- O campo "observacao" do detalhamento JÁ pode chegar prefixado com
   "[EXCEÇÃO DOCUMENTADA] " pela camada de comparação (validacao_ieee.py,
-  função comparar_resultados). Para evitar duplicação do marcador, a
-  prefixação nesta camada é idempotente (só aplica se ainda não existir).
-- As exceções de openpyxl (permissão de arquivo, caminho inválido etc.)
-  são deliberadamente NÃO capturadas: a responsabilidade de tratamento
-  é do chamador (camada de UI), que pode exibir mensagem adequada.
+  função comparar_resultados). A prefixação aqui é idempotente e só aplica
+  quando o marcador ainda não existe; sem isso o texto sairia duplicado.
+- As exceções do openpyxl (permissão de arquivo, caminho inválido) são
+  deliberadamente NÃO capturadas. Tratar é papel do chamador, na camada de
+  UI, que tem contexto para mostrar mensagem adequada ao usuário.
 """
 
 from openpyxl import Workbook
@@ -80,8 +79,8 @@ LARGURA_MINIMA_COLUNA = 10
 # ============================================================
 
 def _estilo_cabecalho(celula):
-    """Aplica o estilo padrão de cabeçalho (fundo azul institucional, fonte branca
-    negrita, alinhamento centralizado vertical)."""
+    """Estilo padrão de cabeçalho: fundo azul institucional, fonte branca
+    em negrito, alinhamento centralizado na vertical."""
     celula.font = Font(name="Calibri", size=10, bold=True,
                        color=COR_FONTE_CABECALHO)
     celula.fill = PatternFill("solid", fgColor=COR_CABECALHO)
@@ -90,7 +89,8 @@ def _estilo_cabecalho(celula):
 
 
 def _cor_status(status):
-    """Retorna a cor (hex sem '#') correspondente ao status informado."""
+    """Cor correspondente ao status, em hex sem '#'. Status desconhecido
+    cai na cor neutra, o que evita célula sem cor no meio da tabela."""
     if status is None:
         return COR_STATUS_PADRAO
     return COR_STATUS.get(str(status).upper(), COR_STATUS_PADRAO)
@@ -98,17 +98,19 @@ def _cor_status(status):
 
 def _largura_coluna(valores, largura_minima=LARGURA_MINIMA_COLUNA,
                     largura_maxima=LARGURA_MAXIMA_COLUNA):
-    """Calcula uma largura de coluna adequada ao conteúdo textual.
+    """Largura de coluna ajustada ao conteúdo textual.
 
-    Regra simples: a largura é o comprimento da maior representação
-    textual do valor, com folga de 2 caracteres, respeitando os limites
-    mínimo e máximo. Valores None são ignorados no cálculo."""
+    A conta é o comprimento da maior representação textual, mais 2
+    caracteres de folga, respeitados os limites mínimo e máximo. Valores
+    None ficam fora do cálculo. Em conteúdo multilinha só a primeira linha
+    conta, porque é ela que define a largura visível.
+    """
     maior = 0
     for valor in valores:
         if valor is None:
             continue
         texto = str(valor)
-        # Considera apenas a primeira linha (para conteúdo multilinha)
+        # Só a primeira linha conta (conteúdo multilinha).
         primeira_linha = texto.split("\n", 1)[0]
         maior = max(maior, len(primeira_linha))
     largura = maior + 2
@@ -118,9 +120,10 @@ def _largura_coluna(valores, largura_minima=LARGURA_MINIMA_COLUNA,
 def _remover_nota_da_mensagem(mensagem):
     """Remove o sufixo ' | NOTA: <texto>' da mensagem, quando presente.
 
-    O sufixo é acrescentado em validar_sistema (validacao_ieee.py) para
-    que a mensagem agregada contenha a nota. Na planilha, a nota é
-    apresentada em coluna própria, portanto deve ser removida daqui."""
+    validar_sistema (validacao_ieee.py) acrescenta esse sufixo para que a
+    mensagem agregada carregue a nota. Na planilha a nota tem coluna
+    própria, então repeti-la na mensagem seria redundância.
+    """
     if not mensagem:
         return mensagem
     if " | NOTA:" in mensagem:
@@ -155,6 +158,8 @@ def _montar_aba_resumo(wb, resultados):
     linhas_dados = []
     for nome_sistema, resultado in resultados.items():
         detalhamento = resultado.get("detalhamento") or []
+        # Barra comparada é a que tem erro calculado. As demais entram como
+        # pendência e não devem inflar a contagem.
         barras_comparadas = sum(
             1 for item in detalhamento if item.get("erro_pct") is not None
         )
@@ -177,6 +182,7 @@ def _montar_aba_resumo(wb, resultados):
         })
 
     for i, dados in enumerate(linhas_dados):
+        # Linha 1 é o cabeçalho; os dados começam na 2.
         linha = i + 2
         ws.cell(row=linha, column=1, value=dados["nome"])
 
@@ -292,6 +298,8 @@ def _montar_aba_memorial(wb, memorial_texto):
     ws = wb.create_sheet(title="Memorial")
 
     texto = memorial_texto if memorial_texto else ""
+    # Memorial vazio vira uma única célula em branco: a aba existe, mas não
+    # fica com zero linhas, o que confundiria a leitura da planilha.
     linhas = texto.split("\n") if texto else [""]
 
     for i, linha_texto in enumerate(linhas, start=1):

@@ -5,42 +5,41 @@ O QUE ESTE MÓDULO FAZ
 ---------------------
 Executa um circuito OpenDSS em passos horários controlados pelo usuário
 (Reproduzir/Pausar, Passo, Velocidade, Reiniciar) e apresenta a operação
-como um DASHBOARD:
+como um dashboard:
 
   * mapa da rede com os nós coloridos pela tensão do passo corrente;
-  * Bateria: SoC (%, barra) e ESTADO (carregando/descarregando/repouso);
+  * bateria: SoC (%, barra) e estado (carregando/descarregando/repouso);
   * Economia acumulada por arbitragem (R$ do dia e total);
-  * Rede: Vmin/Vmax, perdas, potência da fonte, barras em afundamento;
-  * Clima: índice de nuvens sobre a geração fotovoltaica;
+  * rede: Vmin/Vmax, perdas, potência da fonte, barras em afundamento;
+  * clima: índice de nuvens sobre a geração fotovoltaica;
   * gráficos do dia: Vmin/Vmax, SoC, fonte e perdas;
   * log de eventos (afundamentos, viradas de dia, trocas de tarifa).
 
 OPERAÇÃO CONTÍNUA (o "relógio")
 -------------------------------
-O relógio avança uma hora a cada N segundos (padrão 15 s), ATRAVESSANDO a
-meia-noite: ao fim da hora 23 o dia vira automaticamente (Dia 1 · Segunda
-→ Dia 2 · Terça …), os gráficos são zerados e repassam a preencher, o SoC
-e a economia acumulada PERSISTEM, e os fatores de carga do novo dia da
-semana passam a valer. Isso permite comparar dias diferentes — por
-exemplo, uma curva de geração fotovoltaica que muda de um dia para o
-outro.
+O relógio avança uma hora a cada N segundos e atravessa a meia-noite: ao
+fim da hora 23 o dia vira sozinho (Dia 1 · Segunda → Dia 2 · Terça …), os
+gráficos são zerados e voltam a preencher, o SoC e a economia acumulada
+persistem, e os fatores de carga do novo dia da semana passam a valer. É o
+que permite comparar dias diferentes — por exemplo, uma curva de geração
+fotovoltaica que muda de um dia para o outro.
 
 SEPARAÇÃO MOTOR / INTERFACE
 ---------------------------
 Toda a lógica (QSTS, despacho, dias, nuvens, fatores de carga, economia,
-afundamento em contexto isolado) vive em ``ao_vivo_engine.py``, que NÃO
-importa Qt e é testável headless. Este módulo é apenas a casca visual.
+afundamento em contexto isolado) vive em ``ao_vivo_engine.py``, que não
+importa Qt e roda sem tela. Este módulo é apenas a casca visual.
 
 REUSO DELIBERADO (nada de despacho duplicado)
 ---------------------------------------------
 A regra de despacho ponta/fora-ponta e os primitivos de escrita no
 Storage vêm de ``economia_energia``; os primitivos de falta vêm de
-``estudo_afundamento``. Este módulo NÃO reimplementa nenhum deles.
+``estudo_afundamento``. Nenhum deles é reimplementado aqui.
 
 TRANSPARÊNCIA TÉCNICA (suposições explícitas)
 ---------------------------------------------
 1. CORES DO MAPA. Os limiares 0,95 e 0,90 pu (verde/amarelo/vermelho)
-   são AUXÍLIO VISUAL deste módulo, NÃO classificação normativa. As
+   são auxílio visual deste módulo, não classificação normativa. As
    faixas adequadas/precárias/críticas da ANEEL (PRODIST Módulo 8) variam
    com o nível de tensão do ponto de entrega (BT/MT/AT) e o modelo aqui
    não dispõe do nível de tensão contratado de cada barra. Use o mapa
@@ -48,10 +47,11 @@ TRANSPARÊNCIA TÉCNICA (suposições explícitas)
 2. BARRAS SEM COORDENADA. Circuitos cujo .dss não traz ``Buscoords``
    devolvem (0,0) para todas as barras. Essas barras são deslocadas
    radialmente a partir do centroide para não se sobreporem na origem, e
-   o rodapé da figura avisa quantas foram — a posição delas é
-   ARBITRÁRIA, apenas legível.
+   o rodapé da figura avisa quantas foram. A posição delas é arbitrária,
+   só legível.
 3. CARGA CONSTANTE. Se o Master.dss não declarar ``LoadShape``, todos os
-   passos do dia resolvem com a MESMA carga — a animação mostra a
+   passos do dia resolvem com a mesma carga. A animação, nesse caso, mostra
+   a
    evolução do SoC/despacho do BESS, não uma variação de carga que não
    existe no modelo. O rodapé avisa.
 4. NUVENS, FATORES DE CARGA POR DIA E ECONOMIA são MODELO DE SIMULAÇÃO,
@@ -59,13 +59,13 @@ TRANSPARÊNCIA TÉCNICA (suposições explícitas)
    ``ao_vivo_engine`` (itens 1, 2 e 3).
 5. THREAD. A solução roda em thread de trabalho persistente; resultados
    chegam à UI por ``queue.Queue`` drenada por ``QTimer`` (mesmo padrão
-   do módulo de Otimização). O motor OpenDSS é acessado EXCLUSIVAMENTE
-   pela thread de trabalho — a thread da UI nunca toca o motor.
-6. NENHUM DIÁLOGO MODAL no caminho do relógio, do passo ou do
-   afundamento: erros desses caminhos vão para a barra de status e para o
-   log. Isso não é preferência estética — é o que permite testar a janela
-   em modo offscreen, onde ninguém pode clicar "OK" (um diálogo modal
-   ali trava a thread da UI para sempre).
+   do módulo de Otimização). O motor OpenDSS é acessado exclusivamente
+   pela thread de trabalho; a thread da UI nunca toca o motor.
+6. NENHUM DIÁLOGO MODAL no caminho do relógio, do passo ou do afundamento:
+   erros desses caminhos vão para a barra de status e para o log. Não é
+   preferência estética. Um modal ali trava a thread da UI para sempre em
+   execução offscreen, onde ninguém pode clicar "OK" — e é justamente em
+   offscreen que os testes rodam.
 """
 
 import os
@@ -120,18 +120,22 @@ from .tarifas_energia import listar_opcoes_tarifa, obter_tarifa
 from .ui_win11 import obter_paleta_ativa
 from .ao_vivo_exportar import CHAVES_GRAFICOS, exportar_graficos
 
- # Intervalo do relógio por hora-ponto. O padrão de 12,5 s faz um dia
- # completo durar 5 min (24 × 12,5 s = 300 s) — pedido do pesquisador.
+# Intervalo do relógio, em ms, por hora simulada. O padrão de 12,5 s faz
+# um dia completo durar 5 min (24 × 12,5 s = 300 s) — pedido do pesquisador,
+# para caber uma demonstração inteira numa banca.
 INTERVALOS_VELOCIDADE_MS = (1000, 5000, 12500, 30000, 60000)
 ROTULOS_VELOCIDADE = {1000: "1 s / hora", 5000: "5 s / hora",
                       12500: "12,5 s / hora — dia de 5 min (padrão)",
                        30000: "30 s / hora",
                       60000: "1 min / hora"}
 INTERVALO_VELOCIDADE_PADRAO_MS = 12500
- # Fração do intervalo em que o último segmento desenha (traço fluido).
+# Fração do intervalo em que o último segmento é desenhado, para o traço
+# parecer fluido em vez de dar saltos de uma hora para outra.
 FRACAO_TRACO = 0.35
 
-# Limiares APENAS de auxílio visual (ver TRANSPARÊNCIA TÉCNICA, item 1).
+# Limiares apenas de auxílio visual (ver TRANSPARÊNCIA TÉCNICA, item 1).
+# Não são classificação PRODIST: o nível de tensão contratado de cada barra
+# não está disponível no modelo.
 LIMIAR_TENSAO_BOM = 0.95
 LIMIAR_TENSAO_ACEITAVEL = 0.90
 
@@ -153,13 +157,15 @@ _INTERVALO_FILA_MS = 100
 def _posicionar_barras(coordenadas: Dict[str, tuple]):
     """Separa barras com coordenada real das que caíram em (0,0).
 
-    O OpenDSS devolve (0,0) para barra sem ``Buscoords`` — e (0,0) também
-    é coordenada legítima em alguns conjuntos oficiais. Não há como
-    distinguir os dois casos pelo valor, então TODA barra em (0,0) é
-    tratada como "sem coordenada" e deslocada para um anel em torno do
-    centroide. O rodapé da figura informa a contagem, para que a
-    arbitrariedade fique visível (TRANSPARÊNCIA TÉCNICA, item 2).
+    O OpenDSS devolve (0,0) para barra sem ``Buscoords``, mas (0,0) também
+    é coordenada legítima em alguns conjuntos oficiais. Pelo valor não há
+    como separar os dois casos; por isso toda barra em (0,0) é tratada como
+    "sem coordenada" e deslocada para um anel em torno do centroide. O
+    rodapé da figura informa a contagem, para que a arbitrariedade fique
+    visível (TRANSPARÊNCIA TÉCNICA, item 2).
     """
+    # Tolerância de 1e-9 porque a coordenada vem como float do OpenDSS: a
+    # comparação exata com 0 falharia para um resíduo mínimo.
     com_coord = {b: (x, y) for b, (x, y) in coordenadas.items()
                  if not (abs(x) < 1e-9 and abs(y) < 1e-9)}
     sem_coord = [b for b, (x, y) in coordenadas.items()
@@ -169,6 +175,8 @@ def _posicionar_barras(coordenadas: Dict[str, tuple]):
         return com_coord, []
 
     if com_coord:
+        # Centroide e extensão do que tem coordenada real, para o anel das
+        # órfãs envolver o desenho em vez de se sobrepor a ele.
         cx = sum(p[0] for p in com_coord.values()) / len(com_coord)
         cy = sum(p[1] for p in com_coord.values()) / len(com_coord)
         extensao = max(
@@ -177,9 +185,13 @@ def _posicionar_barras(coordenadas: Dict[str, tuple]):
     else:
         cx, cy, extensao = 0.0, 0.0, 1.0
 
+    # 1,35 de folga coloca o anel por fora do desenho, sem sair do
+    # enquadramento automático do eixo.
     raio = extensao * 1.35
     posicionadas = dict(com_coord)
     for i, barra in enumerate(sorted(sem_coord)):
+        # Distribuição em ângulos iguais: determinística, então a barra
+        # aparece sempre no mesmo lugar entre aberturas da janela.
         angulo = 2.0 * math.pi * i / max(len(sem_coord), 1)
         posicionadas[barra] = (cx + raio * math.cos(angulo),
                                cy + raio * math.sin(angulo))
@@ -187,6 +199,8 @@ def _posicionar_barras(coordenadas: Dict[str, tuple]):
 
 
 def _cor_por_tensao(v: Optional[float]) -> str:
+    # None = barra sem leitura no passo (desenergizada ou fora do mapa);
+    # cinza em vez de verde, para não sugerir tensão normal.
     if v is None:
         return "#7a7a7a"
     if v >= LIMIAR_TENSAO_BOM:
@@ -197,7 +211,12 @@ def _cor_por_tensao(v: Optional[float]) -> str:
 
 
 def _formatar_reais(valor: float) -> str:
-    """R$ 1.234,56 — separador de milhar '.' e decimal ','."""
+    """Formata R$ 1.234,56 no padrão brasileiro.
+
+    A formatação americana do Python usa vírgula para milhar e ponto para
+    decimal — o inverso daqui. A troca passa por um caractere nulo
+    temporário para não desfazer a primeira substituição na segunda.
+    """
     texto = f"{valor:,.2f}"
     return "R$ " + texto.replace(",", "\0").replace(".", ",").replace("\0", ".")
 
@@ -207,7 +226,12 @@ def _formatar_reais(valor: float) -> str:
 # ============================================================
 
 class _Cartao(QFrame):
-    """Cartão com título, valor grande e linha de detalhe."""
+    """Cartão do dashboard: título em caixa alta, valor grande, detalhe.
+
+    O estilo é aplicado inline (e não no QSS global) porque a cor do valor
+    muda com o estado — verde, âmbar, vermelho — e precisa ser reescrita a
+    cada atualização.
+    """
 
     def __init__(self, titulo: str, parent=None):
         super().__init__(parent)
@@ -234,6 +258,8 @@ class _Cartao(QFrame):
         self.widget_extra: Optional[QWidget] = None
 
     def adicionar_extra(self, widget: QWidget):
+        # Widget adicional (barra de progresso do SoC, por exemplo) vai
+        # abaixo do texto, dentro do mesmo cartão.
         self.widget_extra = widget
         self.layout().addWidget(widget)
 
@@ -262,6 +288,8 @@ class JanelaSimulacaoAoVivo(QMainWindow):
         self.resize(1500, 950)
 
         self.sessao: Optional[SessaoAoVivo] = None
+        # Duas filas: uma leva pedidos da UI para a thread de trabalho, a
+        # outra traz resultados de volta. A UI nunca chama o motor direto.
         self.fila_trabalho: "queue.Queue[tuple]" = queue.Queue()
         self.fila_resultados: "queue.Queue[tuple]" = queue.Queue()
         self.thread_trabalho: Optional[threading.Thread] = None
@@ -295,14 +323,18 @@ class JanelaSimulacaoAoVivo(QMainWindow):
         self.timer_play = QTimer(self)
         self.timer_play.timeout.connect(self._ao_timer_play)
         self.timer_play.setInterval(INTERVALO_VELOCIDADE_PADRAO_MS)
-        # Relógio da ANIMAÇÃO do traço (fluidez analógica): redesenha os
-        # eixos pequenos com o último segmento interpolado. 100 ms.
+        # Relógio separado para a animação do traço. O passo horário chega
+        # de 12,5 em 12,5 s; este timer de 100 ms redesenha só o último
+        # segmento com interpolação, o que dá a sensação de traço contínuo
+        # sem resolver o circuito mais vezes.
         self.timer_animacao = QTimer(self)
         self.timer_animacao.setInterval(100)
         self.timer_animacao.timeout.connect(self._tick_animacao)
 
         self.timer_fila = QTimer(self)
         self.timer_fila.timeout.connect(self._drenar_fila)
+        # A fila é drenada na thread da UI a cada 100 ms. O motor nunca
+        # aparece aqui: só os resultados que a thread de trabalho publicou.
         self.timer_fila.start(_INTERVALO_FILA_MS)
 
         QTimer.singleShot(0, self._iniciar_carregamento)
@@ -310,6 +342,8 @@ class JanelaSimulacaoAoVivo(QMainWindow):
     # ---------------------------------------------------------------- #
     @staticmethod
     def _series_vazias() -> Dict[str, List[Any]]:
+        # None (e não 0) marca "hora ainda não simulada". Zero seria um
+        # valor legítimo e apareceria como ponto no gráfico.
         return {"vmin": [None] * HORAS_POR_DIA,
                 "vmax": [None] * HORAS_POR_DIA,
                 "perdas": [None] * HORAS_POR_DIA,
@@ -333,6 +367,7 @@ class JanelaSimulacaoAoVivo(QMainWindow):
         corpo.setSpacing(8)
 
         # ------------- figura (mapa + gráficos do dia) ------------- #
+        # Proporção 3:1 entre o miolo (mapa e gráficos) e a coluna lateral.
         self.figura = Figure(figsize=(11, 7), layout="constrained")
         self.canvas = FigureCanvas(self.figura)
         self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -563,13 +598,15 @@ class JanelaSimulacaoAoVivo(QMainWindow):
     def _aplicar_estilo(self):
         """Aplica a identidade visual Win11 disponível em ``ui_win11``.
 
-        ``ui_win11`` NÃO expõe um stylesheet global, então esta janela usa
-        a PALETA pública (``obter_paleta_ativa``) para os widgets próprios.
-        A figura do matplotlib fica com o estilo padrão — não há folha de
-        estilo Qt que alcance o canvas.
+        ``ui_win11`` não expõe stylesheet global, então esta janela pega a
+        paleta pública (``obter_paleta_ativa``) e monta o próprio QSS. A
+        figura do matplotlib fica com o estilo padrão: folha de estilo Qt
+        não alcança o canvas.
         """
         try:
             paleta = obter_paleta_ativa()
+        # Paleta indisponível não impede a janela de abrir; ela só perde a
+        # identidade visual e fica com as cores padrão do Qt.
         except Exception:
             return
         self._accent = getattr(paleta, "accent", ACCENT)
@@ -640,9 +677,9 @@ class JanelaSimulacaoAoVivo(QMainWindow):
     def _thread_loop(self):
         """Consome a fila de trabalho até receber 'encerrar'.
 
-        Os comandos que vão para cá são os que NÃO alteram o estado
-        visível da sessão (virar dia, aplicar falta). O passo é resolvido
-        na thread da UI (``_passo_unico`` -> ``_ao_passo_concluido``).
+        Passam por aqui os comandos que não alteram o estado visível da
+        sessão (virar dia, aplicar falta). O passo é resolvido na thread
+        da UI, em ``_passo_unico`` -> ``_ao_passo_concluido``.
         """
         while True:
             comando, argumento = self.fila_trabalho.get()
@@ -658,6 +695,8 @@ class JanelaSimulacaoAoVivo(QMainWindow):
                 try:
                     dado = self.sessao.executar_passo(argumento)
                     self.fila_resultados.put(("passo", argumento, dado))
+                # A exceção não sobe: vira mensagem na fila de resultados,
+                # porque thread de trabalho que morre mata a janela junto.
                 except Exception as e:  # noqa: BLE001 - reportado na UI
                     self.fila_resultados.put(("erro_passo", argumento, str(e)))
             elif comando == "carregar":
@@ -867,7 +906,12 @@ class JanelaSimulacaoAoVivo(QMainWindow):
         self._registrar_log(f"ERRO · {titulo}: {mensagem}")
 
     def _ao_erro_carga(self, mensagem: str):
-        """Erro de CARGA pode ser modal: está fora do caminho do relógio."""
+        """Erro de carga pode ser modal: está fora do caminho do relógio.
+
+        Carregar acontece uma vez, antes de a simulação rodar, e o usuário
+        precisa ver a causa. Passo e afundamento, ao contrário, só vão para
+        a barra de status — ver TRANSPARÊNCIA TÉCNICA item 6.
+        """
         self._parar_play()
         self._bloquear_controles(True)
         self.lbl_status.setText(f"Falha ao preparar a simulação: {mensagem}")
@@ -996,7 +1040,7 @@ class JanelaSimulacaoAoVivo(QMainWindow):
             self._parar_play()
             return
         if self.hora_corrente >= HORAS_POR_DIA - 1 and not self._evento_ativo:
-            # Dia concluído: retomar significa virar o dia e seguir.
+            # Dia já concluído: retomar o play significa virar o dia.
             self._virar_dia()
         self._play_ativo = True
         self.btn_play.setText("⏸  Pausar")
@@ -1038,14 +1082,18 @@ class JanelaSimulacaoAoVivo(QMainWindow):
         if proxima > HORAS_POR_DIA - 1:
             return
         if self.fila_trabalho.qsize() > 0:
-            return  # passo anterior ainda não consumido
+            # Passo anterior ainda não consumido pela thread de trabalho;
+            # enfileirar outro só acumularia atraso.
+            return
         self.lbl_status.setText(f"Resolvendo hora {proxima:02d}:00…")
 
-        # Resolve na thread da UI: o passo precisa ser síncrono para o
-        # relógio poder encadear passos sem esperar a fila (o motor é
-        # exclusivo desta thread enquanto a janela existir).
+        # Resolve na thread da UI, de forma síncrona. O passo precisa ser
+        # síncrono para o relógio encadear horas sem esperar a fila; o motor
+        # é exclusivo desta thread enquanto a janela existir.
         try:
             dado = self.sessao.executar_passo(proxima)
+        # Sem modal aqui: um diálogo travaria a UI em modo offscreen, onde
+        # ninguém clica "OK" (TRANSPARÊNCIA TÉCNICA, item 6).
         except Exception as e:  # noqa: BLE001 - reportado na UI, sem modal
             self._ao_erro_passos(f"Falha no passo da hora {proxima}", str(e))
             return
@@ -1054,7 +1102,7 @@ class JanelaSimulacaoAoVivo(QMainWindow):
     def _coletar_snapshot(self) -> Dict[str, Any]:
         """Pedir o snapshot à thread de trabalho e aguardar (QEventLoop).
 
-        O motor é acessado EXCLUSIVAMENTE pela thread de trabalho
+        O motor é acessado exclusivamente pela thread de trabalho
         (TRANSPARÊNCIA 5) — a UI só conversa por filas. O QEventLoop
         processa timers, então o _drenar_fila (QTimer de 100 ms) roda
         dentro dele e devolve o resultado. Segurança: 10 s.

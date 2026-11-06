@@ -1,12 +1,16 @@
 __author__ = 'Pedro Henrique Sousa Pinheiro'
 """Regras/fórmulas de dimensionamento elétrico.
 
-ATENÇÃO: os catálogos (condutores, potências padronizadas de
-transformadores e geradores) contêm valores de REFERÊNCIA/APROXIMADOS,
-usuais em literatura de distribuição de energia, adequados para fins
-didáticos (TCC/protótipo). Para projetos reais, substitua pelos dados de
-catálogo do fabricante e pelas normas técnicas da concessionária local
-(ex.: NBR 5410, NBR 14039, normas de distribuição da concessionária).
+Os catálogos embutidos (condutores, potências padronizadas de
+transformadores e de geradores) trazem valores de REFERÊNCIA, aproximados,
+usuais na literatura de distribuição. Servem ao propósito didático deste
+protótipo. Em projeto real, a fonte é outra: catálogo do fabricante e norma
+da concessionária local (NBR 5410, NBR 14039, normas de distribuição).
+
+Todas as funções deste módulo devolvem dois blocos. 'parametros' vai direto
+para a definição do elemento no script .dss; 'memoria_calculo' guarda as
+grandezas intermediárias que justificam a escolha. Separar os dois evita
+que número de auditoria vaze para o modelo elétrico.
 """
 
 import math
@@ -44,7 +48,12 @@ CATALOGO_CONDUTORES = [
 
 
 def calcular_corrente_projeto(potencia_kva, tensao_kv, fases=3):
-    """Corrente de projeto pela potência aparente (Lei de Ohm trifásica/monofásica)."""
+    """Corrente de projeto a partir da potência aparente.
+
+    Trifásico equilibrado usa S/(√3·V_LL); monofásico usa S/V. A tensão é
+    informada em kV e convertida para volts porque o resultado sai em
+    ampères.
+    """
     tensao_v = tensao_kv * 1000
     potencia_va = potencia_kva * 1000
     if fases == 3:
@@ -54,8 +63,15 @@ def calcular_corrente_projeto(potencia_kva, tensao_kv, fases=3):
 
 def calcular_queda_tensao_pct(corrente_a, comprimento_km, r_ohm_km, x_ohm_km,
                                 fator_potencia, tensao_kv, fases=3):
-    """Queda de tensão percentual, método usual de projeto de redes de
-    distribuição (aproximação linear R,X em série)."""
+    """Queda de tensão percentual pelo método usual de projeto de redes de
+    distribuição — aproximação linear com R e X em série.
+
+    O termo (R·cosφ + X·senφ) é a impedância síncrona projetada na direção
+    da corrente. No trifásico multiplica-se por √3; no monofásico, por 2,
+    porque a corrente percorre ida e volta pelo condutor.
+    """
+    # sen_phi derivado de cos_phi, com o max(0, ...) protegendo o caso de
+    # arredondamento deixar o radicando levemente negativo.
     sen_phi = math.sqrt(max(0.0, 1 - fator_potencia ** 2))
     r_total = r_ohm_km * comprimento_km
     x_total = x_ohm_km * comprimento_km
@@ -71,8 +87,18 @@ def calcular_queda_tensao_pct(corrente_a, comprimento_km, r_ohm_km, x_ohm_km,
 
 def dimensionar_linha(potencia_kva, tensao_kv, fator_potencia, comprimento_km,
                         queda_max_pct=5.0, fases=3, material_preferido=None):
-    """Seleciona o menor condutor do catálogo que atenda simultaneamente
-    à ampacidade (corrente de projeto) e à queda de tensão máxima admissível."""
+    """Escolhe o menor condutor do catálogo que satisfaça aos dois critérios
+    ao mesmo tempo: ampacidade e queda de tensão máxima.
+
+    A ordem de varredura é por seção crescente, então o primeiro condutor
+    aprovado é o mais barato que atende. Ampacidade elimina por limite
+    térmico; queda elimina por desempenho de tensão. Um condutor pode passar
+    num critério e falhar no outro, e é por isso que os dois são testados.
+
+    Levanta ValueError quando nenhum condutor atende — a mensagem indica os
+    caminhos de solução (elevar a tensão, encurtar o trecho, revisar
+    limites).
+    """
 
     fases = int(fases)
     corrente_projeto = calcular_corrente_projeto(potencia_kva, tensao_kv, fases)
@@ -84,6 +110,8 @@ def dimensionar_linha(potencia_kva, tensao_kv, fator_potencia, comprimento_km,
     candidatos_ordenados = sorted(candidatos, key=lambda c: c["secao_mm2"])
 
     for cond in candidatos_ordenados:
+        # Limite térmico: acima da ampacidade o cabo aqueceria além do
+        # admissível, independentemente da queda.
         if cond["ampacidade_A"] < corrente_projeto:
             continue
 
@@ -93,7 +121,8 @@ def dimensionar_linha(potencia_kva, tensao_kv, fator_potencia, comprimento_km,
 
         if queda_pct <= queda_max_pct:
             # Aproximação usual para sequência zero em linhas aéreas de
-            # distribuição (r0/x0 ~ 3x r1/x1). Ajuste se tiver dados reais.
+            # distribuição (r0/x0 ~ 3x r1/x1). Ajuste se tiver dados reais
+            # de geometria: o fator 3 é regra prática, não medição.
             r0 = cond["r_ohm_km"] * 3
             x0 = cond["x_ohm_km"] * 3
 
@@ -135,8 +164,13 @@ POTENCIAS_PADRAO_TRAFO_KVA = [15, 30, 45, 75, 112.5, 150, 225, 300,
 
 
 def _estimar_xhl_percentual(kva):
-    """Estimativa típica de impedância percentual por faixa de potência
-    (valores de referência usuais para transformadores de distribuição)."""
+    """Impedância percentual típica, por faixa de potência.
+
+    Valores de referência usuais em transformadores de distribuição: quanto
+    maior a unidade, maior a impedância. A função existe para que a falta de
+    dado de placa não impeça o dimensionamento — mas é estimativa, não
+    leitura de placa.
+    """
     if kva <= 112.5:
         return 3.5
     if kva <= 300:
@@ -148,10 +182,15 @@ def _estimar_xhl_percentual(kva):
 
 def dimensionar_transformador(potencia_carga_kw, fator_potencia, margem_seguranca_pct,
                                 kv_primario, kv_secundario, fases=3):
+    # Potência aparente da carga, depois acrescida da margem de segurança.
+    # A margem cobre crescimento de carga e desequilíbrio entre fases.
     fases = int(fases)
     s_carga_kva = potencia_carga_kw / fator_potencia
     s_dimensionada_kva = s_carga_kva * (1 + margem_seguranca_pct / 100)
 
+    # Primeira potência padronizada que cobre a necessidade. Se nem a maior
+    # do catálogo cobre, fica a maior — e a memória de cálculo mostra a
+    # exigência original, o que denuncia o subdimensionamento.
     kva_escolhido = next(
         (p for p in POTENCIAS_PADRAO_TRAFO_KVA if p >= s_dimensionada_kva),
         POTENCIAS_PADRAO_TRAFO_KVA[-1])
@@ -186,10 +225,17 @@ def dimensionar_transformador(potencia_carga_kw, fator_potencia, margem_seguranc
 
 def dimensionar_fotovoltaico(consumo_mensal_kwh, hsp_local, performance_ratio,
                                potencia_modulo_wp, razao_dc_ac, kv_conexao, fases=3):
+    # Energia mensal dividida por (dias × HSP × PR) dá a potência de pico
+    # necessária: HSP é a energia diária disponível por kWp e o PR desconta
+    # as perdas do conjunto (temperatura, cabeamento, inversor).
     fases = int(fases)
     potencia_necessaria_kwp = consumo_mensal_kwh / (30 * hsp_local * performance_ratio)
+    # Módulos são unidades inteiras: arredonda para cima e recalcula a
+    # potência real, que costuma ficar acima do estritamente necessário.
     numero_modulos = math.ceil(potencia_necessaria_kwp * 1000 / potencia_modulo_wp)
     pmpp_kw_real = numero_modulos * potencia_modulo_wp / 1000
+    # Razão DC/AC define o inversor: fator maior significa inversor menor
+    # que o arranjo, aceitando corte nos picos em troca de custo.
     kva_inversor = pmpp_kw_real / razao_dc_ac
 
     return {
@@ -222,6 +268,10 @@ def dimensionar_fotovoltaico(consumo_mensal_kwh, hsp_local, performance_ratio,
 
 def dimensionar_storage(potencia_media_kw, horas_autonomia, profundidade_descarga_pct,
                           eficiencia_pct, kv_conexao, fases=3):
+    # Energia nominal precisa cobrir a autonomia considerando duas perdas:
+    # a profundidade de descarga (nem toda a capacidade é utilizável) e o
+    # rendimento do ciclo. Por isso as duas aparecem no divisor — dividir
+    # apenas pela DoD subestimaria o banco.
     fases = int(fases)
     dod = profundidade_descarga_pct / 100
     eficiencia = eficiencia_pct / 100
@@ -286,34 +336,36 @@ def dimensionar_capacitor(potencia_ativa_kw, fp_atual, fp_desejado, kv_conexao, 
 # Reactor (banco de reatores shunt) — dimensionamento para
 # absorção de reativo CAPACITIVO em excesso.
 #
-# Situação típica: redes com grande penetração de geração
-# distribuída (PVSystem/Storage com inversores sobre-excitados,
-# ou cabos subterrâneos de grande extensão) injetando reativo
-# capacitivo além do que a rede consegue absorver, elevando o
-# fator de potência acima do limite superior de referência do
-# PRODIST Módulo 8 (0,92 capacitivo).
+# Situação típica: rede com forte penetração de geração distribuída
+# (PVSystem/Storage com inversor sobre-excitado, ou cabo subterrâneo de
+# grande extensão) injetando reativo capacitivo além do que a rede absorve.
+# O fator de potência sobe então acima do limite superior de referência do
+# PRODIST Módulo 8, 0,92 capacitivo.
 #
 # Sintaxe oficial confirmada na documentação EPRI (Reactor.html):
 #     New Reactor.nome bus1=<barra> phases=<n> kv=<tensão_LL>
 #         kvar=<total, todas as fases> conn=wye
 #
-# Observações importantes da própria documentação do OpenDSS:
-#   - bus2 NÃO precisa ser especificado: por padrão, o Reactor
-#     assume conexão Wye aterrada no 2º terminal (elemento SHUNT),
-#     que é exatamente o comportamento desejado aqui (análogo ao
-#     Capacitor).
-#   - 'kvar' é o TOTAL somado de todas as fases, dividido
-#     igualmente entre elas, e determina APENAS a reatância X.
-#     A resistência (R) é especificada separadamente (parâmetro
-#     'R', em ohms) - se não for informada, o Reactor assume R=0,
-#     o que é aceitável para um banco de reatores idealizado em
-#     estudos de regime permanente.
+# Dois pontos da documentação do OpenDSS que mudam o resultado:
+#   - bus2 NÃO precisa ser informado. Por padrão o Reactor assume conexão
+#     Wye aterrada no segundo terminal, isto é, elemento SHUNT — que é
+#     exatamente o comportamento pretendido aqui, análogo ao Capacitor.
+#   - 'kvar' é o TOTAL das três fases, dividido igualmente entre elas, e
+#     determina APENAS a reatância X. A resistência vai à parte, no
+#     parâmetro 'R' em ohms. Omitida, o Reactor assume R=0, aceitável para
+#     banco idealizado em estudo de regime permanente.
 # ============================================================
 
 def dimensionar_reator_indutivo(potencia_reativa_excedente_kvar, kv_conexao, fases=3):
-    """Dimensiona um banco de reatores shunt para absorver o excedente
-    de reativo capacitivo informado (kvar), aproximando para o próximo
-    múltiplo de 50 kvar (padrão comercial usual de bancos de reatores).
+    """Dimensiona banco de reatores shunt para absorver o excedente de
+    reativo capacitivo informado, em kvar.
+
+    O valor sai arredondado para cima no múltiplo de 50 kvar, que é o passo
+    comercial usual desses bancos. Arredondar para baixo deixaria parte do
+    excedente sem compensação.
+
+    Levanta ValueError com excedente não positivo: sem excedente não há o
+    que absorver, e devolver um banco de kvar nulo seria enganoso.
     """
     fases = int(fases)
 
@@ -356,6 +408,8 @@ POTENCIAS_PADRAO_GERADOR_KVA = [15, 30, 50, 75, 100, 150, 180, 220, 275,
 
 def dimensionar_gerador(potencia_carga_kw, fator_potencia, fator_demanda_pct,
                           margem_seguranca_pct, kv_conexao, fases=3):
+    # Fator de demanda entra antes da conversão para aparente: é a parcela
+    # da carga efetivamente simultânea, não o total instalado.
     fases = int(fases)
     s_carga_kva = (potencia_carga_kw * (fator_demanda_pct / 100)) / fator_potencia
     s_dimensionada_kva = s_carga_kva * (1 + margem_seguranca_pct / 100)
@@ -366,6 +420,8 @@ def dimensionar_gerador(potencia_carga_kw, fator_potencia, fator_demanda_pct,
 
     kw_nominal = round(kva_escolhido * fator_potencia, 2)
 
+    # kvar = 0 fixa o gerador operando com fator de potência unitário, que é
+    # a hipótese do dimensionamento acima.
     return {
         "parametros": {
             "phases": fases,

@@ -1,47 +1,48 @@
 """View: Módulo de Validação do Modelo Computacional (PySide6).
 
-Reescrita da interface de validação em PySide6, seguindo o padrão visual
-Windows 11 / Fluent do projeto de referência ("gerenciamento_de_demandas"),
-reaproveitando a MESMA paleta e fonte definidas em `ui_win11.py` (accent
-azul institucional fixo `#004587` em ambos os temas, claro e escuro).
+Interface do Módulo de Validação do Modelo Computacional, em PySide6, no
+padrão visual Windows 11 / Fluent do projeto de referência
+("gerenciamento_de_demandas"), reaproveitando a paleta e a fonte de
+`ui_win11.py` — inclusive o accent azul institucional `#004587`, fixo nos
+dois temas.
 
-SEPARAÇÃO DE AUTORIDADE DAS FONTES (portada do texto de validação)
-==================================================================
-- Documentos oficiais do IEEE (extensão .doc/.xls, pacotes `feederXX.zip`,
-  obtidos da página de recursos do IEEE PES Distribution System Analysis
-  Subcommittee) = **gabarito oficial**.
-- Arquivos de implementação em script OpenDSS (.dss, obtidos do
-  repositório de distribuição de terceiros do ecossistema EPRI/OpenDSS)
-  = **instrumento de simulação, sujeito a auditoria**.
+QUAL FONTE MANDA (distinção portada do texto de validação)
+==========================================================
+- Documentos oficiais do IEEE (.doc/.xls, pacotes `feederXX.zip`, da página
+  de recursos do IEEE PES Distribution System Analysis Subcommittee) são o
+  **gabarito oficial**.
+- Arquivos de implementação em script OpenDSS (.dss, do repositório de
+  distribuição de terceiros do ecossistema EPRI/OpenDSS) são o
+  **instrumento de simulação**, sujeito a auditoria.
 
-Essa distinção é o que motiva a própria etapa de validação: as
-divergências identificadas (ver `validacao_ieee.py` e o memorial de
-cálculo) são divergências da implementação de terceiros frente ao
-gabarito oficial, não do processo de simulação desenvolvido no TCC.
+A distinção é o que dá sentido à etapa de validação: as divergências
+encontradas (ver `validacao_ieee.py` e o memorial de cálculo) são da
+implementação de terceiros frente ao gabarito oficial, não do processo de
+simulação desenvolvido no TCC. Trocar a ordem das duas fontes inverteria a
+conclusão do capítulo.
 
-PROCESSO PRÓPRIO (SEM DOIS EVENT LOOPS)
-==================================================================
-O menu principal do TCC é Tkinter e o validador é lançado a partir dele
-em processo separado (`subprocess`), de modo que este módulo — PySide6 —
-roda com o seu próprio QApplication, sem conviver com o event loop do
-Tkinter no mesmo processo. Essa decisão arquitetural evita a fragilidade
-de misturar dois toolkits de interface no mesmo processo.
+PROCESSO PRÓPRIO (SEM DOIS LAÇOS DE EVENTOS)
+============================================
+O menu do TCC é Tkinter e o validador é lançado a partir dele em processo
+separado (`subprocess`). Este módulo, PySide6, roda com o seu próprio
+QApplication, sem dividir o processo com o laço do Tkinter — a mesma
+decisão arquitetural explicada em `validacao_lancador.py`.
 
 RESPONSABILIDADES
-==================================================================
-A lógica de validação (comparação numérica, exceções documentadas,
-memorial de cálculo) permanece inteiramente em `validacao_ieee.py`.
-Este módulo é apenas a camada de apresentação e de interação:
+=================
+A lógica de validação — comparação numérica, exceções documentadas,
+memorial de cálculo — fica inteira em `validacao_ieee.py`. Aqui só há
+apresentação e interação:
 
-- `abrir_dialogo_validacao(parent=None)`: ponto de entrada público
-  (nome mantido para compatibilidade com `validacao_lancador`).
-- `ConfiguracaoValidacaoDialog`: seleção dos sistemas e da tolerância,
-  com execução da validação em `QThread` (a interface permanece
-  responsiva durante a simulação OpenDSS).
-- `JanelaResultadosValidacao`: janela grande e NÃO modal (padrão Win11,
-  sem moldura nativa, cartão arredondado com sombra) com painel de resumo
-  rolável, abas de memorial de cálculo e topologia das redes, e barra de
-  botões (exportar Excel, exportar como projeto, salvar memorial,
+- `abrir_dialogo_validacao(parent=None)`: ponto de entrada público (o nome
+  é mantido porque `validacao_lancador` o chama assim).
+- `ConfiguracaoValidacaoDialog`: seleção dos sistemas e da tolerância, com
+  a validação rodando em `QThread`. A simulação OpenDSS leva segundos e,
+  sem a thread, a janela congelaria durante toda a conta.
+- `JanelaResultadosValidacao`: janela grande, não modal (padrão Win11, sem
+  moldura nativa, cartão arredondado com sombra), com painel de resumo
+  rolável, abas de memorial de cálculo e de topologia das redes, e a barra
+  de botões (exportar Excel, exportar como projeto, salvar memorial,
   fechar).
 """
 
@@ -112,8 +113,9 @@ def _parent_qt(parent):
         return None
 
 
-# Cores de status (semânticas, independentes do tema) — mesmas adotadas
-# no restante da ferramenta para a decisão de aprovação/reprovação.
+# Cores de status, semânticas e independentes do tema: verde aprovado,
+# vermelho reprovado. São as mesmas usadas no resto da ferramenta, para que
+# a decisão de aprovação tenha a mesma cor onde quer que apareça.
 COR_STATUS = {
     "APROVADO": "#107C10",
     "REPROVADO": "#C42B1C",
@@ -170,6 +172,7 @@ class ConfiguracaoValidacaoDialog(_DialogoBaseWin11):
 
     # ------------------------------------------------------------------ #
     def _montar_widgets(self) -> None:
+        """Monta os controles: dica, sistemas, tolerância, progresso e botões."""
         paleta = self.paleta
 
         dica = QLabel(
@@ -179,7 +182,8 @@ class ConfiguracaoValidacaoDialog(_DialogoBaseWin11):
         dica.setWordWrap(True)
         self.adicionar_conteudo(dica)
 
-        # ---- Checkboxes por sistema (ordem do dicionário) ----
+        # Uma caixa de seleção por sistema de referência, na ordem em que o
+        # dicionário de sistemas as declara. Todas começam marcadas.
         self._checks: dict = {}
         for nome in validacao_ieee.SISTEMAS_DISPONIVEIS:
             e_derivado = "(corrigido)" in nome
@@ -187,9 +191,11 @@ class ConfiguracaoValidacaoDialog(_DialogoBaseWin11):
             check = QCheckBox(rotulo, self)
             check.setChecked(True)
             check.setFont(fonte_padrao(10))
-            # Resolve a pendência cosmética registrada no documento do
-            # projeto: as entradas "(corrigido)" passam a ser diferenciadas
-            # visualmente (cor accent + sufixo explicativo).
+            # As entradas "(corrigido)" são modelos derivados: o script
+            # original do IEEE foi ajustado para carregar no OpenDSS. Elas
+            # aparecem em accent e com sufixo próprio para o usuário não
+            # confundir o modelo derivado com o original - pendência
+            # cosmética registrada no documento do projeto.
             if e_derivado:
                 check.setStyleSheet(f"QCheckBox {{ color: {paleta.accent}; }}")
             else:
@@ -270,9 +276,11 @@ class ConfiguracaoValidacaoDialog(_DialogoBaseWin11):
 
     # ------------------------------------------------------------------ #
     def _sistemas_selecionados(self) -> list:
+        """Lista os nomes dos sistemas com a caixa marcada."""
         return [nome for nome, check in self._checks.items() if check.isChecked()]
 
     def _executar(self) -> None:
+        """Dispara a validação em thread separada, com os controles travados."""
         selecionados = self._sistemas_selecionados()
         if not selecionados:
             mostrar_aviso_win11(
@@ -283,8 +291,10 @@ class ConfiguracaoValidacaoDialog(_DialogoBaseWin11):
 
         tolerancia = float(self.spin_tolerancia.value())
 
-        # Bloqueia os controles e exibe o progresso enquanto a validação
-        # roda na thread secundária.
+        # Trava os controles e mostra o progresso enquanto a validação roda
+        # na thread secundária. Mexer na seleção no meio da conta deixaria
+        # a interface mostrando um resultado que não corresponde ao que está
+        # marcado na tela.
         self._definir_controles_habilitados(False)
         self.barra_progresso.setRange(0, len(selecionados))
         self.barra_progresso.setValue(0)
@@ -299,6 +309,7 @@ class ConfiguracaoValidacaoDialog(_DialogoBaseWin11):
         self._thread.start()
 
     def _definir_controles_habilitados(self, habilitado: bool) -> None:
+        """Trava ou libera todos os controles de uma vez, durante a execução."""
         for check in self._checks.values():
             check.setEnabled(habilitado)
         self.spin_tolerancia.setEnabled(habilitado)
@@ -307,30 +318,32 @@ class ConfiguracaoValidacaoDialog(_DialogoBaseWin11):
 
     # ------------------------------------------------------------------ #
     def _ao_progredir(self, nome: str, indice: int) -> None:
+        """Sinal da thread: atualiza a barra com o sistema que acabou de rodar."""
         total = self.barra_progresso.maximum()
         self.barra_progresso.setValue(indice - 1)
         self._rotulo_progresso.setText(
             f"Validando: {nome} ({indice}/{total})")
 
     def _ao_concluir(self, resultados: dict) -> None:
+        """Sinal da thread: abre a janela de resultados e fecha a configuração."""
         self.barra_progresso.setValue(self.barra_progresso.maximum())
         self._rotulo_progresso.setText("Validação concluída.")
 
         self.resultado = resultados
 
-        # Abre a janela de resultados ANTES de fechar o diálogo de
-        # configuração, evitando uma transição em que nenhuma janela
-        # fica visível na tela.
+        # Abre a janela de resultados antes de fechar o diálogo, senão há um
+        # instante sem nenhuma janela na tela.
         self.janela_resultados = JanelaResultadosValidacao(resultados)
         # O diálogo de configuração é modal (exec()); ao chamar accept()
-        # abaixo ele é destruído, levando consigo a única referência
-        # Python a esta janela top-level (parent=None, não modal). Sem a
-        # retenção em `_janelas_resultado`, o GC a coletava e a janela
-        # "piscava e fechava" — mesmo defeito corrigido em otimizacao_ui.
+        # abaixo ele é destruído e leva consigo a única referência Python a
+        # esta janela top-level (parent=None, não modal). Sem a retenção em
+        # `_janelas_resultado`, o coletor de lixo a levava junto e a janela
+        # "piscava e fechava" - defeito já corrigido em otimizacao_ui e que,
+        # por isso mesmo, reaparece se a lista for removida.
         _janelas_resultado.append(self.janela_resultados)
-        # A topologia das redes grandes só é legível com a janela
-        # ocupando a tela inteira; o ajuste (fit) da imagem é feito
-        # pelo próprio visualizador da aba.
+        # A topologia das redes grandes só é legível com a janela ocupando a
+        # tela inteira; o ajuste da imagem fica a cargo do visualizador da
+        # aba.
         self.janela_resultados.showMaximized()
         self.janela_resultados.raise_()
         self.janela_resultados.activateWindow()
@@ -338,6 +351,7 @@ class ConfiguracaoValidacaoDialog(_DialogoBaseWin11):
         self.accept()
 
     def _ao_falhar(self, mensagem: str) -> None:
+        """Sinal da thread: destrava os controles e mostra a mensagem de erro."""
         self._definir_controles_habilitados(True)
         self.barra_progresso.setVisible(False)
         self._rotulo_progresso.setVisible(False)
@@ -571,12 +585,19 @@ class _VisualizadorTopologia(QLabel):
             Qt.KeepAspectRatio,
             Qt.SmoothTransformation)
         self.setPixmap(pixmap)
-        # O tamanho mínimo do rótulo define quando o QScrollArea precisa
-        # rolar; no ajuste ele é no máximo o viewport.
+        # O tamanho mínimo do rótulo é o que faz o QScrollArea rolar quando
+        # a imagem não cabe. No modo ajuste, ele nunca passa do viewport -
+        # é o que mantém a barra de rolagem escondida até o usuário ampliar.
         self.setMinimumSize(pixmap.size())
         self.updateGeometry()
 
     def _definir_escala(self, nova_escala: float) -> None:
+        """Aplica uma escala escolhida pelo usuário e sai do modo ajuste.
+
+        Qualquer zoom manual desliga o ajuste automático: se a janela
+        continuasse reajustando sozinha, o zoom do usuário seria desfeito no
+        próximo redimensionamento.
+        """
         if self._pixmap_original.isNull():
             return
         novo = max(self.ESCALA_MINIMA, min(self.ESCALA_MAXIMA, nova_escala))
@@ -586,6 +607,7 @@ class _VisualizadorTopologia(QLabel):
 
     # ------------------------------------------------------------------ #
     def resizeEvent(self, evento) -> None:  # noqa: N802 (API Qt)
+        """Refaz o ajuste quando a área visível muda de tamanho."""
         super().resizeEvent(evento)
         if self._modo_ajuste:
             self._aplicar_escala()
@@ -644,11 +666,14 @@ class _VisualizadorTopologia(QLabel):
         super().mouseReleaseEvent(evento)
 
 
-# Referências vivas das janelas de resultados em exibição. Uma janela
-# top-level (parent=None) e não modal criada durante um callback — ou,
-# como aqui, guardada em um diálogo modal que é aceito logo em seguida —
-# é coletada pelo GC assim que a última referência some, e a janela
-# "pisca e fecha". A referência é solta no sinal `destroyed`.
+# Referências vivas das janelas de resultados em exibição.
+#
+# Uma janela top-level (parent=None) e não modal some assim que a última
+# referência Python a ela desaparece: o coletor de lixo a leva junto, e o
+# usuário vê a janela "piscar e fechar". É exatamente o que acontece com
+# uma janela criada dentro de um diálogo modal aceito logo em seguida.
+# Guardar a referência aqui até o sinal `destroyed` mantém a janela viva
+# enquanto ela existe de fato.
 _janelas_resultado = []
 
 
@@ -661,11 +686,13 @@ def _remover_janela_resultado(janela) -> None:
 
 
 class JanelaResultadosValidacao(QWidget):
-    """Janela de resultados da validação: grande, não modal, no padrão
-    visual Win11 (cartão arredondado com sombra). Contém o resumo por
-    sistema, as abas de memorial de cálculo e topologia das redes, e a
-    barra de ações (exportar Excel / exportar projeto / salvar
-    memorial / fechar)."""
+    """Janela de resultados: grande, não modal, no padrão Win11.
+
+    Não modal para o usuário poder consultar o menu ou outra janela com os
+    resultados abertos ao lado. Reúne o resumo por sistema, as abas de
+    memorial de cálculo e de topologia das redes, e a barra de ações
+    (exportar Excel, exportar projeto, salvar memorial, fechar).
+    """
 
     def __init__(self, resultados: dict, parent: Optional[QWidget] = None):
         super().__init__(_parent_qt(parent))
@@ -675,14 +702,16 @@ class JanelaResultadosValidacao(QWidget):
         self.memorial_texto = validacao_ieee.gerar_memorial_validacao(resultados)
         self.paleta = obter_paleta_ativa(detectar_tema())
 
-        # PNGs temporários das topologias, apagados ao fechar a janela.
+        # Caminhos dos PNGs temporários das topologias. Ficam registrados
+        # para serem apagados ao fechar - a janela tem de limpar o que criou.
         self._caminhos_temp_topologia: list = []
-        # Mapas auxiliares: nome do sistema -> objeto DSS / nome do
-        # arquivo de topologia correspondente no stacked widget.
+        # Mapas auxiliares: nome do sistema -> objeto DSS, e nome do sistema
+        # -> índice da sua aba de topologia no stacked widget.
         self._sistemas_com_dss: dict = {}
         self._indice_topologia_por_sistema: dict = {}
-        # Visualizadores de topologia (um por sistema), na ordem de
-        # inserção no stacked widget — usados pelos botões de zoom.
+        # Um visualizador de topologia por sistema, na ordem de inserção no
+        # stacked widget. É por esta lista que os botões de zoom sabem qual
+        # imagem ampliar.
         self._visualizadores_topologia: list = []
 
         self._configurar_janela()

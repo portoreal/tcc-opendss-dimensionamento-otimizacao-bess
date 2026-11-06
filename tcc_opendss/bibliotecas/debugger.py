@@ -1,69 +1,66 @@
 """
 debugger.py
 
-Janela de verificacao de integridade ("Checks") do PROJETO INTEIRO
-"tcc_opendss", executada ANTES de abrir o menu principal (tcc_opendss.py).
+Janela de verificação de integridade ("Checks") do projeto inteiro,
+executada ANTES de abrir o menu principal (tcc_opendss.py).
 
 FLUXO DE ABERTURA DO SISTEMA (tcc_opendss.bat)
-================================================
-    1. Verificacao/instalacao de dependencias (verificar_dependencias.py,
+==============================================
+    1. Verificação/instalação de dependências (verificar_dependencias.py,
        no console).
-    2. ESTE debugger (janela, checks do PROJETO INTEIRO).
-    3. Menu principal (tcc_opendss.py, Tkinter) - lancado PELO PROPRIO
-       debugger ao concluir a verificacao (ver "iniciar_debugger_projeto").
+    2. Este debugger (janela, checks do projeto inteiro).
+    3. Menu principal (tcc_opendss.py, Tkinter) — lançado pelo próprio
+       debugger ao concluir a verificação (ver "iniciar_debugger_projeto").
 
-TRANSPARENCIA TECNICA (transicao debugger -> menu)
-================================================
-No projeto de referencia ("gerenciamento_de_demandas"), a interface abre
-na MESMA QApplication, ao final do debugger. Aqui o menu principal e
-Tkinter - toolkit e, portanto, PROCESSO proprio - de modo que o debugger
-nao pode exibi-lo na mesma QApplication. Para preservar o MESMO fluxo de
-experiencia (o usuario ve a verificacao concluir e o menu aparecer logo
-em seguida, sem passo intermediario), o debugger LANCA o menu via
-subprocess.Popen e ENCERRA o processo. A ordem e a mesma da referencia:
-o novo processo e criado ANTES de este terminar (evita qualquer janela
-"piscando" no meio da transicao).
+TRANSIÇÃO DEBUGGER -> MENU
+==========================
+No projeto de referência ("gerenciamento_de_demandas"), a interface abre na
+mesma QApplication, ao final do debugger. Aqui o menu é Tkinter — outro
+toolkit, portanto outro processo —, e o debugger não tem como exibi-lo na
+mesma QApplication. Para não perder a experiência de verificação que termina
+e menu que aparece em seguida, o debugger lança o menu via
+subprocess.Popen e encerra o próprio processo. A ordem é a mesma da
+referência: o processo novo nasce antes de este terminar, senão a tela fica
+sem janela nenhuma por um instante no meio da transição.
 
-Janela 100% PySide6, no MESMO padrao visual Fluent/Win11 de
-"ui_win11.py" e da janela de validacao:
-    - Janela SEM MOLDURA NATIVA (frameless + translucent), cartao
-      arredondado com sombra de elevacao.
-    - Cabecalho em azul institucional arrastavel, com botao de fechar.
+Janela 100% PySide6, no mesmo padrão Fluent/Win11 de "ui_win11.py" e da
+janela de validação:
+    - Janela sem moldura nativa (frameless + translucent), cartão
+      arredondado com sombra de elevação.
+    - Cabeçalho em azul institucional, arrastável, com botão de fechar.
 
-PADRAO PORTADO DO PROJETO "gerenciamento_de_demandas"
-================================================
-Este arquivo e um port fiel de "debugger.py" do projeto
-"gerenciamento_de_demandas" (fonte citada), mantido com a MESMA UX e
-o MESMO padrao visual Win11/Fluent. As adaptacoes de conteudo foram:
-    - Titulo da janela.
-    - Lista de CHECKS: em vez de checar conexoes de banco/coleta de
-      dados, verifica o que o modulo de Validacao do Modelo
-      Computacional do TCC realmente precisa para operar (motor
-      OpenDSS, matplotlib, openpyxl, modulos do validador, dados de
-      referencia IEEE, permissao de escrita).
-    - Paleta/fonte/tema: importados do "ui_win11.py" LOCAL (port do
-      TCC), com o mesmo fallback local da referencia caso o import
-      falhe.
+ORIGEM DO PADRÃO VISUAL
+=======================
+Port fiel de "debugger.py" do projeto "gerenciamento_de_demandas" (fonte
+citada), com a mesma UX e o mesmo padrão Win11/Fluent. Mudaram:
+    - O título da janela.
+    - A lista de checks: no lugar de conexões de banco e coleta de dados,
+      verifica o que o módulo de Validação do Modelo Computacional
+      realmente precisa para operar (motor OpenDSS, matplotlib, openpyxl,
+      módulos do validador, dados de referência IEEE, permissão de
+      escrita).
+    - Paleta, fonte e tema: importados do "ui_win11.py" local (port do
+      TCC), com o mesmo fallback local da referência caso o import falhe.
 
-CHECKS MINIMALISTAS (SEM SKELETON/ANIMACAO): cada linha mostra apenas
-um indicador discreto a esquerda do nome do check:
-    - PENDENTE: ponto cinza neutro "○" (estatico, sem pulso/animacao).
-    - OK: marca verde minimalista "✓" + texto do nome em verde.
-    - FALHA: marca vermelha minimalista "✕" + texto do nome em
-      vermelho (necessario para diagnostico - sem isso nao seria
-      possivel distinguir falha de pendente).
+CHECKS MINIMALISTAS (SEM SKELETON/ANIMAÇÃO): cada linha mostra apenas um
+indicador discreto à esquerda do nome do check:
+    - PENDENTE: ponto cinza neutro "○", estático, sem pulso.
+    - OK: marca verde "✓" e o nome do check em verde.
+    - FALHA: marca vermelha "✕" e o nome em vermelho. A cor aqui não é
+      enfeite — sem ela não dá para distinguir falha de pendente, e o
+      usuário não saberia o que corrigir.
 
-DIMENSOES: a altura da janela e calculada pelo PROPRIO QT
-(adjustSize + sizeHint), nunca por soma manual de numeros - evita o
-aspecto "quebrado"/cortado. A area de checks tem altura calculada a
-partir das MESMAS constantes usadas em cada linha, nunca um valor
-arbitrario desencontrado do conteudo real.
+DIMENSÕES: a altura da janela é medida pelo próprio Qt (adjustSize +
+sizeHint), nunca somando números à mão — é o que evita o aspecto
+quebrado/cortado. A área de checks tem altura calculada a partir das mesmas
+constantes usadas em cada linha, para não haver descompasso entre o espaço
+reservado e o conteúdo real.
 
-SEM GERACAO DE ARQUIVOS DE LOG: nenhum erro, nem mesmo os
-criticos/fatais, grava nada em disco - tudo e reportado
-exclusivamente via caixa de mensagem NATIVA DO WINDOWS (MessageBoxW,
-via ctypes), que nao depende de console, arquivo, ou qualquer
-toolkit de GUI estar funcional.
+SEM ARQUIVOS DE LOG: nenhum erro, nem os críticos, grava nada em disco. Tudo
+sai por caixa de mensagem nativa do Windows (MessageBoxW, via ctypes), que
+não depende de console, de arquivo nem de toolkit gráfico funcional — que é
+exatamente o que se precisa quando o problema é justamente a interface não
+subir.
 
 Uso:
     from bibliotecas.debugger import iniciar_debugger_projeto
@@ -89,11 +86,16 @@ from typing import Callable, List, Optional
 
 
 def _esta_empacotado() -> bool:
+    """Diz se o código está rodando dentro de um executável PyInstaller."""
     return bool(getattr(sys, "frozen", False))
 
 
 def _pasta_bibliotecas() -> Path:
-    """Pasta onde este arquivo (debugger.py) esta - "bibliotecas/"."""
+    """Pasta onde este arquivo está, ou seja, "bibliotecas/".
+
+    No modo congelado não existe "bibliotecas/" em disco: os módulos vivem
+    dentro do bundle, e a referência útil passa a ser a pasta do executável.
+    """
     try:
         if _esta_empacotado():
             return Path(sys.executable).resolve().parent
@@ -103,19 +105,19 @@ def _pasta_bibliotecas() -> Path:
 
 
 def _pasta_projeto() -> Path:
-    """Pasta de DADOS do projeto - "tcc_opendss/" no layout do script e
-    no layout da distribuicao congelada.
+    """Pasta de DADOS do projeto — "tcc_opendss/".
 
-    TRANSPARENCIA TECNICA - dois layouts:
-      (1) Script: um nivel acima de "bibliotecas/" (onde ficam
-          "IEEETestCases/", "validacao_ieee/" e os modulos de entrada).
-      (2) Congelado (PyInstaller --onedir): nao existe pasta de codigo
-          gravavel - o bundle vive em "_internal/" (read-only) e a
-          distribucao leva a pasta de dados "tcc_opendss/" AO LADO do
-          executavel:
+    Dois layouts, e a diferença importa:
+      (1) Script: um nível acima de "bibliotecas/", onde ficam
+          "IEEETestCases/", "validacao_ieee/" e os módulos de entrada.
+      (2) Congelado (PyInstaller --onedir): não há pasta de código gravável.
+          O bundle fica em "_internal/" (somente leitura) e a distribuição
+          leva a pasta de dados "tcc_opendss/" ao lado do executável:
               dist/TccOpendss/TccOpendss.exe
               dist/TccOpendss/tcc_opendss/{projetos,hardware,validacao_ieee}
-          Logo a base e derivada de sys.executable, nunca de __file__.
+          Por isso a base vem de sys.executable, nunca de __file__: no
+          bundle, __file__ aponta para dentro do pacote, não para a pasta
+          onde o usuário tem os dados.
     """
     if _esta_empacotado():
         try:
@@ -136,9 +138,12 @@ _MB_TOPMOST = 0x00040000
 
 def _exibir_mensagem_critica(titulo: str, mensagem: str) -> None:
     """
-    Exibe uma caixa de mensagem NATIVA DO WINDOWS (MessageBoxW), sem
-    depender de NENHUM toolkit de GUI (nem Qt, nem Tk) estar
-    funcional, e SEM gravar nada em disco.
+    Exibe uma caixa de mensagem nativa do Windows (MessageBoxW).
+
+    Não depende de nenhum toolkit de GUI — nem Qt, nem Tk — estar
+    funcional, e não grava nada em disco. Se até a chamada nativa falhar,
+    resta o print no console; e se nem o console existir, o erro é
+    silencioso de propósito: não há mais para onde reportar.
     """
     try:
         ctypes.windll.user32.MessageBoxW(0, mensagem, titulo, _MB_OK | _MB_ICONERROR | _MB_TOPMOST)
@@ -150,8 +155,12 @@ def _exibir_mensagem_critica(titulo: str, mensagem: str) -> None:
 
 
 def tratar_erro_critico(contexto: str, excecao: BaseException) -> None:
-    """Monta um resumo do erro (SEM gravar nada em disco) e exibe em
-    uma caixa de mensagem nativa."""
+    """Monta um resumo do erro e mostra em caixa de mensagem nativa.
+
+    O ``contexto`` diz em que etapa da abertura o erro ocorreu; sem ele, a
+    mensagem daria apenas o tipo da exceção, e o usuário não saberia o que
+    tentar de novo.
+    """
     mensagem = (
         "Ocorreu um erro inesperado ao iniciar o sistema.\n\n"
         f"Contexto: {contexto}\n"
@@ -161,10 +170,15 @@ def tratar_erro_critico(contexto: str, excecao: BaseException) -> None:
 
 
 def _excecao_nao_tratada(tipo, valor, tb) -> None:
+    """Gancho de último recurso para exceções que ninguém tratou."""
     excecao = valor if isinstance(valor, BaseException) else Exception(str(valor))
     tratar_erro_critico("Exceção não tratada", excecao)
 
 
+# A partir daqui, qualquer exceção não tratada em qualquer ponto do processo
+# cai nesta função, em vez de sumir silenciosamente. Em aplicação sem
+# console, o padrão do Python é imprimir o traceback em um stderr que não
+# existe - o usuário veria a janela simplesmente não abrir.
 sys.excepthook = _excecao_nao_tratada
 
 
@@ -209,8 +223,11 @@ def _fallback_fonte_padrao(tamanho: int = 10, negrito: bool = False):
 
 
 def _fallback_paleta() -> SimpleNamespace:
-    """Paleta minimalista (tema claro fixo) usada SOMENTE se
-    "ui_win11.py" nao puder ser importado."""
+    """Paleta minimalista, de tema claro fixo.
+
+    Usada somente se "ui_win11.py" não puder ser importado. Nesse caso é
+    melhor um visual simples do que a janela quebrar por falta de uma cor.
+    """
     return SimpleNamespace(
         fundo_cartao="#FFFFFF",
         borda_cartao="#E5E5E5",
@@ -252,11 +269,11 @@ if _PYSIDE6_DISPONIVEL:
             )
         except ImportError:
             # Modo congelado (.exe): o PyInstaller embute ui_win11 SOMENTE
-            # como submódulo do pacote "bibliotecas"
-            # (collect_submodules no .spec) - não existe "ui_win11"
-            # top-level no bundle. Sem este fallback, o import falhava em
-            # silêncio e o debugger fixava o TEMA CLARO (fallback local),
-            # ignorando o tema escuro do Windows.
+            # como submódulo do pacote "bibliotecas" (collect_submodules no
+            # .spec); "ui_win11" top-level não existe no bundle. Sem este
+            # fallback o import falhava em silêncio e o debugger fixava o
+            # TEMA CLARO do fallback local, ignorando o tema escuro do
+            # Windows - sintoma que já apareceu em teste.
             from bibliotecas.ui_win11 import (
                 detectar_tema as _detectar_tema_win11,
                 obter_paleta_ativa as _obter_paleta_win11,
@@ -326,6 +343,12 @@ def _resolver_cores_status(tema: str) -> _CoresStatus:
 
 @dataclass
 class ResultadoCheck:
+    """Resultado de um check: passou ou não, e por quê.
+
+    Uma dataclass é uma classe que só declara campos; o Python gera o
+    construtor sozinho. ``ResultadoCheck(True, "texto")`` é o mesmo que
+    preencher os dois campos na mão, com bem menos código.
+    """
     ok: bool
     mensagem: str
 
@@ -336,6 +359,7 @@ class ResultadoCheck:
 
 
 def check_interpretador_python() -> ResultadoCheck:
+    """Confere que há um interpretador Python real do outro lado do processo."""
     try:
         executavel = sys.executable or ""
         versao = sys.version.split()[0]
@@ -355,13 +379,14 @@ def check_interpretador_python() -> ResultadoCheck:
 
 
 def check_ambiente_virtual() -> ResultadoCheck:
+    """Confere que o sistema roda dentro do venv do projeto, não no Python global."""
     try:
         if _esta_empacotado():
-            # TRANSPARENCIA TECNICA: nao ha venv no .exe - o interpretador
-            # Python e todas as dependencias vao embutidos no bundle
-            # (PyInstaller). sys.prefix/base_prefix nao distinguem nada
-            # nesse caso; reportar OK com a nota abaixo evita um falso
-            # negativo que faria o usuario "continuar mesmo assim".
+            # No .exe não há venv: interpretador e dependências vão
+            # embutidos no bundle. sys.prefix e base_prefix não distinguem
+            # nada aí, e conferi-los daria um falso negativo - o usuário
+            # veria uma falha que não existe e clicaria em "continuar mesmo
+            # assim" por reflexo.
             return ResultadoCheck(
                 True,
                 "Aplicativo empacotado (.exe) - dependências embutidas no executável; "
@@ -383,6 +408,12 @@ def check_ambiente_virtual() -> ResultadoCheck:
 
 
 def _checar_modulo(nome_modulo: str, nome_exibicao: Optional[str] = None) -> ResultadoCheck:
+    """Tenta importar um módulo e devolve o resultado já em texto legível.
+
+    ``importlib.import_module`` importa pelo nome em string, o que permite
+    testar uma biblioteca que o código não usa diretamente - é assim que se
+    verifica uma dependência sem escrever um import para cada uma.
+    """
     nome_exibicao = nome_exibicao or nome_modulo
     try:
         importlib.import_module(nome_modulo)
@@ -396,9 +427,11 @@ def _checar_modulo(nome_modulo: str, nome_exibicao: Optional[str] = None) -> Res
 
 
 def check_motor_opendss() -> ResultadoCheck:
-    """Verifica o motor de simulação OpenDSS (pacote dss-python /
-    DSS-Extensions) - CRÍTICO: sem ele nenhuma validação pode ser
-    executada."""
+    """Verifica o motor OpenDSS (pacote dss-python / DSS-Extensions).
+
+    É o check crítico: sem o motor, nenhuma validação roda — o programa abre,
+    mas não calcula nada.
+    """
     return _checar_modulo("dss", "dss-python (motor OpenDSS)")
 
 
@@ -509,14 +542,22 @@ def check_permissao_pasta_temporaria() -> ResultadoCheck:
 
 
 def check_pulp() -> ResultadoCheck:
-    """Verifica PuLP - solver de PLIM usado na otimização da alocação do
-    sistema de armazenamento (otimizacao_milp.py)."""
+    """Verifica o PuLP, solver de PLIM da otimização de alocação do BESS.
+
+    PLIM é programação linear inteira mista: a otimização escolhe onde e de
+    que tamanho instalar o armazenamento, e essa escolha é um problema
+    combinatório, resolvido em otimizacao_milp.py.
+    """
     return _checar_modulo("pulp", "PuLP (otimização PLIM)")
 
 
 def check_pyside6() -> ResultadoCheck:
-    """Verifica PySide6 (interface gráfica do módulo de validação e do
-    debugger de integridade), incluindo os três submódulos centrais."""
+    """Verifica o PySide6, toolkit gráfico do módulo de validação e do debugger.
+
+    Confere também QtCore, QtGui e QtWidgets. O PySide6 instala os três
+    juntos, mas uma instalação interrompida pode deixar o pacote principal
+    sem um deles - e a interface falharia só na hora de abrir a janela.
+    """
     try:
         import PySide6
 
@@ -543,12 +584,13 @@ def check_pyside6() -> ResultadoCheck:
 
 
 def check_tkinter() -> ResultadoCheck:
-    """Verifica Tkinter - toolkit do menu principal (tcc_opendss.py).
+    """Verifica o Tkinter, toolkit do menu principal (tcc_opendss.py).
 
-    ATENÇÃO (transparência técnica): verifica apenas a IMPORTABILIDADE do
-    módulo e reporta a versão do Tk (tkinter.TkVersion). NÃO instancia
-    nenhuma janela Tk, para não abrir um segundo toolkit gráfico dentro
-    do processo Qt do debugger."""
+    Apenas confere se o módulo importa e reporta a versão do Tk
+    (tkinter.TkVersion). Não instancia janela Tk alguma: este processo é Qt,
+    e abrir um segundo toolkit gráfico dentro dele é a receita do conflito
+    de laços de eventos.
+    """
     try:
         import tkinter
 
@@ -623,27 +665,28 @@ _MODULOS_DO_PROJETO = [
 
 
 def check_modulos_projeto() -> ResultadoCheck:
-    """Verifica se TODOS os módulos internos (.py) do projeto estão
-    presentes em "bibliotecas/". Em modo empacotado (.exe), ficam
-    EMBUTIDOS no executável: a verificação deixa de ser de EXISTÊNCIA em
-    disco e passa a ser de DISPONIBILIDADE no bundle
-    (importlib.util.find_spec) — ver TRANSPARÊNCIA TÉCNICA no corpo.
+    """Verifica se todos os módulos internos (.py) do projeto estão presentes.
 
-    ATENÇÃO (transparência técnica): verifica a EXISTÊNCIA dos arquivos
-    em disco (Path.is_file), NÃO a importabilidade dos módulos - a
-    importação real de módulos que dependem de contexto (ex.: UIs que
-    instanciam widgets) é deixada para o fluxo normal do projeto, para
-    não introduzir efeitos colaterais de importação no debugger."""
+    No modo script, a conferência é de existência em disco ("bibliotecas/").
+    No empacotado (.exe) os módulos vão embutidos no executável, e a
+    conferência passa a ser de disponibilidade no bundle
+    (importlib.util.find_spec) — o porquê está no corpo da função.
+
+    Confere existência de arquivo (Path.is_file), não importabilidade. A
+    importação real de módulos que dependem de contexto — UIs que instanciam
+    widgets, por exemplo — fica para o fluxo normal do projeto. Importar
+    tudo aqui teria efeitos colaterais justamente no programa cuja função é
+    só verificar o ambiente.
+    """
     if _esta_empacotado():
-        # TRANSPARENCIA TECNICA - por que NAO usar is_file() no congelado:
-        # no bundle nao existem "bibliotecas/*.py" em disco (o codigo esta
-        # dentro do executavel/_internal). Testar disco no congelado
-        # sempre falharia; declarar OK cegamente esconderia um modulo que
-        # o PyInstaller nao incluiu. Solucao: verificar a DISPONIBILIDADE
-        # REAL do modulo no bundle com importlib.util.find_spec(), que
-        # resolve pelo meta-path do importador congelado e NAO executa o
-        # modulo (preserva a ausencia de efeitos colaterais de importacao
-        # documentada acima).
+        # Por que não usar is_file() no congelado: no bundle não existem
+        # "bibliotecas/*.py" em disco, o código está dentro do
+        # executável/_internal. Testar disco ali falharia sempre; e
+        # declarar OK sem testar nada esconderia um módulo que o PyInstaller
+        # deixou de fora. O caminho do meio é find_spec(), que resolve pelo
+        # meta-path do importador congelado: dá a disponibilidade real do
+        # módulo e não o executa, preservando a ausência de efeitos
+        # colaterais descrita acima.
         import importlib.util
 
         faltantes = []
@@ -828,9 +871,12 @@ if _PYSIDE6_DISPONIVEL:
             self._atualizar_texto_elidido()
 
         def _atualizar_texto_elidido(self) -> None:
-            """Encurta o nome do check com '...' no meio, se nao couber
-            na largura disponivel - evita que nomes longos quebrem o
-            layout da linha."""
+            """Encurta o nome do check com '...' no meio quando não couber.
+
+            O nome inteiro continua no tooltip. Sem o corte, nomes longos
+            empurrariam o layout e poderiam estourar a largura fixa da
+            janela.
+            """
             metrica = QFontMetrics(self._label_nome.font())
             largura_disponivel = max(self._label_nome.width(), 0)
             texto_elidido = metrica.elidedText(self._texto_completo, Qt.ElideMiddle, largura_disponivel)
@@ -1262,49 +1308,50 @@ def iniciar_debugger_projeto(
     titulo: str = "Verificação de Integridade — TCC OpenDSS",
     ao_abrir_menu: Optional[Callable[[], None]] = None,
 ) -> int:
-    """Fluxo de integridade do PROJETO INTEIRO - e a PRIMEIRA coisa que o
-    tcc_opendss.bat executa (depois de verificar_dependencias.py, no console).
+    """Fluxo de integridade do projeto inteiro.
 
-    Executa os checks GERAIS (``montar_checks_projeto``) e, ao concluir,
-    LANCA O MENU PRINCIPAL (tcc_opendss.py) e ENCERRA este processo:
+    É a primeira coisa que o tcc_opendss.bat executa, depois de
+    verificar_dependencias.py no console. Roda os checks gerais
+    (``montar_checks_projeto``) e, ao concluir, lança o menu principal
+    (tcc_opendss.py) e encerra este processo:
 
-        - Todos os checks OK -> lanca o menu e encerra com codigo 0.
-        - "Continuar mesmo assim" (com falhas) -> lanca o menu e encerra
-          com codigo 0.
-        - "Fechar" / "X" -> encerra com codigo 1, SEM lancar o menu (aborta
-          a abertura do sistema).
+        - Todos os checks OK -> lança o menu e encerra com código 0.
+        - "Continuar mesmo assim", com falhas -> lança o menu e encerra com
+          código 0.
+        - "Fechar" / "X" -> encerra com código 1, sem lançar o menu, o que
+          aborta a abertura do sistema.
 
-    TRANSPARENCIA TECNICA (lancamento do menu): no projeto de referencia a
-    interface abre na MESMA QApplication. Aqui o menu e Tkinter - toolkit
-    e PROCESSO proprios - entao o debugger o lanca via subprocess e
-    encerra, preservando o MESMO fluxo de experiencia (ver nota no topo do
-    arquivo). O menu roda com ``sys.executable`` (python do venv, ativo
-    neste processo) e cwd = pasta do proprio menu (tcc_opendss.py), de
-    onde ele resolve seus caminhos relativos.
+    LANÇAMENTO DO MENU: no projeto de referência a interface abre na mesma
+    QApplication. Aqui o menu é Tkinter — outro toolkit, outro processo —,
+    e o debugger o lança via subprocess e encerra, como explicado no topo
+    do arquivo. O menu roda com ``sys.executable`` (o Python do venv, já
+    ativo neste processo) e cwd na pasta do próprio menu, de onde ele
+    resolve os caminhos relativos.
 
-    TRANSPARENCIA TECNICA (modo congelado - ``ao_abrir_menu``): no .exe nao
-    existe "tcc_opendss.py" em disco e ``sys.executable`` e o PROPRIO
-    executavel - o subprocess acima nao tem o que lancar. O chamador
-    congelado (tcc_opendss.py, ``main()``) passa ``ao_abrir_menu``: nesse
-    caso o menu e aberto IN-PROCESS, na MESMA QApplication, sem subprocess
-    e sem ``os._exit``. Assim o fluxo .bat fica INTOCADO (parametro
-    opcional, default None = comportamento anterior, byte a byte) e o
-    ``iniciar_debugger_projeto()`` do ``__main__`` do debugger continua
-    valendo para o modo script. o menu permanece vivo no mesmo processo:
-    a janela do debugger se recolhe (hide) e o encerramento ocorre ao
-    fechar o menu.
+    MODO CONGELADO (``ao_abrir_menu``): no .exe não existe "tcc_opendss.py"
+    em disco, e ``sys.executable`` é o próprio executável — o subprocess
+    acima não teria o que lançar. O chamador congelado (tcc_opendss.py,
+    ``main()``) passa ``ao_abrir_menu``, e então o menu abre dentro do
+    processo, na mesma QApplication, sem subprocess e sem ``os._exit``.
+    Assim o fluxo do .bat fica intacto (o parâmetro é opcional; None
+    mantém o comportamento anterior, byte a byte) e o
+    ``iniciar_debugger_projeto()`` do ``__main__`` continua valendo para o
+    modo script. O menu fica vivo no mesmo processo: a janela do debugger
+    se recolhe e o encerramento acontece quando o menu é fechado.
 
-    Retorna o codigo de saida do processo (0 = menu lancado, 1 = abortar).
+    Retorna o código de saída do processo (0 = menu lançado, 1 = abortar).
     """
     app = _preparar_ambiente_qt()
 
     estado = {"janela_debugger": None}
 
     def ao_concluir_projeto() -> None:
-        """Callback do caminho de SUCESSO (ou 'Continuar mesmo assim'):
-        loga a conclusao, LANCA o menu principal e encerra a QApplication
-        com codigo 0 apos um pequeno atraso, para o usuario ler o
-        resultado."""
+        """Callback do caminho de sucesso (ou de 'Continuar mesmo assim').
+
+        Registra a conclusão, lança o menu principal e encerra a QApplication
+        com código 0 após um pequeno atraso, para dar tempo de o usuário ler
+        o resultado na tela.
+        """
         janela = estado["janela_debugger"]
         if janela is not None:
             janela._log("\nTudo OK — abrindo o menu principal...")

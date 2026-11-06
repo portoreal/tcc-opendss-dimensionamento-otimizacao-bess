@@ -1,46 +1,44 @@
 __author__ = 'Pedro Henrique Sousa Pinheiro'
-"""Biblioteca EMBUTIDA de curvas semanais padrão da ferramenta de otimização
-de BESS.
+"""Curvas semanais padrão embutidas na ferramenta de otimização de BESS.
 
-Cada natureza ('carga' e 'geracao') possui SETE curvas — uma por dia da
-semana (segunda a domingo), hora a hora (0h–23h), sempre em PERCENTUAL do
-valor nominal do elemento.
+Cada natureza ('carga' e 'geracao') traz SETE curvas — uma por dia da
+semana, de segunda a domingo, hora a hora (0h–23h), sempre em PERCENTUAL
+do valor nominal do elemento.
 
-TRANSPARÊNCIA TÉCNICA — por que percentual e não potência:
+POR QUE PERCENTUAL, E NÃO POTÊNCIA
     O LoadShape do OpenDSS multiplica a potência NOMINAL do elemento pelo
-    multiplicador da curva (multiplicadores() = percentual/100). Uma curva
-    em percentual permanece válida para qualquer potência: o usuário altera
-    os kW/kvar/kVA do elemento no editor e o perfil inteiro escala junto,
-    sem tocar nas curvas. Curvas em potência absoluta exigiriam uma curva
-    nova a cada mudança de dimensionamento — este é o motivo da exigência
-    do pesquisador pelo formato percentual.
+    multiplicador da curva (multiplicadores() = percentual/100). Como o
+    percentual é adimensional, a mesma curva continua válida quando a
+    potência muda: o usuário altera os kW/kvar/kVA do elemento no editor e
+    o perfil inteiro escala junto, sem nenhuma edição na curva. Em potência
+    absoluta, cada mudança de dimensionamento exigiria uma curva nova — foi
+    esse o argumento que definiu o formato percentual.
 
-TRANSPARÊNCIA TÉCNICA — os perfis são REPRESENTATIVOS, não medições:
-    Os valores abaixo reproduzem a forma de alimentadores MISTOS
-    (comercial + residencial) brasileiros e de geração fotovoltaica em
-    dias limpos/parciais/nublados. Não são séries medidas em campo nem
-    dados climatológicos de uma localidade específica. Servem como ponto de
-    partida editável: o diálogo de curvas semanais permite substituir
-    qualquer ponto, por elemento, com retorno ao padrão a qualquer momento.
+OS PERFIS SÃO REPRESENTATIVOS, NÃO MEDIÇÕES
+    Os valores abaixo reproduzem a forma de alimentadores MISTOS (comercial
+    mais residencial) brasileiros, e de geração fotovoltaica em dias limpos,
+    parciais e nublados. Não são séries medidas em campo nem climatologia de
+    uma localidade específica. Valem como ponto de partida editável: o
+    diálogo de curvas semanais permite substituir qualquer ponto, elemento a
+    elemento, e voltar ao padrão quando quiser.
 
-TRANSPARÊNCIA TÉCNICA — pontos fora de 0–100% são permitidos:
-    A faixa 0–100% NÃO é o limite da biblioteca nem do formato. 0% é
-    legítimo e frequente em cargas (ex.: motores de produção desligados em
-    determinado horário). Valores ACIMA de 100% também são válidos: o
-    ponto de partida de um motor, por exemplo, supera a potência nominal
-    durante a partida. As curvas padrão abaixo não usam valores >100%
-    (são perfis agregados de regime permanente), mas o módulo não impõe
-    teto — quem edita pode fazê-lo.
+PONTOS FORA DE 0–100% SÃO PERMITIDOS
+    A faixa 0–100% não é limite da biblioteca nem do formato. Zero é
+    legítimo e comum em carga — motor de produção desligado em certo horário
+    é o caso típico. Acima de 100% também vale: durante a partida, um motor
+    consome mais que a própria potência nominal. As curvas padrão abaixo não
+    passam de 100% porque descrevem regime permanente agregado; o módulo não
+    impõe teto, e quem edita pode ultrapassar.
 
-TRANSPARÊNCIA TÉCNICA — kW e kvar compartilham o multiplicador:
-    O mesmo multiplicador do LoadShape é aplicado a kW e a kvar do
-    elemento, ou seja, a curva preserva o fator de potência. Uma curva de
-    reativo INDEPENDENTE da de ativo não é representável por um único
-    LoadShape. Provado no motor: shape de 50% sobre uma carga de 30 kW e
-    3 kvar resulta em 15,0 kW e 1,5 kvar (PF constante).
+kW E kvar COMPARTILHAM O MESMO MULTIPLICADOR
+    O LoadShape aplica o multiplicador tanto ao kW quanto ao kvar do
+    elemento, o que preserva o fator de potência ao longo do dia. Uma curva
+    de reativo independente da de ativo não é representável por um único
+    LoadShape. Verificado no motor: shape de 50% sobre uma carga de 30 kW e
+    3 kvar resulta em 15,0 kW e 1,5 kvar, com FP constante.
 
-Este módulo é SÓ DADOS — não importa Qt nem qualquer módulo de interface,
-para poder ser usado tanto pela UI quanto por fluxos headless/testes.
+O módulo é SÓ DADOS — não importa Qt nem qualquer módulo de interface. É o
+que permite usar as curvas tanto pela UI quanto em fluxos headless e testes.
 """
 
 from .curvas import CurvaCaracteristica
@@ -51,11 +49,14 @@ NATUREZAS_VALIDAS = ("carga", "geracao")
 
 
 # ---------------------------------------------------------------------------
-# Curvas padrao de CARGA (alimentador misto comercial + residencial)
+# Curvas padrão de CARGA (alimentador misto comercial + residencial)
 # ---------------------------------------------------------------------------
-# Forma: rampa da manha (7h-8h), patamar de almoco, pico noturno as 19h.
-# Sabado: inicio tardio e lazer noturno prolongado (100% tambem as 20h).
-# Domingo: dia deprimido com pico de almoco tardio e jantar.
+# A forma geral é sempre a mesma: consumo mínimo de madrugada, rampa de
+# manhã entre 7h e 8h (comércio abrindo), patamar alto na hora do almoço e
+# pico noturno às 19h, quando residência e comércio ainda se sobrepõem.
+# Sábado atrasa o início e estica o lazer noturno — daí o 100% também às 20h.
+# Domingo é o dia deprimido: atividade comercial baixa, com um pico de almoço
+# tardio e outro no jantar.
 _CARGA_SEGUNDA = [
     (0, 35), (1, 32), (2, 30), (3, 30), (4, 33), (5, 40),
     (6, 52), (7, 62), (8, 72), (9, 80), (10, 86), (11, 90),
@@ -84,7 +85,7 @@ _CARGA_QUINTA = [
     (18, 95), (19, 100), (20, 96), (21, 88), (22, 72), (23, 52),
 ]
 
-# Sexta: comercio encerra mais cedo, vida noturna estendida (pico 98 as 19h).
+# Sexta: o comércio encerra mais cedo, mas a noite vai mais longe (pico 98 às 19h).
 _CARGA_SEXTA = [
     (0, 36), (1, 33), (2, 31), (3, 30), (4, 32), (5, 38),
     (6, 48), (7, 62), (8, 74), (9, 82), (10, 87), (11, 90),
@@ -92,7 +93,7 @@ _CARGA_SEXTA = [
     (18, 94), (19, 98), (20, 96), (21, 90), (22, 78), (23, 60),
 ]
 
-# Sabado: inicio tardio (8h = 58%), pico de lazer 19h-20h.
+# Sábado: início tardio (8h em 58%) e pico de lazer entre 19h e 20h.
 _CARGA_SABADO = [
     (0, 38), (1, 35), (2, 33), (3, 32), (4, 32), (5, 35),
     (6, 42), (7, 50), (8, 58), (9, 68), (10, 76), (11, 82),
@@ -100,7 +101,7 @@ _CARGA_SABADO = [
     (18, 96), (19, 100), (20, 100), (21, 95), (22, 88), (23, 72),
 ]
 
-# Domingo: dia deprimido (maximo diurno 68% as 12h) e pico de jantar as 20h.
+# Domingo: dia deprimido (máximo diurno de 68% às 12h) e pico de jantar às 20h.
 _CARGA_DOMINGO = [
     (0, 36), (1, 33), (2, 31), (3, 30), (4, 31), (5, 33),
     (6, 36), (7, 38), (8, 40), (9, 45), (10, 52), (11, 60),
@@ -120,12 +121,13 @@ CARGA_SEMANA_PADRAO = {
 
 
 # ---------------------------------------------------------------------------
-# Curvas padrao de GERACAO (sino fotovoltaico, sem rastreamento)
+# Curvas padrão de GERAÇÃO (sino fotovoltaico, sem rastreamento)
 # ---------------------------------------------------------------------------
-# Zero entre 19h e 5h; pico entre 12h e 13h. A variacao entre os dias
-# reproduz condicoes de ceu realistas: limpo, parcial (nuvens passageiras)
-# e nublado.
-# Segunda / Quarta / Sexta: ceu limpo, pico 100 as 13h.
+# Zero entre 19h e 5h; pico entre 12h e 13h. A variação entre os dias não é
+# aleatória: reproduz condições de céu realistas — limpo, parcial (nuvens
+# passageiras) e nublado. A forma do sino se mantém; o que muda é a altura,
+# que é exatamente o efeito de uma nuvem sobre a geração.
+# Segunda / Quarta / Sexta: céu limpo, pico 100 às 13h.
 
 _GERACAO_LIMPA = [
     (0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (5, 0),
@@ -134,7 +136,7 @@ _GERACAO_LIMPA = [
     (18, 20), (19, 5), (20, 0), (21, 0), (22, 0), (23, 0),
 ]
 
-# Terca: ceu parcial, pico 78 as 13h.
+# Terça: céu parcial, pico 78 às 13h.
 _GERACAO_TERCA = [
     (0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (5, 0),
     (6, 2), (7, 8), (8, 20), (9, 35), (10, 53), (11, 67),
@@ -142,7 +144,7 @@ _GERACAO_TERCA = [
     (18, 16), (19, 4), (20, 0), (21, 0), (22, 0), (23, 0),
 ]
 
-# Quinta: nublado, pico 55 as 13h.
+# Quinta: nublado, pico 55 às 13h.
 _GERACAO_QUINTA = [
     (0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (5, 0),
     (6, 1), (7, 6), (8, 14), (9, 25), (10, 37), (11, 47),
@@ -150,7 +152,7 @@ _GERACAO_QUINTA = [
     (18, 11), (19, 3), (20, 0), (21, 0), (22, 0), (23, 0),
 ]
 
-# Sabado: limpo com cirros, pico 93 as 13h.
+# Sábado: limpo com cirros, pico 93 às 13h.
 _GERACAO_SABADO = [
     (0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (5, 0),
     (6, 2), (7, 9), (8, 23), (9, 42), (10, 63), (11, 80),
@@ -158,7 +160,7 @@ _GERACAO_SABADO = [
     (18, 19), (19, 5), (20, 0), (21, 0), (22, 0), (23, 0),
 ]
 
-# Domingo: parcial, pico 82 as 13h.
+# Domingo: parcial, pico 82 às 13h.
 _GERACAO_DOMINGO = [
     (0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (5, 0),
     (6, 2), (7, 8), (8, 21), (9, 37), (10, 56), (11, 71),
@@ -178,10 +180,12 @@ GERACAO_SEMANA_PADRAO = {
 
 
 def obter_pontos_padrao(natureza: str, dia: str):
-    """Retorna os 24 pontos (hora, percentual) padrao da natureza/dia.
+    """Devolve os 24 pontos (hora, percentual) padrão da natureza e do dia.
 
-    Levanta ValueError com mensagem explicita para natureza ou dia
-    invalidos — o chamador nao deve receber uma lista vazia silenciosa.
+    Natureza ou dia inválido levanta ValueError com mensagem explícita. A
+    escolha é deliberada: devolver lista vazia faria o erro aparecer longe
+    daqui, como uma curva sem pontos no gráfico sem que ninguém soubesse
+    por quê.
     """
     if natureza not in NATUREZAS_VALIDAS:
         raise ValueError(
@@ -199,12 +203,12 @@ def obter_pontos_padrao(natureza: str, dia: str):
 
 
 def criar_curva_padrao(nome: str, natureza: str, dia: str) -> CurvaCaracteristica:
-    """Constroi uma CurvaCaracteristica 'daily' (24 pontos) com os valores
-    padrao da natureza/dia informados.
+    """Monta uma CurvaCaracteristica 'daily' de 24 pontos com os valores
+    padrão da natureza e do dia informados.
 
-    Usada para o "retornar ao padrao" do dialogo de curvas semanais: a curva
-    devolvida deve ser gravada com atualizar_curva() para sobrescrever a
-    copia editada do projeto.
+    É o que sustenta o botão "retornar ao padrão" do diálogo de curvas
+    semanais. Quem chama precisa gravar o retorno com atualizar_curva() —
+    a função apenas constrói o objeto em memória e não toca no repositório.
     """
     pontos = obter_pontos_padrao(natureza, dia)
     return CurvaCaracteristica(

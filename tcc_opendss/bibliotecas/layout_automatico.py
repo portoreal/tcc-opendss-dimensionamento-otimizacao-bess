@@ -1,12 +1,14 @@
 __author__ = 'Pedro Henrique Sousa Pinheiro'
-"""Calcula automaticamente as posições (x, y) das barras para exibição,
-usando um layout em camadas (layered layout / estilo Sugiyama simplificado).
+"""Posições (x, y) das barras no diagrama, calculadas em camadas.
 
-A barra com a Fonte (Vsource), se existir, é a raiz do primeiro componente
-(nível 0). Qualquer outro grupo de barras conectadas entre si (mesmo sem
-Fonte) também recebe sua própria hierarquia via BFS, evitando que toda a
-rede "colapse" visualmente em uma única fileira quando ainda não há Fonte
-cadastrada.
+O desenho segue uma versão simplificada do layout Sugiyama: cada barra cai
+num nível, medido em número de ramos a partir de uma raiz, e os níveis são
+empilhados. A barra da Fonte (Vsource), quando existe, é a raiz do
+primeiro componente e ocupa o nível 0.
+
+Todo grupo de barras conectadas entre si recebe sua própria hierarquia por
+BFS, mesmo sem Fonte. Sem isso, uma rede ainda em montagem — sem Vsource
+cadastrada — colapsaria numa única fileira horizontal e ficaria ilegível.
 """
 
 from collections import deque
@@ -16,8 +18,14 @@ from .modelo_rede import RedeEletrica
 
 
 def _construir_adjacencia(rede: RedeEletrica) -> Dict[str, set]:
+    # Lista de vizinhos de cada barra, montada a partir dos ramos. A lista
+    # é não-direcionada de propósito: para posicionar não importa o sentido
+    # do fluxo, só quem está eletricamente ao lado de quem.
     adjacencia = {nome: set() for nome in rede.barras}
     for ramo in rede.ramos.values():
+        # Ramo com extremidade em barra inexistente é ignorado. O modelo
+        # permite esse estado transitório enquanto o usuário edita, e o
+        # layout não pode quebrar por causa disso.
         if ramo.bus1 in adjacencia and ramo.bus2 in adjacencia:
             adjacencia[ramo.bus1].add(ramo.bus2)
             adjacencia[ramo.bus2].add(ramo.bus1)
@@ -32,8 +40,15 @@ def _calcular_niveis(rede: RedeEletrica) -> Dict[str, int]:
     visitados = set()
 
     def bfs_a_partir_de(origem: str, nivel_inicial: int) -> int:
-        """Executa o BFS a partir de 'origem', preservando a hierarquia
-        interna do componente. Retorna o maior nível encontrado."""
+        """Percorre largura-primeiro a partir de 'origem' e devolve o maior
+        nível alcançado.
+
+        Largura-primeiro (BFS) garante que toda barra receba o menor número
+        de ramos possível até a raiz — é isso que dá ao diagrama a forma de
+        árvore, com a fonte em cima e as cargas abaixo. O maior nível
+        devolvido serve para saber onde o próximo componente pode começar
+        sem sobrepor este.
+        """
         niveis[origem] = nivel_inicial
         visitados.add(origem)
         fila = deque([origem])
@@ -52,15 +67,21 @@ def _calcular_niveis(rede: RedeEletrica) -> Dict[str, int]:
 
     proximo_nivel_livre = 0
 
-    # 1) Prioriza o componente que contém a Fonte (Vsource), se existir.
+    # 1) O componente da Fonte (Vsource) vem primeiro, se existir: é o
+    #    único que tem raiz natural, então o layout inteiro se organiza a
+    #    partir dele.
     fonte = rede.obter_fonte()
     if fonte and fonte.bus1 in todas_barras:
         maior_nivel = bfs_a_partir_de(fonte.bus1, 0)
-        proximo_nivel_livre = maior_nivel + 2  # espaço de separação visual
+        # O "+2" (e não "+1") abre um vão entre componentes. Sem o vão, a
+        # última barra de um componente e a primeira do seguinte ficariam
+        # na mesma altura e pareceriam conectadas.
+        proximo_nivel_livre = maior_nivel + 2
 
-    # 2) Qualquer barra ainda não visitada vira raiz de um novo componente,
-    #    preservando a hierarquia interna dele (em vez de jogar tudo no
-    #    mesmo nível, que era o bug original).
+    # 2) Barra ainda não visitada inicia um novo componente (rede
+    #    desconexa, que é comum durante a edição). A ordem alfabética
+    #    mantém o resultado estável entre execuções — sem ela, a posição
+    #    mudaria a cada abertura do projeto.
     for nome in sorted(todas_barras):
         if nome not in visitados:
             maior_nivel = bfs_a_partir_de(nome, proximo_nivel_livre)
@@ -77,7 +98,13 @@ def calcular_posicoes(
     margem: float = 80,
     centro: float = 450,
 ) -> Dict[str, Tuple[float, float]]:
-    """Retorna {nome_da_barra: (x, y)} calculado automaticamente."""
+    """Devolve {nome_da_barra: (x, y)}, em pixels do canvas.
+
+    As distâncias padrão (160 px entre níveis, 140 px entre barras do mesmo
+    nível) foram escolhidas para caber o rótulo da barra e o do ramo sem
+    sobreposição na escala inicial do editor. Aumente-as se o projeto tiver
+    nomes longos.
+    """
 
     niveis = _calcular_niveis(rede)
 
@@ -86,7 +113,10 @@ def calcular_posicoes(
         agrupado_por_nivel.setdefault(nivel, []).append(nome)
 
     for nomes in agrupado_por_nivel.values():
-        nomes.sort()  # ordem estável e previsível
+        # Ordem alfabética dentro do nível: barras do mesmo nível não têm
+        # relação de hierarquia entre si, então qualquer critério serve —
+        # desde que seja estável.
+        nomes.sort()
 
     posicoes: Dict[str, Tuple[float, float]] = {}
 
@@ -96,6 +126,9 @@ def calcular_posicoes(
         largura_total = (quantidade - 1) * espacamento_lateral
 
         for i, nome in enumerate(nomes):
+            # Distribui o nível em torno do centro, e não a partir da
+            # margem esquerda: um nível com poucas barras fica centrado
+            # sob o anterior, em vez de pendurado à esquerda.
             deslocamento_lateral = i * espacamento_lateral - largura_total / 2
             coordenada_principal = margem + nivel * espacamento_nivel
 

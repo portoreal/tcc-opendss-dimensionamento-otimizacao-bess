@@ -54,6 +54,12 @@ MODOS_INVCONTROL = [
 ]
 
 CURVA_VOLTVAR_PADRAO_NOME = "vvcurve_padrao"
+# Curva Volt-Var: pares (tensão em pu, potência reativa em pu da potência
+# nominal). Entre 0,5 e 0,92 pu o inversor entrega reativo capacitivo pleno
+# (+1,0) para levantar a tensão; de 0,98 a 1,02 pu fica em zero — é a faixa
+# morta que evita atuação a cada variação de carga; acima de 1,08 pu absorve
+# reativo indutivo (-1,0) para derrubar a tensão. Os pontos em 0,5 e 1,5 pu
+# existem para que a curva cubra qualquer tensão encontrada em simulação.
 CURVA_VOLTVAR_PADRAO_PONTOS = [
     (0.5, 1.0),
     (0.92, 1.0),
@@ -64,6 +70,9 @@ CURVA_VOLTVAR_PADRAO_PONTOS = [
 ]
 
 CURVA_VOLTWATT_PADRAO_NOME = "vwcurve_padrao"
+# Curva Volt-Watt: acima de 1,06 pu o inversor começa a cortar potência
+# ativa, chegando a zero em 1,10 pu. É a proteção contra sobretensão por
+# injeção excessiva — o inversor deixa de gerar antes que a rede suba mais.
 CURVA_VOLTWATT_PADRAO_PONTOS = [
     (0.5, 1.0),
     (1.06, 1.0),
@@ -71,7 +80,10 @@ CURVA_VOLTWATT_PADRAO_PONTOS = [
     (1.5, 0.0),
 ]
 
-# Formato confirmado: (chave, rótulo, tipo_campo, valor_padrão_ou_opções)
+# Formato confirmado: (chave, rótulo, tipo_campo, valor_padrão_ou_opções).
+# A chave é o que o formulário devolve no dicionário de valores — não é
+# texto de tela. O padrão 50 kVA / 50 kW / 100 kWh corresponde a 2 h de
+# autonomia na potência nominal.
 CAMPOS_SISTEMA_BESS_BASICO = [
     ("nome", "Nome do Sistema BESS", "texto", ""),
     ("kva_inversor", "kVA do Inversor", "texto", "50"),
@@ -83,11 +95,16 @@ CAMPOS_SISTEMA_BESS_BASICO = [
 
 @dataclass
 class ConfiguracaoSistemaBess:
+    # Reúne o que o usuário respondeu no formulário e o que foi concluído
+    # pela análise de reativo, para que montar_elementos_sistema_bess()
+    # não precise voltar à interface.
     nome: str
     bus1: str
     parametros_storage: dict
     modo_invcontrol: str = "VOLTVAR"
     incluir_compensacao_reativa: bool = False
+    # None quando a compensação não foi pedida, não pôde ser calculada ou
+    # concluiu que não há necessidade.
     resultado_reativo: Optional[dict] = None
 
 
@@ -96,8 +113,13 @@ class ConfiguracaoSistemaBess:
 # ---------------------------------------------------------------------------
 
 def perguntar_deseja_compensacao_reativa(parent) -> bool:
-    """Pergunta explicitamente se o usuário quer a análise automática de
-    Capacitor/Reator para este Sistema BESS."""
+    """Pergunta se o usuário quer a análise automática de Capacitor/Reator.
+
+    A pergunta é explícita — e não um padrão silencioso — porque a análise
+    roda o fluxo de potência do circuito inteiro, o que leva tempo num
+    Master.dss grande, e porque inserir um Capacitor não solicitado mudaria
+    o resultado do estudo sem o usuário saber.
+    """
     return confirmar_win11(
         "Compensação de Reativo",
         "Deseja que o sistema calcule AUTOMATICAMENTE se este Sistema BESS "
@@ -123,14 +145,21 @@ def calcular_compensacao_automatica(
     fases=3,
 ):
     """
-    Usa reativo_analise.analisar_necessidade_reativo (já existente no projeto)
-    para decidir se é necessário Capacitor ou Reactor.
+    Decide entre Capacitor e Reactor usando analisar_necessidade_reativo,
+    que já existe no projeto.
+
+    O limite de 0,92 segue o PRODIST Módulo 8, que admite fator de potência
+    entre 0,92 indutivo e 0,92 capacitivo no ponto de conexão. O resultado
+    ainda não é aplicado: a função só devolve a recomendação, e a decisão
+    de incluir ou não o equipamento fica com o usuário.
 
     # ADAPTAR se a assinatura/retorno real de analisar_necessidade_reativo
     # divergir do documentado no resumo da conversa (dict esperado: "tipo",
     # "kvar", "memoria", "kv", "fases").
     """
     bess_list = [parametros_storage]
+    # A análise enxerga o BESS como uma carga a mais no circuito; por isso
+    # recebe o storage como lista de um elemento só.
     resultado = analisar_necessidade_reativo(
         caminho_master=caminho_master,
         bess_list=bess_list,
@@ -146,6 +175,9 @@ def calcular_compensacao_automatica(
 # ---------------------------------------------------------------------------
 
 def _construir_pontos_xycurve(nome, pontos):
+    # Converte a lista de pares (x, y) no formato que o exportador .dss
+    # espera para XYCurve: três arrays paralelos de mesmo tamanho. Manter
+    # npts explícito é exigência do OpenDSS, que não infere o tamanho.
     return {
         "nome": nome,
         "npts": len(pontos),
@@ -165,6 +197,10 @@ def montar_elementos_sistema_bess(config: ConfiguracaoSistemaBess, nomes_existen
 
     Todos os elementos recebem o campo "grupo" = nome do Sistema BESS.
     """
+    # Cada nome passa por gerar_nome_unico e é registrado em
+    # nomes_existentes na sequência: o conjunto cresce à medida que os
+    # elementos são criados, então o sufixo de desambiguação já considera
+    # os irmãos deste mesmo sistema.
     nome_sistema = gerar_nome_unico(config.nome, nomes_existentes)
     nomes_existentes.add(nome_sistema)
 
@@ -185,7 +221,9 @@ def montar_elementos_sistema_bess(config: ConfiguracaoSistemaBess, nomes_existen
     curvas_xy = []
     parametros_inv = {"DERList": f"[Storage.{nome_storage}]"}
 
-    modo = config.modo_invcontrol.split(" ")[0]  # remove texto explicativo do combobox
+    # O combobox devolve o texto completo ("VV_VW (Volt-Var + Volt-Watt)");
+    # só o primeiro token interessa como parâmetro do OpenDSS.
+    modo = config.modo_invcontrol.split(" ")[0]
 
     if modo == "VOLTVAR":
         parametros_inv["Mode"] = "VOLTVAR"
@@ -209,7 +247,10 @@ def montar_elementos_sistema_bess(config: ConfiguracaoSistemaBess, nomes_existen
     invcontrol = {
         "tipo": "InvControl",
         "nome": nome_invcontrol,
-        "bus1": None,  # InvControl não se conecta a uma barra; referencia o Storage via DERList
+        # InvControl não é equipamento de rede: não se conecta a barra
+        # nenhuma. Ele apenas aponta para o Storage (DERList) e diz como o
+        # inversor deve reagir a tensão.
+        "bus1": None,
         "parametros": parametros_inv,
         "grupo": nome_sistema,
     }
@@ -227,6 +268,9 @@ def montar_elementos_sistema_bess(config: ConfiguracaoSistemaBess, nomes_existen
                 "bus1": config.bus1,
                 "parametros": {
                     "kvar": r.get("kvar"),
+                    # kv e phases vêm do resultado da análise; os defaults
+                    # (13.8 kV, trifásico) cobrem o caso em que a análise
+                    # não os informou, em vez de gravar None no .dss.
                     "kv": r.get("kv", 13.8),
                     "phases": r.get("fases", 3),
                 },
@@ -296,10 +340,17 @@ def abrir_formulario_sistema_bess(parent, caminho_master, nomes_existentes, bus1
             "kva": float(valores["kva_inversor"]),
             "kwrated": float(valores["kwrated_bateria"]),
             "kwhrated": float(valores["kwhrated_bateria"]),
+            # Estado inicial: 50% de carga (pctstored), ociosidade como
+            # modo de despacho e nenhum ciclo de carga/descarga agendado.
+            # Quem define a operação do dia é a simulação de 24 h; aqui só
+            # se cria o equipamento.
             "pctstored": 50,
             "dispmode": "default",
             "state": "idling",
         }
+    # float() estoura em três casos: campo vazio, texto ("50 kW" com
+    # unidade) ou chave ausente no dicionário. Os três viram a mesma
+    # mensagem, porque para o usuário a correção é a mesma.
     except (ValueError, KeyError):
         mostrar_aviso_win11(
             "Erro",
@@ -312,6 +363,8 @@ def abrir_formulario_sistema_bess(parent, caminho_master, nomes_existentes, bus1
     resultado_reativo = None
 
     if incluir_reativo:
+        # A análise precisa do circuito já exportado: ela roda o OpenDSS
+        # sobre um Master.dss em disco, não monta um caso em memória.
         if not caminho_master or not os.path.exists(caminho_master):
             mostrar_aviso_win11(
                 "Compensação de Reativo",
@@ -326,6 +379,8 @@ def abrir_formulario_sistema_bess(parent, caminho_master, nomes_existentes, bus1
         else:
             try:
                 resultado_reativo = calcular_compensacao_automatica(caminho_master, parametros_storage)
+            # Falha na análise não impede criar o BESS: o usuário recebe o
+            # aviso e o sistema segue apenas com Inversor + Armazenamento.
             except Exception as e:
                 mostrar_aviso_win11(
                     "Compensação de Reativo",
@@ -346,6 +401,9 @@ def abrir_formulario_sistema_bess(parent, caminho_master, nomes_existentes, bus1
                 parent=parent,
             )
         else:
+            # "Sem tipo" significa fator de potência dentro do limite. Não
+            # é erro, e sim o resultado possível da análise — por isso a
+            # mensagem descreve a conclusão em vez de acusar falha.
             mostrar_aviso_win11(
                 "Compensação de Reativo — Resultado",
                 "O sistema calculou que NÃO há necessidade de compensação "

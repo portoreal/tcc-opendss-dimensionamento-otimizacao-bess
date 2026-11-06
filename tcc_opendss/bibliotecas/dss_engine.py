@@ -1,6 +1,6 @@
 __author__ = 'Pedro Henrique Sousa Pinheiro'
-"""Wrapper em torno do OpenDSS Engine, usando a biblioteca DSS-Python
-(pacote 'dss-python', projeto DSS-Extensions).
+"""Camada de acesso ao motor OpenDSS, via biblioteca DSS-Python (pacote
+'dss-python', projeto DSS-Extensions).
 
 MUDANÇA DE MOTOR (registrada por transparência metodológica):
 Diferente da versão anterior deste arquivo (baseada em win32com/COM, que
@@ -15,13 +15,13 @@ oficial do projeto DSS-Extensions.
 
 CORREÇÃO DE BUG (caminhos com espaço, ex.: pastas OneDrive corporativas):
 O comando 'compile' é enviado ao parser de scripts do próprio OpenDSS,
-que trata espaço como separador de parâmetros - exatamente como o "cmd"
-do Windows. Caminhos como
-'C:\\Users\\usuario\\OneDrive - EMPRESA S.A\\...\\Master.dss' quebravam
-no primeiro espaço, gerando o erro "(#242) Redirect file not found".
-A correção envolve o caminho entre aspas duplas dentro do próprio
-comando .dss, que é a forma padrão e documentada do parser OpenDSS para
-tratar um caminho com espaços como um único token.
+que trata espaço como separador de parâmetros — exatamente como o "cmd" do
+Windows. Caminhos como
+'C:\\\\Users\\\\usuario\\\\OneDrive - EMPRESA S.A\\\\...\\\\Master.dss' quebravam no
+primeiro espaço e produziam o erro "(#242) Redirect file not found". A
+correção é envolver o caminho em aspas duplas dentro do próprio comando
+.dss, que é a forma padrão e documentada do parser para tratar um caminho
+com espaços como um único token.
 """
 
 import os
@@ -45,13 +45,12 @@ def _obter_novo_contexto():
 
     ATENÇÃO: o nome do método 'NewContext()' não pôde ser confirmado com
     certeza absoluta na documentação no momento em que este código foi
-    escrito (indisponibilidade temporária da ferramenta de busca). Por
-    segurança, o fallback abaixo garante que o sistema continue
-    funcionando mesmo que o método não exista na versão instalada -
-    nesse caso, todas as instâncias de DSS passam a compartilhar o
-    mesmo contexto global (comportamento equivalente ao que já tínhamos
-    com win32com, então não há regressão, apenas perda de um benefício
-    extra). Recomenda-se validar este ponto assim que possível.
+    escrito (indisponibilidade temporária da ferramenta de busca). O
+    fallback abaixo cobre essa incerteza: se o método não existir na versão
+    instalada, todas as instâncias de DSS passam a compartilhar o mesmo
+    contexto global — comportamento equivalente ao que já tínhamos com
+    win32com, portanto sem regressão, apenas sem o benefício extra.
+    Recomenda-se validar este ponto assim que possível.
     """
     try:
         return dss_global.NewContext()
@@ -60,13 +59,20 @@ def _obter_novo_contexto():
 
 
 class DSS(object):
-    """Wrapper em torno do OpenDSS Engine (via DSS-Python) para compilar,
-    resolver e analisar circuitos elétricos."""
+    """Compila, resolve e analisa circuitos elétricos através do motor
+    OpenDSS (DSS-Python).
+
+    Cada método devolve ou consulta uma grandeza do circuito resolvido —
+    tensões por barra, perdas, topologia. O motor guarda um estado global:
+    quem chama precisa ter resolvido o caso antes de ler as grandezas.
+    """
 
     # ------------------------------------------------------------------ #
     def __init__(self, dssFileName: str):
         """Inicializa o Engine do OpenDSS e compila o modelo informado."""
 
+        # Sem arquivo não há circuito. O encerramento é imediato e explícito:
+        # seguir adiante produziria erro obscuro lá na frente.
         if not os.path.exists(dssFileName):
             print(f"[ERRO] Arquivo não encontrado: {dssFileName}")
             sys.exit(1)
@@ -81,7 +87,8 @@ class DSS(object):
 
         print("[OK] Engine do OpenDSS (DSS-Python) iniciado com sucesso.")
 
-        # Atribui as interfaces principais para facilitar o acesso
+        # Interfaces do motor, guardadas como atributos. Escrever num delas
+        # é o que efetivamente comandam o OpenDSS.
         self.dssText = self.dssObj.Text
         self.dssCircuit = self.dssObj.ActiveCircuit
         self.dssSolution = self.dssCircuit.Solution
@@ -90,7 +97,8 @@ class DSS(object):
         self.dssMeters = self.dssCircuit.Meters
         self.dssPDElement = self.dssCircuit.PDElements
 
-        # Sempre é uma boa prática limpar o DSS antes de carregar um novo circuito
+        # ClearAll descarta o circuito anterior. Sem isso, elementos de uma
+        # compilação antiga sobrevivem e contaminam a nova.
         self.dssObj.ClearAll()
 
         # Carrega o arquivo master do circuito no OpenDSS.
@@ -110,12 +118,19 @@ class DSS(object):
 
     # ------------------------------------------------------------------ #
     def myShow(self):
-        """Exibe as tensões de linha-neutro por nó (comando nativo do DSS)."""
+        """Manda o DSS mostrar as tensões fase-neutro por nó (comando
+        nativo, saída padrão do motor)."""
         self.dssText.Command = "show voltage LN nodes"
 
     # ------------------------------------------------------------------ #
     def mySolve(self, loadmult: float):
-        """Ajusta o multiplicador de carga e resolve o fluxo de potência."""
+        """Ajusta o multiplicador de carga e resolve o fluxo de potência.
+
+        O multiplicador escala todas as cargas do circuito de uma vez — 0,5
+        deixa o sistema em meia carga sem editar cada elemento. Depois da
+        solução, a convergência é reportada: fluxo que não converge devolve
+        números sem significado físico.
+        """
         self.dssSolution.LoadMult = loadmult
         self.dssSolution.Solve()
 
@@ -126,10 +141,14 @@ class DSS(object):
 
     # ------------------------------------------------------------------ #
     def plot_profile(self, loadmult: float, mostrar: bool):
-        """Plota o perfil de tensão por fase em função da distância do medidor.
+        """Plota o perfil de tensão por fase contra a distância elétrica até
+        o medidor de energia.
 
-        As imagens não são salvas em disco. Se mostrar=False, o gráfico
-        é apenas gerado e descartado sem abrir janela.
+        A distância vem em pu do comprimento acumulado a partir do ponto de
+        medição, por isso o eixo vai de 0 a 1,6: a queda aparece ao longo do
+        alimentador. As linhas vermelhas marcam a faixa 0,95–1,05 pu. Nada é
+        gravado em disco; com mostrar=False o gráfico é gerado e descartado
+        sem abrir janela.
         """
 
         VA = self.dssCircuit.AllNodeVmagPUByPhase(1)
@@ -141,6 +160,8 @@ class DSS(object):
 
         plt.figure()
         ax = plt.subplot(1, 1, 1)
+        # Limites fixos: o perfil tem de ser comparável entre execuções, e
+        # escala automática esconderia justamente a violação que se quer ver.
         ax.set_xlim([0, 1.6])
         ax.set_ylim([0.9, 1.1])
 
@@ -171,7 +192,8 @@ class DSS(object):
 
     # ------------------------------------------------------------------ #
     def find_Vmin(self) -> float:
-        """Retorna a menor tensão (pu) entre as três fases."""
+        """Menor tensão (pu) entre as três fases, tomada sobre todas as
+        barras. É o indicador de severidade da pior barra do sistema."""
 
         VA = self.dssCircuit.AllNodeVmagPUByPhase(1)
         VB = self.dssCircuit.AllNodeVmagPUByPhase(2)
@@ -193,22 +215,24 @@ class DSS(object):
     # ------------------------------------------------------------------ #
 
     def obter_tensoes_por_barra(self) -> dict:
-        """Retorna {(barra, fase): tensao_pu}, percorrendo todas as
-        barras ativas do circuito. Usado na Validação do Modelo
-        Computacional para sistemas aterrados em estrela (tensão LN),
-        comparando diretamente com os relatórios de solução oficiais do
-        IEEE PES Test Feeder, que reportam tensão por barra e por fase
-        (1=A, 2=B, 3=C).
+        """Devolve {(barra, fase): tensão_pu} para todas as barras do
+        circuito ativo.
 
-        Confirmado empiricamente após execução completa da validação
-        para os 4 sistemas, sem erro de atributo."""
+        A tensão vem em fase-neutro, que é o que a Validação do Modelo
+        Computacional compara com os relatórios de solução do IEEE PES Test
+        Feeder — esses relatórios trazem tensão por barra e por fase
+        (1=A, 2=B, 3=C). A leitura pressupõe sistema aterrado em estrela.
+
+        Confirmado empiricamente após execução completa da validação para os
+        4 sistemas, sem erro de atributo.
+        """
 
         resultado = {}
         for nome_barra in self.dssCircuit.AllBusNames:
             self.dssCircuit.SetActiveBus(nome_barra)
             bus_ativo = self.dssCircuit.ActiveBus
 
-            # puVmagAngle retorna pares [mag1, ang1, mag2, ang2, ...],
+            # puVmagAngle devolve pares [mag1, ang1, mag2, ang2, ...],
             # um par por nó/fase presente naquela barra.
             valores = bus_ativo.puVmagAngle
             fases_presentes = bus_ativo.Nodes  # ex.: [1, 2, 3]
@@ -221,16 +245,16 @@ class DSS(object):
 
     # ------------------------------------------------------------------ #
     def obter_tensoes_LL_por_barra(self) -> dict:
-        """Retorna {(barra, 'fA-fB'): tensao_LL_pu}, calculado a partir
-        das tensões fasoriais complexas de cada nó.
+        """Devolve {(barra, 'fA-fB'): tensão_LL_pu}, calculada das tensões
+        fasoriais complexas de cada nó.
 
-        Necessário para sistemas delta sem neutro aterrado (ex.: IEEE 37
-        Node Test Feeder), cuja tensão linha-neutro calculada
-        internamente pelo motor de fluxo de potência corresponde a uma
-        referência matemática (neutro virtual), sem significado físico
-        direto. Nesses casos, o próprio IEEE publica os resultados de
-        referência em tensão de linha (fase-fase), e não em tensão de
-        fase (fase-neutro)."""
+        Existe por causa dos sistemas delta sem neutro aterrado (o IEEE 37
+        Node Test Feeder é o caso concreto). Neles, a tensão fase-neutro que
+        o motor calcula é referida a um neutro virtual — uma referência
+        matemática, sem significado físico direto. O próprio IEEE publica os
+        resultados desses sistemas em tensão de linha, e é essa a base da
+        comparação.
+        """
 
         resultado = {}
         for nome_barra in self.dssCircuit.AllBusNames:
@@ -241,9 +265,12 @@ class DSS(object):
             tensoes_complexas = bus_ativo.Voltages  # [re1, im1, re2, im2, ...]
             kv_base_ln = bus_ativo.kVBase  # base LN, em kV
 
+            # Barra sem base de tensão definida não permite normalização;
+            # fica fora do resultado em vez de gerar divisão inválida.
             if not kv_base_ln:
                 continue
 
+            # kVBase vem em fase-neutro; a tensão de linha é raiz de 3 maior.
             kv_base_ll = kv_base_ln * (3 ** 0.5)
 
             # Monta dicionário fase -> tensão complexa (em Volts)
@@ -253,7 +280,9 @@ class DSS(object):
                 parte_imag = tensoes_complexas[indice * 2 + 1]
                 fasores[fase] = complex(parte_real, parte_imag)
 
-            # Combinações de pares de fase presentes nesta barra (1-2, 2-3, 3-1)
+            # Pares de fase presentes nesta barra (1-2, 2-3, 3-1). A
+            # diferença entre fasores já dá a tensão de linha: não é preciso
+            # passar pelo neutro virtual.
             for fase_a, fase_b in [(1, 2), (2, 3), (3, 1)]:
                 if fase_a in fasores and fase_b in fasores:
                     tensao_ll_volts = abs(fasores[fase_a] - fasores[fase_b])
@@ -264,29 +293,26 @@ class DSS(object):
 
     # ------------------------------------------------------------------ #
     def obter_linhas(self) -> list:
-        """Retorna uma lista de tuplas (bus1, bus2, e_chave) para cada
-        elemento 'Line' do circuito, usada para montar a topologia da
-        rede. O terceiro valor da tupla, 'e_chave', diferencia uma
-        linha comum de distribuição (e_chave=False) de uma chave/switch
-        (e_chave=True) - ambas são representadas no OpenDSS como
-        elementos 'Line', distinguidas apenas pela propriedade nativa
-        'IsSwitch' (ex.: 'switch=yes' na definição do script .dss).
+        """Lista de tuplas (bus1, bus2, e_chave) para cada elemento 'Line'
+        do circuito, base da topologia desenhada.
 
-        Essa distinção permite que o desenho de topologia (ver
-        validacao_topologia.py) represente chaves com um estilo visual
-        próprio (linha tracejada), segregando-as visualmente das linhas
-        de distribuição comuns (linha contínua).
+        O terceiro campo separa linha de distribuição (e_chave=False) de
+        chave (e_chave=True). No OpenDSS as duas são elementos 'Line'; o que
+        as distingue é a propriedade nativa 'IsSwitch' (no script .dss,
+        'switch=yes'). A distinção existe para o desenho: chave sai em linha
+        tracejada, linha comum em linha contínua (ver
+        validacao_topologia.py).
 
-        NOTA: linhas/chaves NÃO capturam conexões feitas por
-        transformadores ou reguladores de tensão - ver
-        obter_transformadores() para essa finalidade complementar.
+        NOTA: linhas e chaves não capturam conexões feitas por
+        transformadores ou reguladores — para isso existe
+        obter_transformadores().
 
-        ATENÇÃO (transparência metodológica): a propriedade 'IsSwitch'
-        é documentada na API do dss-python/DSS-Extensions, mas não foi
-        isoladamente testada antes de seu uso aqui. Em caso de falha
-        de atributo, o código assume e_chave=False (comportamento
-        anterior, tratando a linha como comum) em vez de interromper a
-        execução."""
+        ATENÇÃO (transparência metodológica): a propriedade 'IsSwitch' é
+        documentada na API do dss-python/DSS-Extensions, mas não foi
+        testada isoladamente antes do uso aqui. Se der falha de atributo, o
+        código assume e_chave=False e trata a linha como comum, em vez de
+        interromper a execução.
+        """
 
         linhas = []
         dssLines = self.dssCircuit.Lines
@@ -310,26 +336,25 @@ class DSS(object):
 
     # ------------------------------------------------------------------ #
     def obter_nomes_reguladores(self) -> set:
-        """Retorna o conjunto de nomes (em maiúsculas) de transformadores
-        que possuem um elemento 'RegControl' associado - ou seja, que
-        atuam como reguladores de tensão sob controle automático, e não
-        como transformadores de distribuição comuns.
+        """Conjunto de nomes, em maiúsculas, dos transformadores que têm um
+        'RegControl' associado — ou seja, que operam como reguladores de
+        tensão sob controle automático, e não como transformadores de
+        distribuição comuns.
 
-        Usado por obter_transformadores() para diferenciar, na topologia
-        desenhada, um transformador de distribuição (linha contínua
-        verde) de um banco de reguladores de tensão (linha tracejada
-        verde) - ambos representados internamente no OpenDSS como
-        elementos 'Transformer', distinguidos apenas pela existência de
-        um 'RegControl' referenciando o nome do transformador via sua
-        propriedade 'Transformer='.
+        Serve a obter_transformadores() para separar, no desenho, um
+        transformador de distribuição (linha contínua verde) de um banco de
+        reguladores (linha tracejada verde). No OpenDSS os dois são
+        elementos 'Transformer'; a diferença está em haver um 'RegControl'
+        apontando para o nome do transformador pela propriedade
+        'Transformer='.
 
         ATENÇÃO (transparência metodológica): a propriedade
         'RegControls.Transformer' é documentada na API do
-        dss-python/DSS-Extensions, mas não foi isoladamente testada
-        antes de seu uso aqui. Em caso de falha de atributo, o conjunto
-        retornado permanece incompleto para aquele RegControl específico
-        (comportamento conservador: o transformador correspondente seria
-        desenhado como comum, não como regulador)."""
+        dss-python/DSS-Extensions, mas não foi testada isoladamente antes do
+        uso aqui. Se der falha de atributo, o conjunto volta incompleto
+        para aquele RegControl e o transformador correspondente acaba
+        desenhado como comum, não como regulador — erro conservador.
+        """
 
         nomes = set()
         dssRegControls = self.dssCircuit.RegControls
@@ -348,37 +373,37 @@ class DSS(object):
 
     # ------------------------------------------------------------------ #
     def obter_transformadores(self) -> list:
-        """Retorna uma lista de tuplas (bus1, bus2, e_regulador) para
-        cada elemento 'Transformer' do circuito - incluindo os
-        transformadores usados para representar bancos de reguladores
-        de tensão monofásicos (ex.: Reg1/Reg2/Reg3 no sistema de 13 nós,
-        ou RG7 no sistema de 37 nós), que também estabelecem
-        conectividade elétrica entre barras, assim como as linhas.
+        """Lista de tuplas (bus1, bus2, e_regulador) para cada elemento
+        'Transformer' do circuito.
 
-        O terceiro valor da tupla, 'e_regulador', diferencia um
-        transformador de distribuição comum (e_regulador=False,
-        desenhado em linha contínua verde) de um banco de reguladores
-        de tensão sob controle automático (e_regulador=True, desenhado
-        em linha tracejada verde) - ver obter_nomes_reguladores().
+        Inclui os transformadores usados para representar bancos de
+        reguladores monofásicos (Reg1/Reg2/Reg3 no sistema de 13 nós, RG7 no
+        de 37 nós). Eles também estabelecem conectividade elétrica entre
+        barras, tal como as linhas, e ignorá-los deixaria barras soltas no
+        desenho.
 
-        Usado para complementar a topologia desenhada a partir de
-        obter_linhas(), evitando que barras conectadas exclusivamente
-        por transformadores apareçam como pontos isolados no desenho
-        (ex.: a barra da fonte, conectada apenas pelo transformador de
-        subestação, em praticamente todos os sistemas de teste IEEE).
+        O terceiro campo, 'e_regulador', separa transformador de distribuição
+        comum (False, linha contínua verde) de banco de reguladores sob
+        controle automático (True, linha tracejada verde) — ver
+        obter_nomes_reguladores().
 
-        Considera apenas os 2 primeiros terminais de cada transformador
-        (cobre o caso usual de transformadores de 2 enrolamentos; em
-        bancos de 3 enrolamentos, o 3º terminal não é desenhado).
+        Complementa a topologia de obter_linhas(), evitando que barras
+        ligadas só por transformadores apareçam isoladas. O caso típico é a
+        barra da fonte, que em praticamente todos os sistemas de teste IEEE
+        se conecta apenas pelo transformador de subestação.
 
-        CORREÇÃO DE BUG (registrada por transparência): a primeira
-        versão deste método usava a referência self.dssCktElement,
-        capturada uma única vez no __init__, que NÃO acompanhava
-        corretamente a troca do elemento ativo durante a iteração
-        Transformers.First/Next. A correção consulta
-        self.dssCircuit.ActiveCktElement NOVAMENTE a cada iteração
-        (propriedade "fresca"), em vez de reutilizar a referência salva
-        no __init__."""
+        Somente os 2 primeiros terminais de cada transformador entram no
+        resultado. Cobre o caso usual de 2 enrolamentos; em bancos de 3
+        enrolamentos, o terceiro terminal não é desenhado.
+
+        CORREÇÃO DE BUG (registrada por transparência): a primeira versão
+        deste método usava a referência self.dssCktElement, capturada uma
+        única vez no __init__, e ela NÃO acompanhava corretamente a troca do
+        elemento ativo durante a iteração Transformers.First/Next. A correção
+        consulta self.dssCircuit.ActiveCktElement NOVAMENTE a cada iteração
+        (propriedade "fresca"), em vez de reutilizar a referência salva no
+        __init__.
+        """
 
         nomes_reguladores = self.obter_nomes_reguladores()
 
@@ -407,16 +432,16 @@ class DSS(object):
 
     # ------------------------------------------------------------------ #
     def obter_coordenadas_barras(self) -> dict:
-        """Retorna um dicionário {nome_barra: (x, y)} com as coordenadas
-        carregadas via comando 'Buscoords' no script .dss do circuito
-        ativo (arquivo de coordenadas oficial do pacote IEEE/OpenDSS).
+        """Dicionário {nome_barra: (x, y)} com as coordenadas carregadas
+        pelo comando 'Buscoords' no script .dss (arquivo de coordenadas
+        oficial do pacote IEEE/OpenDSS).
 
-        Barras sem coordenada definida (x=0, y=0 por padrão no OpenDSS)
-        são retornadas, mas devem ser tratadas com cautela em um
-        eventual desenho de topologia (podem sobrepor-se na origem do
-        gráfico, caso não possuam Buscoords real associado - ver nota em
-        validacao_topologia.py sobre barras com coordenada OFICIAL
-        legítima em (0,0))."""
+        Barras sem coordenada definida voltam com (0, 0), o padrão do
+        OpenDSS. Num desenho, elas se empilham na origem do gráfico — o que
+        não significa necessariamente erro, porque existe barra com
+        coordenada OFICIAL legítima em (0,0). A distinção está discutida em
+        validacao_topologia.py.
+        """
 
         coordenadas = {}
         for nome_barra in self.dssCircuit.AllBusNames:
@@ -428,9 +453,10 @@ class DSS(object):
 
     # ------------------------------------------------------------------ #
     def obter_perdas_totais_kw(self) -> float:
-        """Retorna as perdas totais ativas do circuito (kW), obtidas
-        diretamente da propriedade Losses do circuito."""
+        """Perdas ativas totais do circuito, em kW, lidas da propriedade
+        Losses do próprio circuito."""
 
+        # Losses devolve [kW, kvar]; só o termo ativo interessa aqui.
         perdas = self.dssCircuit.Losses  # retorna [kW, kvar], em Watts
         return perdas[0] / 1000.0
 
@@ -441,35 +467,34 @@ class DSS(object):
                                      desligar_controle_global: bool = True,
                                      loadmult: float = 1.0):
         """Replica a sequência oficial dos scripts 'Run_' do pacote
-        IEEE/OpenDSS para os sistemas de teste (13, 34, 37 e 123 nós):
-        recompila o circuito do zero, aplica comandos de pré-solução
-        (ex.: criação de um EnergyMeter, carregamento de BusCoords
-        quando o master compilado diretamente não os inclui) e força os
-        taps dos reguladores nos valores publicados pelo IEEE antes de
-        resolver o fluxo de potência.
+        IEEE/OpenDSS para os sistemas de teste (13, 34, 37 e 123 nós).
 
-        Esse é o modo que deve ser usado para comparação direta com a
-        tabela de resultados oficialmente publicada pelo IEEE PES Test
-        Feeder Committee - os resultados publicados para sistemas com
-        regulação automática de tensão foram obtidos com os taps
-        fixados manualmente, e não com o controle automático em
-        operação livre (ver nota de transparência metodológica em
+        A sequência é: recompilar o circuito do zero, aplicar os comandos de
+        pré-solução (criação de um EnergyMeter, por exemplo, e carregamento
+        de BusCoords quando o master compilado direto não os traz) e forçar
+        os taps dos reguladores nos valores publicados pelo IEEE. Só então o
+        fluxo de potência é resolvido.
+
+        É o modo para comparação direta com a tabela oficial do IEEE PES Test
+        Feeder Committee. Os resultados publicados para sistemas com regulação
+        automática de tensão foram obtidos com taps fixados manualmente, não
+        com o controle atuando livre — daí a exigência de reproduzir a mesma
+        condição (ver a nota de transparência metodológica em
         validacao_ieee.py).
 
-        Para o comportamento operacional "normal" (reguladores em
-        controle automático, representativo da operação real da rede),
-        utilize compile + mySolve diretamente, sem este método.
+        Para o comportamento operacional "normal" — reguladores em controle
+        automático, representativo da operação real da rede — use compile +
+        mySolve diretamente, sem este método.
 
         Parameters
         ----------
         desligar_controle_global : bool
-            Se True, envia 'Set Controlmode=OFF' após aplicar os taps
-            (padrão usado pelos sistemas de 13 e 34 nós). Se False,
-            assume que o travamento já foi feito individualmente por
-            regulador dentro de 'comandos_taps_fixos' (ex.: via
-            RegControl.<nome>.maxtapchange=0, padrão usado pelo sistema
-            de 123 nós). Para o sistema de 37 nós, que não requer taps
-            fixos, utilize desligar_controle_global=False e
+            Se True, envia 'Set Controlmode=OFF' após aplicar os taps — é o
+            padrão dos sistemas de 13 e 34 nós. Se False, assume que o
+            travamento já foi feito regulador a regulador dentro de
+            'comandos_taps_fixos' (via RegControl.<nome>.maxtapchange=0, o
+            padrão do sistema de 123 nós). O sistema de 37 nós não precisa de
+            taps fixos: use desligar_controle_global=False e
             comandos_taps_fixos=[].
         """
 
@@ -479,6 +504,8 @@ class DSS(object):
         for comando in comandos_pre_solve:
             self.dssText.Command = comando
 
+        # Os taps vêm antes do desligamento do controle: do contrário, o
+        # RegControl desfaria o ajuste na primeira solução.
         for comando in comandos_taps_fixos:
             self.dssText.Command = comando
 

@@ -38,6 +38,10 @@ HISTÓRICO DE DEPURAÇÃO COMPLETO (registrado por transparência):
     convenção interna exata usada pela versão do motor/binding
     instalado.
 
+O histórico abaixo não é enfeite: cada item corresponde a um defeito que
+apareceu em execução real e que voltaria a aparecer se o código fosse
+"simplificado" para a forma anterior.
+
     CORREÇÃO DE BUG (sinal de importação - ver D2 abaixo):
         DEFEITO: a versão anterior deduzia o sinal de referência a
         partir da MÉDIA DOS SINAIS DAS 24 HORAS DO CASO BASE,
@@ -99,27 +103,37 @@ from .tarifas_energia import TarifaEnergia
 
 
 def _eh_hora_ponta(hora: int, inicio_ponta: int, fim_ponta: int) -> bool:
-    """Verifica se 'hora' (0-23) está dentro do intervalo de ponta,
-    suportando intervalos que cruzam a meia-noite (ex.: 23 às 5h)."""
+    """Diz se a hora (0-23) está dentro do intervalo de ponta.
+
+    O intervalo pode cruzar a meia-noite (23h às 5h), caso em que a
+    comparação simples de ordem não serve e a condição vira uma disjunção.
+    """
     if inicio_ponta <= fim_ponta:
         return inicio_ponta <= hora < fim_ponta
     return hora >= inicio_ponta or hora < fim_ponta
 
 
 def _definir_estado_storage(motor: MotorReutilizavel, nome: str, estado: str):
-    """Define APENAS o 'State' (IDLING/CHARGING/DISCHARGING) do elemento
-    Storage, via comando de texto do parser .dss - exatamente como no
-    exemplo oficial de controle de despacho (que nunca escreve 'kW'
-    manualmente). A magnitude do despacho é determinada pelas
-    propriedades '%Charge'/'%Discharge' (definidas como 100% na criação
-    do elemento, ver _inserir_bess_idling)."""
+    """Define APENAS o 'State' (IDLING/CHARGING/DISCHARGING) do Storage,
+    por comando de texto ao parser .dss.
+
+    É o mesmo padrão do exemplo oficial de controle de despacho, que nunca
+    escreve 'kW' manualmente. A magnitude fica por conta de
+    '%Charge'/'%Discharge', definidas em 100% na criação do elemento (ver
+    _inserir_bess_idling). Escrever kW à mão foi justamente o que produziu
+    o defeito 3 do histórico.
+    """
     estado_texto = estado.upper()
     motor.dssText.Command = f"Edit Storage.{nome} State={estado_texto}"
 
 
 def _normalizar_soc(valor: float) -> float:
-    """Normaliza o SoC lido para a faixa 0-1, independente de a API
-    retornar em escala 0-1 ou 0-100."""
+    """Traz o SoC lido para a faixa 0-1.
+
+    A API pode devolver 0-1 ou 0-100 conforme o binding, e o restante do
+    módulo trabalha sempre em fração. O corte em 1,5 separa as duas escalas
+    sem ambiguidade: nenhum SoC fracionário legítimo passa de 1.
+    """
     if valor is None:
         return 0.5
     if valor > 1.5:
@@ -132,15 +146,18 @@ def _ler_soc(motor: MotorReutilizavel, nome: str) -> float:
         motor.dssCircuit.Storages.Name = nome
         return _normalizar_soc(motor.dssCircuit.Storages.puSOC)
     except Exception:
+        # 0,5 (meio da faixa) é o retorno neutro: mantém o despacho possível
+        # e sinaliza no perfil que a leitura falhou, sem interromper o dia.
         return 0.5
 
 
 def _ler_potencia_bruta_fonte_kw(motor: MotorReutilizavel) -> float:
-    """Retorna o valor BRUTO SINALIZADO (sem nenhuma suposição de
-    convenção!) da potência ativa (kW) reportada por
-    Circuit.TotalPower[0]. A interpretação do sinal (importar/exportar)
-    é feita posteriormente por comparação com um sinal de referência
-    obtido do caso base - ver nota de correção no topo do arquivo."""
+    """Devolve a potência ativa da fonte (kW) como o motor a reporta, sinal
+    incluído e sem nenhuma suposição de convenção.
+
+    A interpretação do sinal — importar ou exportar — acontece depois, por
+    comparação com a referência calibrada em _calibrar_sinal_importacao.
+    """
     total = motor.dssCircuit.TotalPower
     return total[0]
 
@@ -174,8 +191,8 @@ def _calibrar_sinal_importacao() -> float:
 
     try:
         dssText = dssObj.Text
-        # Um comando por atribuição (padrão do projeto). 'loadshape' não
-        # é usada: carga constante e sem geração deixa o fluxo
+        # Um comando por atribuição (padrão do projeto). Nenhum loadshape é
+        # usado: carga constante e sem geração deixa o fluxo
         # inequivocamente importado.
         dssText.Command = "clear"
         dssText.Command = "new circuit.calibracao basekv=13.8 pu=1.0 phases=3"
@@ -209,10 +226,12 @@ def _calibrar_sinal_importacao() -> float:
 
 def _inserir_bess_idling(motor: MotorReutilizavel, bess_list: List[Dict[str, Any]],
                           soc_inicial: float) -> List[str]:
-    """Insere os elementos Storage no circuito (todos iniciando em
-    repouso). Model=1 (válido; 'model=7' era um valor INVÁLIDO para
-    Storage, conforme doc oficial). '%Charge=100'/'%Discharge=100'
-    garantem despacho na potência nominal cheia."""
+    """Insere os elementos Storage no circuito, todos começando em repouso.
+
+    Model=1 é o valor válido; 'model=7' era INVÁLIDO para Storage, conforme
+    a documentação oficial. '%Charge=100'/'%Discharge=100' garantem despacho
+    na potência nominal cheia quando o estado mudar.
+    """
     nomes = []
     for i, bess in enumerate(bess_list):
         try:
@@ -220,6 +239,9 @@ def _inserir_bess_idling(motor: MotorReutilizavel, bess_list: List[Dict[str, Any
             kv_ln = motor.dssCircuit.ActiveBus.kVBase
             kv_linha = kv_ln * math.sqrt(3)
         except Exception:
+            # Fallback de tensão para barra não encontrada. 0,38 kV cobre o
+            # secundário de distribuição típico; o valor aparece no elemento
+            # criado e denuncia o problema na inspeção do circuito.
             kv_linha = 0.38
 
         nome = f"BESS_ECON_{i}"
@@ -240,9 +262,13 @@ def _simular_dia(motor: MotorReutilizavel, caminho_master: str,
                   horario_ponta_inicio: int, horario_ponta_fim: int,
                   soc_min: float, soc_max: float,
                   soc_inicial: float) -> List[Dict[str, Any]]:
-    """Executa a simulação de 24 horas e retorna o perfil horário com a
-    potência BRUTA (sinal cru, sem interpretação) da fonte, além do
-    estado e SoC de cada BESS a cada hora."""
+    """Simula as 24 horas do dia representativo e devolve o perfil horário.
+
+    Cada hora traz a potência BRUTA da fonte — sinal cru, ainda sem
+    interpretação —, além do estado comandado e do SoC de cada BESS. A
+    mesma função serve ao caso base e ao caso com BESS; 'controlar' é o que
+    separa os dois.
+    """
     motor.recompilar(caminho_master)
 
     nomes_bess = []
@@ -251,6 +277,8 @@ def _simular_dia(motor: MotorReutilizavel, caminho_master: str,
         motor.dssSolution.Solve()
 
     motor.dssText.Command = "Set Mode=Daily"
+    # Passo de 1 h e um único dia: o resultado é o dia representativo, não
+    # uma série multidiária.
     motor.dssText.Command = "Set Stepsize=1h"
     motor.dssText.Command = "Set Number=1"
 
@@ -263,6 +291,9 @@ def _simular_dia(motor: MotorReutilizavel, caminho_master: str,
             for i, nome in enumerate(nomes_bess):
                 soc_atual = _ler_soc(motor, nome)
 
+                # Regra de despacho: descarrega na ponta enquanto houver
+                # energia acima do mínimo; carrega fora da ponta enquanto
+                # houver espaço abaixo do máximo. Nos demais casos, repousa.
                 if ponta and soc_atual > soc_min:
                     novo_estado = "discharging"
                 elif (not ponta) and soc_atual < soc_max:
@@ -291,15 +322,17 @@ def _simular_dia(motor: MotorReutilizavel, caminho_master: str,
 
 
 def _classificar_fluxo(kw_bruto: float, sinal_importacao: float):
-    """Classifica uma leitura de potência da fonte em 'comprada' ou
-    'exportada', comparando o sinal com o sinal que representa
-    IMPORTAÇÃO, obtido por calibração num micro-circuito de importação
-    conhecida (_calibrar_sinal_importacao). A origem da referência
-    mudou, a regra não: mesmo sinal da referência => COMPRA.
+    """Classifica uma leitura de potência da fonte em comprada ou exportada,
+    devolvendo (comprada, exportada) já separadas.
 
-    Mesmo sinal da referência => COMPRA (magnitude cheia).
-    Sinal oposto => EXPORTAÇÃO (não monetizada por este modelo
-    simplificado - ver nota de transparência no topo do arquivo)."""
+    A regra é uma só: mesmo sinal da referência equivale a COMPRA, sinal
+    oposto equivale a EXPORTAÇÃO. A referência é a calibrada em
+    _calibrar_sinal_importacao, num micro-circuito de importação conhecida —
+    mudou a origem da referência, não a regra.
+
+    Exportação não é monetizada por este modelo simplificado; ver a nota de
+    transparência no topo do arquivo.
+    """
     if sinal_importacao == 0:
         sinal_importacao = 1.0  # fallback arbitrário, evita comparação com zero
 
@@ -310,6 +343,8 @@ def _classificar_fluxo(kw_bruto: float, sinal_importacao: float):
 
 
 def _processar_perfil(perfil_bruto: List[Dict[str, Any]], sinal_importacao: float):
+    # Acrescenta ao perfil os campos interpretados, mantendo 'kw_fonte_bruto'
+    # intacto para auditoria.
     for p in perfil_bruto:
         comprada, exportada = _classificar_fluxo(p["kw_fonte_bruto"], sinal_importacao)
         p["kw_comprada"] = comprada
@@ -318,6 +353,8 @@ def _processar_perfil(perfil_bruto: List[Dict[str, Any]], sinal_importacao: floa
 
 
 def _integrar_energia(perfil: List[Dict[str, Any]]):
+    # Integração retangular: cada hora vale 1 kWh por kW, porque o passo é
+    # exatamente uma hora.
     energia_ponta = sum(p["kw_comprada"] for p in perfil if p["ponta"])
     energia_fora_ponta = sum(p["kw_comprada"] for p in perfil if not p["ponta"])
     exportada_ponta = sum(p["kw_exportada"] for p in perfil if p["ponta"])
@@ -338,8 +375,14 @@ def analisar_economia_energia(
     custo_bess_brl: Optional[float] = None,
     callback_status: Optional[Callable[[str], None]] = None,
 ) -> Dict[str, Any]:
-    """Executa a análise completa de economia de energia (arbitragem
-    tarifária ponta/fora ponta) para uma configuração de BESS."""
+    """Análise completa de economia de energia — arbitragem tarifária entre
+    ponta e fora ponta — para uma configuração de BESS.
+
+    O dia representativo é simulado duas vezes, sem e com BESS. A diferença
+    de custo entre os dois é a economia diária, que se extrapola para mês e
+    ano por dias_equivalentes_mes. BESS vazio equivale ao caso base, útil
+    para medir o potencial teórico.
+    """
 
     def _status(msg):
         if callback_status:
@@ -400,6 +443,8 @@ def analisar_economia_energia(
     economia_anual = economia_mensal * 12
 
     payback_anos = None
+    # Payback só existe com custo informado e economia positiva. Economia
+    # nula ou negativa tornaria o quociente um número sem significado.
     if custo_bess_brl and economia_anual > 0:
         payback_anos = custo_bess_brl / economia_anual
 
@@ -411,6 +456,8 @@ def analisar_economia_energia(
     economia_demanda_mensal_estimada = reducao_demanda_ponta_kw * tarifa.demanda_ponta_kw
 
     total_exportado_kwh_bess = export_ponta_bess + export_fora_bess
+    # Exportar em qualquer hora já indica descarga acima da carga local: é o
+    # sinal de superdimensionamento para ESTA análise.
     alerta_superdimensionamento = total_exportado_kwh_bess > 0
 
     return {

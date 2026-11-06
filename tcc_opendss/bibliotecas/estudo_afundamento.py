@@ -24,27 +24,27 @@ economia_energia.py).
 
 CORREÇÃO DE BUG (model=7 inválido, silenciosamente ignorado pelo motor):
 o código anterior usava model=7 "para representar um inversor com
-limitação de corrente" - premissa INCORRETA. O parâmetro 'model' do
-Storage aceita qualquer inteiro (read-back de '? storage.b1.model' ecoa
+limitação de corrente" — premissa INCORRETA. O parâmetro 'model' do
+Storage aceita qualquer inteiro (o read-back de '? storage.b1.model' ecoa
 1, 7 ou 99 sem erro) e valores fora da faixa válida são SILENCIOSAMENTE
-ignorados, caindo no comportamento default (PQ constante): experimento
-controlado no dss-python 0.15.7 (circuito mínimo de 3 barras, BESS
-300 kW/1200 kWh, falta trifásica remota r=0,0001 e r=1,0 e falta no
-próprio barramento r=1,0) mostrou resultado bit a bit idêntico para
-model=1, model=7 e model=99. A correção é, portanto, numericamente
-inerte (higiene e alinhamento com a documentação oficial e com o
-economia_energia.py, já corrigido para model=1).
+ignorados, caindo no comportamento default, que é PQ constante. Em
+experimento controlado no dss-python 0.15.7 (circuito mínimo de 3 barras,
+BESS de 300 kW/1200 kWh, falta trifásica remota com r=0,0001 e r=1,0, e
+falta no próprio barramento com r=1,0), o resultado saiu bit a bit
+idêntico para model=1, model=7 e model=99. A correção é, portanto,
+numericamente inerte — vale como higiene e como alinhamento com a
+documentação oficial e com economia_energia.py, já corrigido para model=1.
 
 TRANSPARÊNCIA TÉCNICA (medido no mesmo experimento): a injeção
 quase-estática do Storage NÃO é constante-PQ ideal sob queda severa de
-tensão - degrada com a tensão terminal (aprox. 92 kW a 0,5 pu; aprox.
-7 kW a 0,14 pu, para BESS de 300 kW despachando 300 kW pré-falta), de
-forma idêntica para qualquer valor de 'model'. A contribuição do BESS
-sob falta neste estudo é, portanto, uma aproximação de regime
-quase-estático da resposta do inversor, e pressupõe capacidade de
-LVRT/FRT (Low/Fault Ride-Through) - premissa razoável para inversores
-atuais compatíveis com as Normas de Acesso vigentes, mas que deve ser
-validada com o datasheet do equipamento real em um projeto executivo.
+tensão. Ela degrada com a tensão terminal — aproximadamente 92 kW a 0,5 pu
+e 7 kW a 0,14 pu, para um BESS de 300 kW despachando 300 kW antes da
+falta —, e a degradação é idêntica para qualquer valor de 'model'. Neste
+estudo, a contribuição do BESS sob falta é uma aproximação de regime
+quase-estático da resposta do inversor, e pressupõe capacidade de LVRT/FRT
+(Low/Fault Ride-Through). É premissa razoável para inversores atuais
+compatíveis com as Normas de Acesso vigentes, mas precisa ser conferida
+contra o datasheet do equipamento real num projeto executivo.
 
 SEVERIDADE DA FALTA 'SOLIDA' (atualizada 2026-10-28):
 O default ``r_falta_solida`` mudou de 0,0001 para 0,05 ohm. Falta COMPLETAMENTE
@@ -118,22 +118,25 @@ import math
 
 from dss import dss as dss_global
 
-# Vminpu do Storage: abaixo desta tensão (pu), o modelo do OpenDSS degrada
-# a injeção para impedância constante (P ∝ V²) — com o DEFAULT (0,9), o
-# BESS entregava ~12% da potência nominal justamente dentro da faixa de
-# afundamento (prova por experimento, 2026-10-28: P/V² = -370,4 constante
-# na varredura 0,50-0,71 pu; 92 kW a 0,5 pu para um BESS de 300 kW; com
-# Vminpu=0.05: 300 kW constantes). Vminpu=0.05 modela o inversor COM
-# ride-through (LVRT) — coerente com a premissa já declarada no docstring
-# do módulo ("pressupõe capacidade de LVRT/FRT do BESS").
+# Vminpu do Storage marca o ponto em que o modelo do OpenDSS deixa de
+# entregar potência constante e passa a se comportar como impedância
+# constante (P ∝ V²). Com o DEFAULT de 0,9 o BESS entregava só ~12% da
+# potência nominal justamente dentro da faixa de afundamento, que é onde o
+# estudo precisa dele. Prova por experimento em 2026-10-28: P/V² = -370,4
+# constante na varredura de 0,50 a 0,71 pu, e 92 kW a 0,5 pu para um BESS
+# de 300 kW; com Vminpu=0.05, 300 kW constantes. Adotar 0.05 modela o
+# inversor COM ride-through (LVRT), coerente com a premissa já declarada no
+# docstring do módulo ("pressupõe capacidade de LVRT/FRT do BESS").
 VMINPU_STORAGE_PADRAO = 0.05
 
 
 class MotorReutilizavel:
     """Mantém uma instância isolada do Engine OpenDSS (DSS-Python) viva
-    durante todo o estudo, recompilando o circuito a cada cenário. Isso
-    evita o overhead de recriar o contexto a cada uma das centenas de
-    soluções necessárias no estudo."""
+    durante todo o estudo, recompilando o circuito a cada cenário.
+
+    O estudo exige centenas de soluções. Recriar o contexto do motor a cada
+    uma seria overhead puro — daí reutilizar a mesma instância.
+    """
 
     def __init__(self):
         # Tenta obter um contexto isolado do motor (recomendado para uso
@@ -154,9 +157,9 @@ class MotorReutilizavel:
 
     def recompilar(self, caminho_master):
         self.dssObj.ClearAll()
-        # IMPORTANTE: aspas duplas ao redor do caminho (ver nota de
-        # correção de bug no topo do arquivo) - necessário para caminhos
-        # com espaço, como pastas OneDrive corporativas.
+        # Aspas duplas ao redor do caminho (ver nota de correção de bug no
+        # topo do arquivo): sem elas, caminho com espaço, como pasta OneDrive
+        # corporativa, quebra no primeiro espaço.
         self.dssText.Command = f'compile "{caminho_master}"'
         self.dssCircuit = self.dssObj.ActiveCircuit
         self.dssSolution = self.dssCircuit.Solution
@@ -170,6 +173,7 @@ class MotorReutilizavel:
 
 
 def _obter_kv_linha_barra(dssCircuit, bus):
+    # kVBase vem em fase-neutro; a definição do Storage pede tensão de linha.
     dssCircuit.SetActiveBus(bus)
     kv_ln = dssCircuit.ActiveBus.kVBase
     return kv_ln * math.sqrt(3)
@@ -179,6 +183,8 @@ def _preparar_circuito_em_motor(motor: MotorReutilizavel, caminho_master, bess_l
     motor.recompilar(caminho_master)
     for i, bess in enumerate(bess_list):
         kv_linha = _obter_kv_linha_barra(motor.dssCircuit, bess["bus"])
+        # Nome indexado evita colisão quando o estudo testa mais de uma
+        # unidade de BESS no mesmo circuito.
         nome_bess = f"BESS_OTIM_{i}"
         motor.dssText.Command = (
             f"New Storage.{nome_bess} bus1={bess['bus']} phases=3 "
@@ -193,7 +199,9 @@ def _preparar_circuito_em_motor(motor: MotorReutilizavel, caminho_master, bess_l
 def _spec_falta(bus, tipo_falta_dss):
     if tipo_falta_dss == "trifasica":
         return f"{bus}.1.2.3", 3
-    return f"{bus}.1", 1  # monofásica (fase A, por convenção)
+    # Monofásica vai sempre na fase A. É convenção do estudo, não limitação
+    # do OpenDSS, e vale para as duas variantes (sólida e alta impedância).
+    return f"{bus}.1", 1
 
 
 def _aplicar_falta(motor: MotorReutilizavel, bus, tipo_falta_dss, r_falta):
@@ -204,10 +212,12 @@ def _aplicar_falta(motor: MotorReutilizavel, bus, tipo_falta_dss, r_falta):
 
 
 def _nome_base_barra(bus):
-    """Nome base de barra normalizado para minúsculas (remove sufixos de
-    nó: 'B4.1' -> 'b4'). Fonte ÚNICA de normalização de chaves de barra
-    nos resultados do estudo — ver CORREÇÃO DE BUG (2026-10-30) no topo
-    do arquivo."""
+    """Nome base de barra, em minúsculas e sem sufixo de nó ('B4.1' vira
+    'b4').
+
+    É a fonte ÚNICA de normalização das chaves de barra nos resultados do
+    estudo — ver CORREÇÃO DE BUG (2026-10-30) no topo do arquivo.
+    """
     return bus.split(".")[0].lower()
 
 
@@ -216,6 +226,9 @@ def _capturar_pu_todas_barras(dssCircuit):
     for bus in dssCircuit.AllBusNames:
         dssCircuit.SetActiveBus(bus)
         mag_ang = list(dssCircuit.ActiveBus.puVmagAngle)
+        # puVmagAngle intercala magnitude e ângulo; só as magnitudes
+        # interessam. Magnitude zero indica nó não energizado e fica fora,
+        # para não entrar como tensão nula no cálculo de profundidade.
         magnitudes = [m for m in mag_ang[0::2] if m > 0]
         # CORREÇÃO DE BUG (2026-10-30, assimetria de caixa): a chave era
         # o nome cru de AllBusNames; agora é normalizada para minúsculas
@@ -234,8 +247,12 @@ def _classificar_sag(pu_por_barra, bus_faltoso, limite_inferior, limite_superior
         # diferença de conjuntos no orquestrador (baseline - candidato)
         # cancele entre caixas iguais.
         chave = _nome_base_barra(bus)
+        # A barra em falta não é classificada: ali a tensão é o próprio
+        # curto, não o efeito que se quer medir no restante da rede.
         if chave == nome_faltoso:
             continue
+        # Basta UMA fase dentro da janela para a barra entrar como em
+        # afundamento: o critério é por amplitude mínima observada no nó.
         if any(limite_inferior <= v < limite_superior for v in valores):
             barras_sag.add(chave)
     return barras_sag
@@ -268,6 +285,8 @@ def rodar_estudo(caminho_master, barras_falta, tipos_falta, bess_list=None,
     barras_em_sag_geral = set()
     detalhe_por_falta = []
 
+    # O total alimenta a barra de progresso. O max(..., 1) evita divisão por
+    # zero quando não há nenhum cenário configurado.
     total = max(len(barras_falta) * len(tipos_falta), 1)
     passo = 0
 
@@ -275,11 +294,17 @@ def rodar_estudo(caminho_master, barras_falta, tipos_falta, bess_list=None,
     try:
         for bus_falta in barras_falta:
             for tipo_falta in tipos_falta:
+                # O estudo só usa duas geometrias de falta no .dss; as três
+                # entradas de TIPOS_FALTA_DISPONIVEIS se reduzem a elas, e a
+                # impedância é que separa a falta sólida da de alta
+                # impedância.
                 tipo_falta_dss = "trifasica" if tipo_falta == "trifasica" else "monofasica"
                 r_falta = (r_falta_alta_impedancia
                            if tipo_falta == "monofasica_alta_impedancia"
                            else r_falta_solida)
 
+                # Circuito recompilado a cada cenário: a falta anterior seria
+                # herdada se o circuito fosse reaproveitado.
                 _preparar_circuito_em_motor(motor, caminho_master, bess_list)
                 _aplicar_falta(motor, bus_falta, tipo_falta_dss, r_falta)
                 motor.dssSolution.Solve()

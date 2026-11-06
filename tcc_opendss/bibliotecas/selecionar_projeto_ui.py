@@ -1,9 +1,14 @@
 __author__ = 'Pedro Henrique Sousa Pinheiro'
-"""Diálogo de seleção/criação de Projeto. Usado pelo menu principal antes
-de abrir o Editor de Rede ou o Módulo de Dimensionamento.
+"""Diálogo de seleção e criação de Projeto.
 
-Port Tkinter -> PySide6 (onda 1 da migração). Contrato público congelado:
-`selecionar_projeto(parent) -> Projeto | None`.
+O menu principal chama esta janela antes de abrir o Editor de Rede ou o
+Módulo de Dimensionamento, porque os dois precisam de um projeto - a pasta
+com as curvas, a rede e os modelos já dimensionados. O usuário escolhe um
+projeto existente da lista, cria um novo pelo nome, ou aponta para uma
+pasta já montada fora da lista.
+
+Contrato público congelado: `selecionar_projeto(parent) -> Projeto | None`.
+None significa que o usuário desistiu, e o menu não deve abrir nada.
 """
 
 from typing import List, Optional
@@ -39,7 +44,11 @@ from .ui_win11 import (
 
 
 class _DialogoSelecionarProjeto(QDialog):
-    """Diálogo modal de seleção/criação de projeto."""
+    """Diálogo modal de seleção e criação de projeto.
+
+    Modal porque o menu não tem o que fazer enquanto a escolha não sai - a
+    próxima tela depende dela.
+    """
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -56,6 +65,11 @@ class _DialogoSelecionarProjeto(QDialog):
     # Construção da interface
     # ------------------------------------------------------------------
     def _montar_interface(self) -> None:
+        """Monta lista, botões auxiliares e barra OK/Cancelar.
+
+        Tudo é estilizado à mão via QSS (o equivalente Qt de CSS) porque o
+        tema nativo do Windows não entrega o padrão visual do projeto.
+        """
         paleta = self._paleta
 
         self.setStyleSheet(
@@ -93,6 +107,8 @@ class _DialogoSelecionarProjeto(QDialog):
         )
         for nome in listar_projetos():
             self.lista.addItem(QListWidgetItem(nome))
+        # Duplo clique é atalho de quem já sabe o que quer; o caminho
+        # completo (selecionar e clicar OK) continua valendo.
         self.lista.itemDoubleClicked.connect(self._abrir_item_duplo_clique)
         layout.addWidget(self.lista, 1)
 
@@ -131,7 +147,8 @@ class _DialogoSelecionarProjeto(QDialog):
         botoes.rejected.connect(self.reject)
         layout.addWidget(botoes)
 
-        # OK exige um item selecionado (sem seleção, o botão fica desabilitado).
+        # OK exige um item selecionado. Desabilitar o botão é mais claro do
+        # que deixar clicar e responder com mensagem de erro depois.
         self.lista.itemSelectionChanged.connect(self._atualizar_estado_ok)
         self._atualizar_estado_ok()
 
@@ -178,17 +195,19 @@ class _DialogoSelecionarProjeto(QDialog):
     # Ações
     # ------------------------------------------------------------------
     def _atualizar_estado_ok(self) -> None:
+        """Liga o botão OK apenas quando há item selecionado."""
         self._botao_ok.setEnabled(bool(self.lista.selectedItems()))
 
     def _abrir_item_duplo_clique(self, _item: QListWidgetItem) -> None:
-        """Duplo clique na lista = selecionar e fechar (aceitar)."""
+        """Duplo clique na lista equivale a selecionar e aceitar."""
         self._confirmar_selecao()
 
     def _confirmar_selecao(self) -> None:
         selecionados: List[QListWidgetItem] = self.lista.selectedItems()
         if not selecionados:
             # Defesa extra: o botão OK já fica desabilitado sem seleção,
-            # mas o Enter/atalho padrão poderia chegar aqui.
+            # mas o Enter no atalho padrão do diálogo chega aqui sem passar
+            # pelo estado do botão.
             return
         nome = selecionados[0].text()
         self.projeto_selecionado = criar_ou_abrir_projeto_por_nome(nome)
@@ -201,6 +220,8 @@ class _DialogoSelecionarProjeto(QDialog):
             parent=self,
             tema=detectar_tema(),
         )
+        # String vazia = o usuário confirmou sem digitar nada; tratar como
+        # desistência mantém o diálogo aberto.
         if not nome:
             return
         self.projeto_selecionado = criar_ou_abrir_projeto_por_nome(nome)
@@ -211,15 +232,19 @@ class _DialogoSelecionarProjeto(QDialog):
             self, "Selecione a pasta do projeto", ""
         )
         if not caminho:
-            # Cancelar o filedialog NÃO fecha o diálogo de seleção.
+            # Cancelar o filedialog devolve string vazia. Fechar junto toda
+            # a seleção seria perder o trabalho por engano.
             return
         self.projeto_selecionado = abrir_projeto_por_caminho(caminho)
         self.accept()
 
 
 def selecionar_projeto(parent: Optional[QWidget]) -> Optional[Projeto]:
-    """Abre o diálogo modal e retorna o Projeto escolhido, ou None se o
-    usuário cancelar/fechar."""
+    """Abre o diálogo modal e devolve o Projeto escolhido.
+
+    Devolve None se o usuário cancelar ou fechar a janela - o chamador deve
+    tratar isso como "não abrir nada".
+    """
     dialogo = _DialogoSelecionarProjeto(parent)
     dialogo.exec()
     return dialogo.projeto_selecionado
