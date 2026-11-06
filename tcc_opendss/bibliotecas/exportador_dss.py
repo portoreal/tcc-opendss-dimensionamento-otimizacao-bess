@@ -121,18 +121,61 @@ def _opcionais(p: Dict[str, Any], pares) -> str:
     return "".join(partes)
 
 
+# Unidades de comprimento aceitas pelo OpenDSS e o fator de conversao de
+# cada uma para o quilometro (1 mi = 1,609344 km; 1 ft = 0,0003048 km).
+# "none" significa unidade ausente e o motor a trata como quilometro.
+FATOR_PARA_KM = {
+    "km": 1.0, "m": 0.001, "cm": 0.00001,
+    "mi": 1.609344, "kft": 0.3048, "ft": 0.0003048, "in": 0.0000254,
+    "none": 1.0,
+}
+
+
+def _num(v: float) -> str:
+    # Dez algarismos significativos: preserva o valor sem arrastar residuos
+    # binarios do produto por um fator (2000 * 0.0003048 sai "0.6096",
+    # nao "0.60960000000001").
+    return f"{v:.10g}"
+
+
 def _fmt_line(nome, bus1, bus2, p: Dict[str, Any]) -> str:
+    """Comando New Line com comprimento e impedancias NORMALIZADOS PARA KM.
+
+    Por que normalizar: medido no motor real (dss-python 0.15.7), a mesma
+    linha fisica grafada como 'length=2000 units=ft' com r1/x1 declarados
+    diretamente na linha NAO reproduz a mesma linha grafada em km — perdas
+    e quedas divergem (a unidade ft, acompanhada de impedancia direta, nao
+    e invariante). Em km, ou com a unidade omitida, o resultado e exato e
+    independe de como o projeto original guardou o comprimento. O modelo
+    guarda length/units/r1/x1 coerentes entre si ("R1 (ohm/unid)"), de modo
+    que converter os dois pelo mesmo fator preserva a linha fisica:
+    length_km = length x fator e r1_km = r1 / fator.
+    """
     linecode = str(p.get("linecode", "")).strip()
-    base = (f"New Line.{nome} bus1={bus1} bus2={bus2} "
-            f"phases={p.get('phases', 3)} length={p.get('length', 1)} "
-            f"units={p.get('units', 'km')}")
 
     if linecode:
-        return f"{base} linecode={linecode}"
+        # Com linecode, a impedancia por unidade vive no linecode, nao aqui;
+        # converter o comprimento sem converter o linecode trocaria uma
+        # incoerencia por outra. Passa sem conversao.
+        return (f"New Line.{nome} bus1={bus1} bus2={bus2} "
+                f"phases={p.get('phases', 3)} length={p.get('length', 1)} "
+                f"units={p.get('units', 'km')} linecode={linecode}")
 
-    return (f"{base} r1={p.get('r1', 0.1)} x1={p.get('x1', 0.2)} "
-            f"r0={p.get('r0', 0.3)} x0={p.get('x0', 0.4)}"
-            + _opcionais(p, (("c1", "c1"), ("c0", "c0"))))
+    fator = FATOR_PARA_KM.get(str(p.get("units", "km")).strip().lower(), 1.0)
+    comando = (f"New Line.{nome} bus1={bus1} bus2={bus2} "
+               f"phases={p.get('phases', 3)} "
+               f"length={_num(float(p.get('length', 1)) * fator)} units=km "
+               f"r1={_num(float(p.get('r1', 0.1)) / fator)} "
+               f"x1={_num(float(p.get('x1', 0.2)) / fator)} "
+               f"r0={_num(float(p.get('r0', 0.3)) / fator)} "
+               f"x0={_num(float(p.get('x0', 0.4)) / fator)}")
+
+    # A capacitancia (nF por unidade de comprimento) acompanha a mesma
+    # normalizacao das impedancias: por km, e o valor dividido pelo fator.
+    for chave, nome_comando in (("c1", "c1"), ("c0", "c0")):
+        if chave in p and str(p[chave]).strip():
+            comando += f" {nome_comando}={_num(float(p[chave]) / fator)}"
+    return comando
 
 
 def _fmt_switch(nome, bus1, bus2, p: Dict[str, Any]) -> str:

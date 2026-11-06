@@ -92,11 +92,16 @@ TRANSPARÊNCIA TÉCNICA (atualizada):
       de fim de semana).
 """
 
+import copy
 import math
+import shutil
+import tempfile
 from typing import List, Dict, Any, Optional, Callable
 
 from dss import dss as dss_global
 
+from .curvas import obter_curva
+from .exportador_dss import gerar_arquivos_dss
 from .estudo_afundamento import MotorReutilizavel
 from .estudo_afundamento import VMINPU_STORAGE_PADRAO
 from .tarifas_energia import TarifaEnergia
@@ -495,3 +500,326 @@ def analisar_economia_energia(
         "reducao_demanda_ponta_kw": float(reducao_demanda_ponta_kw),
         "economia_demanda_mensal_estimada": float(economia_demanda_mensal_estimada),
     }
+
+
+# ---------------------------------------------------------------------------
+# Análise semanal
+# ---------------------------------------------------------------------------
+
+_DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+
+
+def _nome_com_dia(nome_curva: str, dia: str) -> str:
+    """Devolve o nome de curva correspondente a 'dia'.
+
+    Duas convenções convivem nos projetos: a curva já carrega o dia no nome
+    ("Carga1_Segunda", sufixo que basta trocar) ou o nome é neutro
+    ("Carga1"), caso em que o dia é anexado depois do sublinhado. Um nome com
+    mais de um dia no meio não é interpretado: devolve-se o candidato com
+    sufixo, e quem chama decide se ele existe.
+    """
+    for dia_antigo in _DIAS_SEMANA:
+        if nome_curva.endswith("_" + dia_antigo):
+            return nome_curva[: -len(dia_antigo)] + dia
+    return f"{nome_curva}_{dia}"
+
+
+def _rebindar_curvas_do_dia(rede_dia, pasta_curvas: str, dia: str) -> List[str]:
+    """Aponta os elementos de 'rede_dia' para a curva do dia, quando existe.
+
+    Só elementos com curva de projeto são tocados. Elemento sem curva fica sem
+    curva de propósito: a exportação injeta a curva padrão do dia para Load e
+    PVSystem, e reservar essa decisão ao exportador evita duas fontes de
+    verdade sobre o mesmo dado.
+
+    O rebind só acontece se a curva do dia existir no projeto. Citar uma curva
+    inexistente faria a exportação levantar erro por referência quebrada —
+    preferível manter o vínculo original e avisar.
+    """
+    avisos: List[str] = []
+    if not pasta_curvas:
+        return avisos
+
+    for elemento in rede_dia.derivacoes.values():
+        parametros = elemento.parametros
+        nome_curva = parametros.get("daily")
+        if not nome_curva or str(nome_curva).strip() in ("", "Nenhuma"):
+            continue
+
+        candidato = _nome_com_dia(str(nome_curva), dia)
+        if obter_curva(pasta_curvas, candidato) is None:
+            avisos.append(
+                f"{elemento.tipo}.{elemento.nome}: curva '{candidato}' não "
+                f"existe no projeto; mantido o vínculo com '{nome_curva}'.")
+            continue
+        parametros["daily"] = candidato
+
+    return avisos
+
+
+def _energia_pv_gerada_kwh(motor: MotorReutilizavel) -> float:
+    """Energia ativa gerada pelos PVSystem no passo corrente, em kWh.
+
+    A leitura é por elemento, via ActiveElement da classe PVSystem, porque
+    TotalPower do circuito é o balanço líquido na fonte e não distingue quem
+    gerou. A lista de nomes é varrida a cada hora: recalcular uma vez por dia
+    seria mais barato, mas mudaria a lista se um PV fosse desligado no meio do
+    despacho — a varredura por hora custa pouco e não supõe nada.
+
+    O motor devolve potência ativa em kW no terminal do elemento; com passo de
+    1 h, o valor numérico é também a energia daquela hora.
+    """
+    try:
+        nomes = list(motor.dssCircuit.PVSystems.AllNames)
+    except Exception:
+        return 0.0
+
+    total_kw = 0.0
+    for nome in nomes:
+        try:
+            motor.dssCircuit.PVSystems.Name = nome
+            total_kw += float(motor.dssCircuit.PVSystems.kW)
+        except Exception:
+            # Um PV ilegível não invalida os demais; a hora segue com a soma
+            # dos que responderam.
+            continue
+    return max(total_kw, 0.0)
+
+
+def _energia_bess_descarregada_kwh(motor: MotorReutilizavel, nomes_bess: List[str]) -> float:
+    """Energia entregue à rede pelo BESS no passo corrente, em kWh.
+
+    Só a DESCARGA conta como fonte. A carga não entra: a energia que o BESS
+    absorve já foi comprada da rede (ou veio do FV) e, portanto, já está
+    contabilizada no outro lado do balanço. Somá-la aqui contaria duas vezes o
+    mesmo kWh e faria a participação das fontes ultrapassar 100%.
+
+    A leitura da potência vem de ActiveElement.TotalPowers, e não de
+    Storages.kW: a interface IStorages expõe apenas State e puSOC — não há
+    propriedade de potência nela.
+
+    DUAS PARTICULARIDADES MEDIDAS neste binding (dss-python 0.15.7), que
+    justificam o código abaixo:
+      1) State é INTEIRO, não texto: 1 = descarregando, -1 = carregando,
+         0 = repouso. Comparar com a string 'DISCHARGING' nunca casa e faria
+         a descarga inteira desaparecer do balanço.
+      2) A unidade de TotalPowers varia por classe de elemento. No Storage
+         ela vem em kW (um BESS de 30 kW reporta -30); em Load e PVSystem vem
+         em W (uma carga de 60 kW reporta ~58 900). Por isso aqui NÃO há
+         divisão: o valor já está em kW.
+    """
+    total_kw = 0.0
+    for nome in nomes_bess:
+        try:
+            motor.dssCircuit.Storages.Name = nome
+            if int(motor.dssCircuit.Storages.State) != 1:
+                continue
+            motor.dssCircuit.SetActiveElement(f"Storage.{nome}")
+            total_kw += abs(float(motor.dssCircuit.ActiveElement.TotalPowers[0]))
+        except Exception:
+            continue
+    return max(total_kw, 0.0)
+
+
+def analisar_economia_semanal(
+    rede,
+    pasta_curvas: Optional[str],
+    dia_padrao: Optional[str],
+    bess_list: List[Dict[str, Any]],
+    tarifa: TarifaEnergia,
+    horario_ponta_inicio: int = 18,
+    horario_ponta_fim: int = 21,
+    dias_equivalentes_mes: float = 22,
+    callback_status: Optional[Callable[[str], None]] = None,
+) -> Dict[str, Any]:
+    """Repete a análise de economia para os sete dias da semana.
+
+    A análise diária de analisar_economia_energia usa um dia representativo
+    só. Como carga e geração têm curva própria por dia, o custo e a economia
+    variam de segunda a domingo; somar as sete parcelas é o que dá o número
+    semanal e a base dos gráficos de participação das fontes.
+
+    Cada dia roda em pasta temporária própria porque o exportador escreve um
+    Master.dss com as curvas do dia já resolvidas. Recompilar o master do dia
+    anterior serviria o dia errado, então a pasta nova é o que garante o
+    isolamento entre iterações.
+
+    Falha em um dia não derruba a semana: o dia degrada para zeros e a
+    mensagem vai para 'avisos'. Uma semana parcial sinalizada é mais útil que
+    nenhum resultado.
+
+    Parameters
+    ----------
+    rede : RedeEletrica
+        Rede do editor. Não é alterada — cada dia trabalha sobre uma cópia
+        profunda, e o rebind das curvas acontece só na cópia.
+    pasta_curvas : str ou None
+        Pasta de curvas do projeto (Projeto.caminho_curvas). None desliga o
+        rebind por dia e deixa a escolha das curvas inteiramente para a
+        exportação.
+    dia_padrao : str ou None
+        Dia usado como fallback quando um dia não tem curva própria. Também
+        alimenta dia_curvas_padrao na exportação.
+    dias_equivalentes_mes : float
+        Dias úteis por mês, coerente com a análise diária.
+    """
+
+    def _status(msg):
+        if callback_status:
+            callback_status(msg)
+
+    avisos: List[str] = []
+    economia_diaria_brl: List[float] = []
+    custo_base_diario_brl: List[float] = []
+    custo_sistema_diario_brl: List[float] = []
+    energia_rede_kwh: List[float] = []
+    energia_fv_kwh: List[float] = []
+    energia_bess_kwh: List[float] = []
+
+    # O sinal de importação é propriedade da INSTÂNCIA do motor, não do
+    # circuito, mas calibrá-lo uma vez por dia custa um micro-Solve e elimina
+    # a dependência de o motor ser reutilizado entre dias.
+    motor = MotorReutilizavel()
+    try:
+        for dia in _DIAS_SEMANA:
+            _status(f"Economia semanal: simulando {dia}...")
+            try:
+                rede_dia = copy.deepcopy(rede)
+                avisos.extend(_rebindar_curvas_do_dia(rede_dia, pasta_curvas, dia))
+
+                pasta_temp = tempfile.mkdtemp(prefix="econ_semana_")
+                try:
+                    caminho_master = gerar_arquivos_dss(
+                        rede_dia, pasta_temp, pasta_curvas=pasta_curvas,
+                        dia_curvas_padrao=dia)
+
+                    perfil_base = _simular_dia(
+                        motor, caminho_master, bess_list, controlar=False,
+                        horario_ponta_inicio=horario_ponta_inicio,
+                        horario_ponta_fim=horario_ponta_fim,
+                        soc_min=0.2, soc_max=0.95, soc_inicial=0.5)
+                    perfil_bess = _simular_dia(
+                        motor, caminho_master, bess_list, controlar=True,
+                        horario_ponta_inicio=horario_ponta_inicio,
+                        horario_ponta_fim=horario_ponta_fim,
+                        soc_min=0.2, soc_max=0.95, soc_inicial=0.5)
+
+                    sinal_importacao = _calibrar_sinal_importacao()
+                    perfil_base = _processar_perfil(perfil_base, sinal_importacao)
+                    perfil_bess = _processar_perfil(perfil_bess, sinal_importacao)
+
+                    (energia_ponta_base, energia_fora_base,
+                     _exp_ponta_base, _exp_fora_base) = _integrar_energia(perfil_base)
+                    (energia_ponta_bess, energia_fora_bess,
+                     _exp_ponta_bess, exp_fora_bess) = _integrar_energia(perfil_bess)
+
+                    custo_base = (
+                        energia_ponta_base * tarifa.tarifa_ponta_kwh
+                        + energia_fora_base * tarifa.tarifa_fora_ponta_kwh)
+                    custo_sistema = (
+                        energia_ponta_bess * tarifa.tarifa_ponta_kwh
+                        + energia_fora_bess * tarifa.tarifa_fora_ponta_kwh)
+
+                    exportada_dia_kwh = sum(
+                        float(p["kw_exportada"]) for p in perfil_bess) / 1000.0
+
+                    # A energia comprada da rede sai do MESMO perfil que
+                    # produziu custo_base: as duas grandezas passam a ser
+                    # medidas pela mesma via e não podem divergir de unidade.
+                    rede_dia_kwh = energia_ponta_bess + energia_fora_bess
+
+                    fv_dia_kwh, bess_dia_kwh = _fontes_do_dia(
+                        motor, caminho_master, bess_list,
+                        horario_ponta_inicio, horario_ponta_fim)
+
+                    # O FV que sai pela fonte não é consumido no local. Descontar
+                    # a exportação do dia evita creditar ao FV energia que a rede
+                    # recebeu; o resíduo positivo é o que a carga de fato usou.
+                    fv_consumida_kwh = max(fv_dia_kwh - exportada_dia_kwh, 0.0)
+                finally:
+                    shutil.rmtree(pasta_temp, ignore_errors=True)
+
+                economia_diaria_brl.append(float(custo_base - custo_sistema))
+                custo_base_diario_brl.append(float(custo_base))
+                custo_sistema_diario_brl.append(float(custo_sistema))
+                energia_rede_kwh.append(float(rede_dia_kwh))
+                energia_fv_kwh.append(float(fv_consumida_kwh))
+                energia_bess_kwh.append(float(bess_dia_kwh))
+
+            except Exception as erro:
+                avisos.append(f"{dia}: falha na simulação ({erro}). "
+                              "Dia contabilizado com zeros.")
+                economia_diaria_brl.append(0.0)
+                custo_base_diario_brl.append(0.0)
+                custo_sistema_diario_brl.append(0.0)
+                energia_rede_kwh.append(0.0)
+                energia_fv_kwh.append(0.0)
+                energia_bess_kwh.append(0.0)
+    finally:
+        motor.finalizar()
+
+    return {
+        "dias": list(_DIAS_SEMANA),
+        "economia_diaria_brl": economia_diaria_brl,
+        "custo_base_diario_brl": custo_base_diario_brl,
+        "custo_sistema_diario_brl": custo_sistema_diario_brl,
+        "energia_rede_kwh": energia_rede_kwh,
+        "energia_fv_kwh": energia_fv_kwh,
+        "energia_bess_kwh": energia_bess_kwh,
+        "economia_semanal_brl": float(sum(economia_diaria_brl)),
+        "avisos": avisos,
+    }
+
+
+def _fontes_do_dia(motor: MotorReutilizavel, caminho_master: str,
+                    bess_list: List[Dict[str, Any]],
+                    horario_ponta_inicio: int, horario_ponta_fim: int):
+    """Energia de FV e de descarga do BESS ao longo do dia, em kWh.
+
+    Roda o despacho uma terceira vez porque a integração precisa da leitura
+    por elemento a cada hora, e _simular_dia só guarda a potência da fonte.
+    A repetição é intencional: manter a série por elemento dentro de
+    _simular_dia obrigaria aquele laço a conhecer as fontes, e ele é usado
+    também onde elas não interessam.
+
+    A REDE NÃO É LIDA AQUI. A energia comprada já está no perfil processado a
+    partir da potência da fonte, e é de lá que o custo sai; repetir a leitura
+    aqui criava uma segunda medida da mesma grandeza, com escala própria e
+    sujeita a divergir. Ficaram as fontes que o perfil não distingue — FV e
+    BESS são elementos, e Circuit.TotalPower só enxerga o balanço líquido.
+
+    O resultado é uma tupla (fv, bess).
+    """
+    motor.recompilar(caminho_master)
+
+    nomes_bess: List[str] = []
+    if bess_list:
+        nomes_bess = _inserir_bess_idling(motor, bess_list, 0.5)
+        motor.dssSolution.Solve()
+
+    motor.dssText.Command = "Set Mode=Daily"
+    motor.dssText.Command = "Set Stepsize=1h"
+    motor.dssText.Command = "Set Number=1"
+
+    fv_kwh = 0.0
+    bess_kwh = 0.0
+    for hora in range(24):
+        ponta = _eh_hora_ponta(hora, horario_ponta_inicio, horario_ponta_fim)
+
+        if nomes_bess:
+            for nome in nomes_bess:
+                soc_atual = _ler_soc(motor, nome)
+                if ponta and soc_atual > 0.2:
+                    novo_estado = "discharging"
+                elif (not ponta) and soc_atual < 0.95:
+                    novo_estado = "charging"
+                else:
+                    novo_estado = "idling"
+                _definir_estado_storage(motor, nome, novo_estado)
+
+        motor.dssSolution.Solve()
+
+        fv_kwh += _energia_pv_gerada_kwh(motor)
+        bess_kwh += _energia_bess_descarregada_kwh(motor, nomes_bess)
+
+    return fv_kwh, bess_kwh

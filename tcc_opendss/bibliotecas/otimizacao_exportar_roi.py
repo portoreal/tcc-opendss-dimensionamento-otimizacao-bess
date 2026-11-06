@@ -72,6 +72,8 @@ __author__ = "Pedro Henrique Sousa Pinheiro"
 
 __all__ = [
     "INCENTIVOS_PADRAO",
+    "_grafico_composicao_fontes",
+    "_grafico_economia_semanal",
     "gerar_relatorio_roi",
 ]
 
@@ -418,6 +420,57 @@ def _horas_ponta(perfil) -> set:
     return sorted(horas) and horas or set()
 
 
+def _semana_normalizada(bruto) -> dict | None:
+    """
+    Converte ``resultado["economia_semanal"]`` no formato consumido pelos gráficos.
+
+    Devolve ``None`` quando a semana não veio do estudo — o estudo só a produz
+    quando a análise de economia semanal está habilitada, e os gráficos G5/G6
+    simplesmente não existem nesse caso. Devolver dicionário vazio seria pior:
+    um gráfico com eixos e nenhuma barra parece defeito, não ausência de dado.
+
+    O contrato garante sete posições em todas as séries. Séries de tamanhos
+    diferentes são truncadas no menor tamanho comum; se nem um dia sobrevive, a
+    semana é tratada como ausente.
+
+    TRANSPARÊNCIA TÉCNICA: ``_to_float`` absorve ``numpy.float64`` e ``None``
+    vindos do motor; os nomes dos dias são preservados como texto porque a
+    posição é a única informação de ordem confiável no eixo x.
+    """
+    if not isinstance(bruto, dict):
+        return None
+
+    dias = [str(dia) for dia in (bruto.get("dias") or [])]
+    series = {
+        "economia_diaria_brl": bruto.get("economia_diaria_brl") or [],
+        "energia_rede_kwh": bruto.get("energia_rede_kwh") or [],
+        "energia_fv_kwh": bruto.get("energia_fv_kwh") or [],
+        "energia_bess_kwh": bruto.get("energia_bess_kwh") or [],
+    }
+
+    tamanho = len(dias)
+    for valores in series.values():
+        tamanho = min(tamanho, len(valores))
+    if tamanho <= 0:
+        return None
+
+    normalizado = {"dias": dias[:tamanho]}
+    for chave, valores in series.items():
+        normalizado[chave] = [_to_float(valor, 0.0) for valor in list(valores)[:tamanho]]
+
+    # ``economia_semanal_brl`` pode vir ausente num resultado antigo; a soma dos
+    # dias é a mesma grandeza, então o total não precisa ficar em branco.
+    total = _to_opt_float(bruto.get("economia_semanal_brl"))
+    normalizado["economia_semanal_brl"] = (
+        total if total is not None else sum(normalizado["economia_diaria_brl"])
+    )
+
+    normalizado["avisos"] = [
+        str(aviso) for aviso in (bruto.get("avisos") or []) if str(aviso).strip()
+    ]
+    return normalizado
+
+
 # ---------------------------------------------------------------------------
 # Matplotlib (backend Agg obrigatório, figuras em memória)
 # ---------------------------------------------------------------------------
@@ -658,6 +711,171 @@ def _grafico_profundidades(pares) -> str:
     ax.set_xticklabels(nomes, rotation=45, ha="right", fontsize=7.5)
     _estilo_eixos(ax)
     ax.legend(fontsize=7.5, frameon=False, loc="best")
+    fig.tight_layout()
+    return _figura_para_base64(fig)
+
+
+def _grafico_economia_semanal(dados_semanais: dict) -> str:
+    """
+    G5 — economia diária (R$) ao longo dos sete dias da semana.
+
+    O sinal importa mais que a magnitude: dias com economia negativa indicam que
+    ligar o sistema custou mais do que deixá-lo desligado, e isso precisa saltar
+    aos olhos. Por isso a cor da barra acompanha o sinal e a linha do zero fica
+    sempre visível, mesmo quando o eixo já começa em valor positivo.
+
+    TRANSPARÊNCIA TÉCNICA: os valores chegam de ``economia_diaria_brl`` já em
+    reais; nenhuma conversão monetária é feita aqui. Falhas de simulação viram
+    zeros no contrato de origem, então um dia zerado é desenhado como barra de
+    altura nula — não é omitido.
+    """
+    plt = _pyplot()
+    fig, ax = plt.subplots(figsize=(9, 3.5), dpi=110)
+
+    dias = [str(dia) for dia in dados_semanais.get("dias") or []]
+    valores = [_to_float(valor, 0.0) for valor in dados_semanais.get("economia_diaria_brl") or []]
+
+    # O contrato devolve as duas listas com o mesmo tamanho; se um dia faltar de
+    # um lado (resultado truncado à mão, versão antiga do motor), o corte aqui
+    # evita desalinhar rótulo e barra — gráfico torto é pior que gráfico curto.
+    total = min(len(dias), len(valores))
+    dias = dias[:total]
+    valores = valores[:total]
+
+    cores = [_COR_POSITIVO if valor >= 0.0 else _COR_NEGATIVO for valor in valores]
+    barras = ax.bar(dias, valores, color=cores, width=0.6, zorder=3)
+
+    for barra, valor in zip(barras, valores):
+        altura = barra.get_height()
+        # O rótulo vai acima da barra positiva e abaixo da negativa; sem o
+        # deslocamento condicional, os dias negativos escreveriam o valor por
+        # cima da linha do zero e ficariam ilegíveis.
+        deslocamento = 3 if altura >= 0 else -11
+        ax.annotate(
+            _fmt_brl(valor),
+            xy=(barra.get_x() + barra.get_width() / 2.0, altura),
+            xytext=(0, deslocamento),
+            textcoords="offset points",
+            ha="center",
+            fontsize=7,
+            color=_TEXTO,
+        )
+
+    ax.axhline(0.0, color="#8A949E", linewidth=1.0, zorder=4)
+    total_semana = _to_opt_float(dados_semanais.get("economia_semanal_brl"))
+    if total_semana is None:
+        total_semana = sum(valores)
+    ax.set_title(
+        f"Economia semanal ao instalar o sistema — {_fmt_brl(total_semana)} na semana",
+        fontsize=10,
+        color=_TEXTO,
+    )
+    ax.set_xlabel("Dia da semana", fontsize=8.5, color=_TEXTO_SUAVE)
+    ax.set_ylabel("R$ por dia", fontsize=8.5, color=_TEXTO_SUAVE)
+    if dias:
+        ax.set_xticks(range(len(dias)))
+        ax.set_xticklabels(dias, fontsize=8)
+    _estilo_eixos(ax)
+    fig.tight_layout()
+    return _figura_para_base64(fig)
+
+
+def _grafico_composicao_fontes(dados_semanais: dict) -> str:
+    """
+    G6 — participação de cada fonte (rede, FV, BESS) na energia do dia.
+
+    A barra de cada dia soma exatamente 100%, o que responde a uma pergunta que
+    valores absolutos não respondem bem: de onde veio a energia que alimentou a
+    carga naquele dia, e como essa mistura muda ao longo da semana. Valores
+    absolutos ficam no perfil horário (G3) e no memorial.
+
+    TRANSPARÊNCIA TÉCNICA: a divisão é pela soma das três fontes do próprio dia,
+    não por um total semanal — comparar dias de carga diferente como fração de
+    um único denominador produziria barras de alturas diferentes, e não é o que
+    se quer mostrar. Dia com soma nula (falha de simulação) não vira divisão por
+    zero: recebe barra vazia e o motivo aparece na legenda da seção.
+    """
+    plt = _pyplot()
+    fig, ax = plt.subplots(figsize=(9, 3.5), dpi=110)
+
+    dias = [str(dia) for dia in dados_semanais.get("dias") or []]
+    rede = [_to_float(valor, 0.0) for valor in dados_semanais.get("energia_rede_kwh") or []]
+    fv = [_to_float(valor, 0.0) for valor in dados_semanais.get("energia_fv_kwh") or []]
+    bess = [_to_float(valor, 0.0) for valor in dados_semanais.get("energia_bess_kwh") or []]
+
+    total = min(len(dias), len(rede), len(fv), len(bess))
+    dias = dias[:total]
+    rede = rede[:total]
+    fv = fv[:total]
+    bess = bess[:total]
+
+    # Percentual de cada fonte por dia; uma lista por fonte porque o
+    # ``ax.bar(..., bottom=)`` empilha uma camada de cada vez.
+    pct_rede = []
+    pct_fv = []
+    pct_bess = []
+    for indice in range(total):
+        soma_dia = rede[indice] + fv[indice] + bess[indice]
+        if soma_dia <= 0.0:
+            # Soma não positiva também cobre o dia em que a rede recebe energia
+            # (exportação líquida): não há mistura de fontes a exibir.
+            pct_rede.append(0.0)
+            pct_fv.append(0.0)
+            pct_bess.append(0.0)
+            continue
+        pct_rede.append(rede[indice] / soma_dia * 100.0)
+        pct_fv.append(fv[indice] / soma_dia * 100.0)
+        pct_bess.append(bess[indice] / soma_dia * 100.0)
+
+    posicoes = list(range(total))
+    camadas = [
+        ("Rede", pct_rede, "#5B7C99"),
+        ("Fotovoltaica", pct_fv, "#DAA520"),
+        ("BESS", pct_bess, "#2E8B6E"),
+    ]
+
+    base = [0.0] * total
+    for nome, serie, cor in camadas:
+        barras = ax.bar(
+            posicoes,
+            serie,
+            bottom=base,
+            color=cor,
+            width=0.62,
+            zorder=3,
+            label=nome,
+        )
+        for barra, valor, inicio in zip(barras, serie, base):
+            # Segmento fino não comporta texto legível; a informação continua na
+            # barra e na legenda, então o rótulo é suprimido em vez de espremido.
+            if valor < 6.0:
+                continue
+            ax.annotate(
+                _fmt_num(valor, 0),
+                xy=(barra.get_x() + barra.get_width() / 2.0, inicio + valor / 2.0),
+                xytext=(0, 0),
+                textcoords="offset points",
+                ha="center",
+                va="center",
+                fontsize=7,
+                color="white",
+            )
+        base = [acumulado + valor for acumulado, valor in zip(base, serie)]
+
+    ax.set_ylim(0.0, 100.0)
+    ax.set_yticks([0, 20, 40, 60, 80, 100])
+    ax.set_title(
+        "Composição percentual das fontes de energia por dia",
+        fontsize=10,
+        color=_TEXTO,
+    )
+    ax.set_xlabel("Dia da semana", fontsize=8.5, color=_TEXTO_SUAVE)
+    ax.set_ylabel("Participação (%)", fontsize=8.5, color=_TEXTO_SUAVE)
+    if dias:
+        ax.set_xticks(posicoes)
+        ax.set_xticklabels(dias, fontsize=8)
+    _estilo_eixos(ax)
+    ax.legend(fontsize=7.5, frameon=False, loc="upper center", ncol=3)
     fig.tight_layout()
     return _figura_para_base64(fig)
 
@@ -976,12 +1194,14 @@ def _secao_projecao(dados: dict) -> tuple:
 
 def _secao_graficos(dados: dict, acumulados: list, anos: list) -> str:
     """
-    Seção 5 — quatro gráficos embutidos como PNG base64.
+    Seção 5 — gráficos embutidos como PNG base64 (quatro fixos, dois semanas).
 
     TRANSPARÊNCIA TÉCNICA: cada gráfico é gerado sob demanda e degrada para um
     aviso textual quando os dados de origem estão ausentes (perfil vazio,
-    nenhuma barra com profundidade > 0). O relatório nunca quebra por falta de
-    dados de um gráfico específico.
+    nenhuma barra com profundidade > 0). Os dois gráficos semanais (G5 e G6) só
+    entram quando ``resultado["economia_semanal"]`` existe, porque a análise
+    semanal é opcional no estudo. O relatório nunca quebra por falta de dados de
+    um gráfico específico.
     """
     blocos = []
 
@@ -1025,6 +1245,28 @@ def _secao_graficos(dados: dict, acumulados: list, anos: list) -> str:
         blocos.append(
             '<p class="aviso">G4 — Nenhuma barra apresentou profundidade de afundamento registrada.</p>'
         )
+
+    # G5 e G6 dependem da análise semanal, que é opcional no estudo. Quando ela
+    # não rodou, os dois blocos não entram e a seção continua com quatro
+    # gráficos — mesma política já aplicada ao perfil horário acima.
+    semana = dados.get("economia_semanal")
+    if semana:
+        blocos.append(
+            '<div class="grafico">'
+            f'<img alt="Economia diária ao instalar o sistema na semana" src="{_grafico_economia_semanal(semana)}">'
+            "</div>"
+            '<p class="legenda-grafico">G5 — Economia diária ao instalar o sistema (R$/dia). Barras verdes indicam dia com economia positiva; vermelhas, dia em que o sistema custou mais que o caso base. A linha tracejada marca o zero.</p>'
+        )
+
+        blocos.append(
+            '<div class="grafico">'
+            f'<img alt="Composição percentual das fontes de energia por dia" src="{_grafico_composicao_fontes(semana)}">'
+            "</div>"
+            '<p class="legenda-grafico">G6 — Participação de cada fonte na energia consumida, por dia da semana (%). Cada barra soma 100%. Dia sem energia contabilizada aparece vazio.</p>'
+        )
+
+        for aviso in semana.get("avisos") or []:
+            blocos.append(f'<p class="aviso">{_escapar(aviso)}</p>')
 
     return '<h2>Gráficos</h2>\n' + "\n".join(blocos)
 
@@ -1377,6 +1619,7 @@ def _extrair_dados(
         "perfil_bess": perfil_bess,
         "horas_ponta": horas_ponta,
         "texto_fator_potencia": texto_fp,
+        "economia_semanal": _semana_normalizada(resultado.get("economia_semanal")),
         "alerta_superdimensionamento": _to_bool(economia.get("alerta_superdimensionamento")),
         "alerta_caso_base_exportacao": _to_bool(economia.get("alerta_caso_base_exportacao")),
         "total_exportado_kwh": _to_float(economia.get("total_exportado_kwh_bess"), 0.0),

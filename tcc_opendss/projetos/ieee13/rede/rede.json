@@ -1,0 +1,570 @@
+{
+  "barras": {
+    "sourcebus": {
+      "nome": "sourcebus",
+      "kv_base": 115.0
+    },
+    "650": {
+      "nome": "650",
+      "kv_base": 4.16
+    },
+    "rg60": {
+      "nome": "rg60",
+      "kv_base": 4.16
+    },
+    "633": {
+      "nome": "633",
+      "kv_base": 4.16
+    },
+    "634": {
+      "nome": "634",
+      "kv_base": 0.48
+    },
+    "671": {
+      "nome": "671",
+      "kv_base": 4.16
+    },
+    "645": {
+      "nome": "645",
+      "kv_base": 4.16
+    },
+    "646": {
+      "nome": "646",
+      "kv_base": 4.16
+    },
+    "692": {
+      "nome": "692",
+      "kv_base": 4.16
+    },
+    "675": {
+      "nome": "675",
+      "kv_base": 4.16
+    },
+    "611": {
+      "nome": "611",
+      "kv_base": 4.16
+    },
+    "652": {
+      "nome": "652",
+      "kv_base": 4.16
+    },
+    "670": {
+      "nome": "670",
+      "kv_base": 4.16
+    },
+    "632": {
+      "nome": "632",
+      "kv_base": 4.16
+    },
+    "680": {
+      "nome": "680",
+      "kv_base": 4.16
+    },
+    "684": {
+      "nome": "684",
+      "kv_base": 4.16
+    }
+  },
+  "ramos": {
+    "L_650632": {
+      "tipo": "Line",
+      "nome": "L_650632",
+      "bus1": "rg60",
+      "bus2": "632",
+      "parametros": {
+        "phases": 3,
+        "length": 0.6096,
+        "units": "km",
+        "linecode": "",
+        "r1": 0.1156,
+        "x1": 0.3708,
+        "r0": 0.3468,
+        "x0": 1.1124
+      }
+    },
+    "L_632670": {
+      "tipo": "Line",
+      "nome": "L_632670",
+      "bus1": "632",
+      "bus2": "670",
+      "parametros": {
+        "phases": 3,
+        "length": 0.2033016,
+        "units": "km",
+        "linecode": "",
+        "r1": 0.1156,
+        "x1": 0.3708,
+        "r0": 0.3468,
+        "x0": 1.1124
+      }
+    },
+    "L_670671": {
+      "tipo": "Line",
+      "nome": "L_670671",
+      "bus1": "670",
+      "bus2": "671",
+      "parametros": {
+        "phases": 3,
+        "length": 0.4062984,
+        "units": "km",
+        "linecode": "",
+        "r1": 0.1156,
+        "x1": 0.3708,
+        "r0": 0.3468,
+        "x0": 1.1124
+      }
+    },
+    "L_671680": {
+      "tipo": "Line",
+      "nome": "L_671680",
+      "bus1": "671",
+      "bus2": "680",
+      "parametros": {
+        "phases": 3,
+        "length": 0.3048,
+        "units": "km",
+        "linecode": "",
+        "r1": 0.1156,
+        "x1": 0.3708,
+        "r0": 0.3468,
+        "x0": 1.1124
+      }
+    },
+    "L_632633": {
+      "tipo": "Line",
+      "nome": "L_632633",
+      "bus1": "632",
+      "bus2": "633",
+      "parametros": {
+        "phases": 3,
+        "length": 0.1524,
+        "units": "km",
+        "linecode": "",
+        "r1": 0.3679,
+        "x1": 0.4724,
+        "r0": 1.1037,
+        "x0": 1.4172
+      }
+    },
+    "L_632645": {
+      "tipo": "Line",
+      "nome": "L_632645",
+      "bus1": "632",
+      "bus2": "645",
+      "parametros": {
+        "phases": 2,
+        "length": 0.1524,
+        "units": "km",
+        "linecode": "",
+        "r1": 0.6959,
+        "x1": 0.5548,
+        "r0": 2.0877,
+        "x0": 1.6644
+      }
+    },
+    "L_645646": {
+      "tipo": "Line",
+      "nome": "L_645646",
+      "bus1": "645",
+      "bus2": "646",
+      "parametros": {
+        "phases": 2,
+        "length": 0.09144,
+        "units": "km",
+        "linecode": "",
+        "r1": 0.6959,
+        "x1": 0.5548,
+        "r0": 2.0877,
+        "x0": 1.6644
+      }
+    },
+    "L_692675": {
+      "tipo": "Line",
+      "nome": "L_692675",
+      "bus1": "692",
+      "bus2": "675",
+      "parametros": {
+        "phases": 3,
+        "length": 0.1524,
+        "units": "km",
+        "linecode": "",
+        "r1": 0.2992,
+        "x1": 0.2561,
+        "r0": 0.8976,
+        "x0": 0.7683
+      }
+    },
+    "L_671684": {
+      "tipo": "Line",
+      "nome": "L_671684",
+      "bus1": "671",
+      "bus2": "684",
+      "parametros": {
+        "phases": 2,
+        "length": 0.09144,
+        "units": "km",
+        "linecode": "",
+        "r1": 0.6959,
+        "x1": 0.5548,
+        "r0": 2.0877,
+        "x0": 1.6644
+      }
+    },
+    "L_684611": {
+      "tipo": "Line",
+      "nome": "L_684611",
+      "bus1": "684",
+      "bus2": "611",
+      "parametros": {
+        "phases": 1,
+        "length": 0.09144,
+        "units": "km",
+        "linecode": "",
+        "r1": 0.8259,
+        "x1": 0.8373,
+        "r0": 2.4777,
+        "x0": 2.5119
+      }
+    },
+    "L_684652": {
+      "tipo": "Line",
+      "nome": "L_684652",
+      "bus1": "684",
+      "bus2": "652",
+      "parametros": {
+        "phases": 1,
+        "length": 0.24384,
+        "units": "km",
+        "linecode": "",
+        "r1": 0.8342,
+        "x1": 0.3184,
+        "r0": 2.5026,
+        "x0": 0.9552
+      }
+    },
+    "L_671692": {
+      "tipo": "Line",
+      "nome": "L_671692",
+      "bus1": "671",
+      "bus2": "692",
+      "parametros": {
+        "phases": 3,
+        "length": 0.001,
+        "units": "km",
+        "linecode": "",
+        "r1": 0.0001,
+        "x1": 0.0,
+        "r0": 0.0003,
+        "x0": 0.0
+      }
+    },
+    "TR_0_sourcebus_650": {
+      "tipo": "Transformer",
+      "nome": "TR_0_sourcebus_650",
+      "bus1": "sourcebus",
+      "bus2": "650",
+      "parametros": {
+        "phases": 3,
+        "kv1": 115.0,
+        "kv2": 4.16,
+        "kva": 5000.0,
+        "conn1": "wye",
+        "conn2": "wye",
+        "xhl": 0.5
+      }
+    },
+    "TR_1_650_rg60": {
+      "tipo": "Transformer",
+      "nome": "TR_1_650_rg60",
+      "bus1": "650",
+      "bus2": "rg60",
+      "parametros": {
+        "phases": 3,
+        "kv1": 4.16,
+        "kv2": 4.411333,
+        "kva": 4998.0,
+        "conn1": "wye",
+        "conn2": "wye",
+        "xhl": 0.5
+      }
+    },
+    "TR_2_633_634": {
+      "tipo": "Transformer",
+      "nome": "TR_2_633_634",
+      "bus1": "633",
+      "bus2": "634",
+      "parametros": {
+        "phases": 3,
+        "kv1": 4.16,
+        "kv2": 0.48,
+        "kva": 500.0,
+        "conn1": "wye",
+        "conn2": "wye",
+        "xhl": 2.0
+      }
+    }
+  },
+  "derivacoes": {
+    "CAP_cap1": {
+      "tipo": "Capacitor",
+      "nome": "CAP_cap1",
+      "bus1": "675",
+      "parametros": {
+        "phases": 3,
+        "kv": 4.16,
+        "kvar": 600.0
+      },
+      "grupo": null
+    },
+    "CAP_cap2": {
+      "tipo": "Capacitor",
+      "nome": "CAP_cap2",
+      "bus1": "611",
+      "parametros": {
+        "phases": 1,
+        "kv": 2.402,
+        "kvar": 100.0
+      },
+      "grupo": null
+    },
+    "CARGA_671": {
+      "tipo": "Load",
+      "nome": "CARGA_671",
+      "bus1": "671",
+      "parametros": {
+        "phases": 3,
+        "kv": 4.16,
+        "kw": 1155.0,
+        "kvar": 660.0,
+        "model": 1,
+        "conn": "delta"
+      },
+      "grupo": null
+    },
+    "CARGA_634a": {
+      "tipo": "Load",
+      "nome": "CARGA_634a",
+      "bus1": "634",
+      "parametros": {
+        "phases": 1,
+        "kv": 0.277,
+        "kw": 160.0,
+        "kvar": 110.0,
+        "model": 1,
+        "conn": "wye"
+      },
+      "grupo": null
+    },
+    "CARGA_634b": {
+      "tipo": "Load",
+      "nome": "CARGA_634b",
+      "bus1": "634",
+      "parametros": {
+        "phases": 1,
+        "kv": 0.277,
+        "kw": 120.0,
+        "kvar": 90.0,
+        "model": 1,
+        "conn": "wye"
+      },
+      "grupo": null
+    },
+    "CARGA_634c": {
+      "tipo": "Load",
+      "nome": "CARGA_634c",
+      "bus1": "634",
+      "parametros": {
+        "phases": 1,
+        "kv": 0.277,
+        "kw": 120.0,
+        "kvar": 90.0,
+        "model": 1,
+        "conn": "wye"
+      },
+      "grupo": null
+    },
+    "CARGA_645": {
+      "tipo": "Load",
+      "nome": "CARGA_645",
+      "bus1": "645",
+      "parametros": {
+        "phases": 1,
+        "kv": 2.4,
+        "kw": 170.0,
+        "kvar": 125.0,
+        "model": 1,
+        "conn": "wye"
+      },
+      "grupo": null
+    },
+    "CARGA_646": {
+      "tipo": "Load",
+      "nome": "CARGA_646",
+      "bus1": "646",
+      "parametros": {
+        "phases": 1,
+        "kv": 4.16,
+        "kw": 230.0,
+        "kvar": 132.0,
+        "model": 1,
+        "conn": "delta"
+      },
+      "grupo": null
+    },
+    "CARGA_692": {
+      "tipo": "Load",
+      "nome": "CARGA_692",
+      "bus1": "692",
+      "parametros": {
+        "phases": 1,
+        "kv": 4.16,
+        "kw": 170.0,
+        "kvar": 151.0,
+        "model": 1,
+        "conn": "delta"
+      },
+      "grupo": null
+    },
+    "CARGA_675a": {
+      "tipo": "Load",
+      "nome": "CARGA_675a",
+      "bus1": "675",
+      "parametros": {
+        "phases": 1,
+        "kv": 2.4,
+        "kw": 485.0,
+        "kvar": 190.0,
+        "model": 1,
+        "conn": "wye"
+      },
+      "grupo": null
+    },
+    "CARGA_675b": {
+      "tipo": "Load",
+      "nome": "CARGA_675b",
+      "bus1": "675",
+      "parametros": {
+        "phases": 1,
+        "kv": 2.4,
+        "kw": 68.0,
+        "kvar": 60.0,
+        "model": 1,
+        "conn": "wye"
+      },
+      "grupo": null
+    },
+    "CARGA_675c": {
+      "tipo": "Load",
+      "nome": "CARGA_675c",
+      "bus1": "675",
+      "parametros": {
+        "phases": 1,
+        "kv": 2.4,
+        "kw": 290.0,
+        "kvar": 212.0,
+        "model": 1,
+        "conn": "wye"
+      },
+      "grupo": null
+    },
+    "CARGA_611": {
+      "tipo": "Load",
+      "nome": "CARGA_611",
+      "bus1": "611",
+      "parametros": {
+        "phases": 1,
+        "kv": 2.4,
+        "kw": 170.0,
+        "kvar": 80.0,
+        "model": 1,
+        "conn": "wye"
+      },
+      "grupo": null
+    },
+    "CARGA_652": {
+      "tipo": "Load",
+      "nome": "CARGA_652",
+      "bus1": "652",
+      "parametros": {
+        "phases": 1,
+        "kv": 2.4,
+        "kw": 128.0,
+        "kvar": 86.0,
+        "model": 1,
+        "conn": "wye"
+      },
+      "grupo": null
+    },
+    "CARGA_670a": {
+      "tipo": "Load",
+      "nome": "CARGA_670a",
+      "bus1": "670",
+      "parametros": {
+        "phases": 1,
+        "kv": 2.4,
+        "kw": 17.0,
+        "kvar": 10.0,
+        "model": 1,
+        "conn": "wye"
+      },
+      "grupo": null
+    },
+    "CARGA_670b": {
+      "tipo": "Load",
+      "nome": "CARGA_670b",
+      "bus1": "670",
+      "parametros": {
+        "phases": 1,
+        "kv": 2.4,
+        "kw": 66.0,
+        "kvar": 38.0,
+        "model": 1,
+        "conn": "wye"
+      },
+      "grupo": null
+    },
+    "CARGA_670c": {
+      "tipo": "Load",
+      "nome": "CARGA_670c",
+      "bus1": "670",
+      "parametros": {
+        "phases": 1,
+        "kv": 2.4,
+        "kw": 117.0,
+        "kvar": 68.0,
+        "model": 1,
+        "conn": "wye"
+      },
+      "grupo": null
+    },
+    "FONTE_sourcebus": {
+      "tipo": "Vsource",
+      "nome": "FONTE_sourcebus",
+      "bus1": "sourcebus",
+      "parametros": {
+        "phases": 3,
+        "basekv": 115.0,
+        "pu": 1.0001,
+        "mvasc3": 2000,
+        "mvasc1": 2100
+      },
+      "grupo": null
+    },
+    "FV_675": {
+      "tipo": "PVSystem",
+      "nome": "FV_675",
+      "bus1": "675",
+      "parametros": {
+        "phases": 3,
+        "kv": 4.16,
+        "kva": 1000.0,
+        "pmpp": 1000.0,
+        "irradiance": 1.0,
+        "cutin": 2.0,
+        "cutout": 2.0
+      },
+      "grupo": null
+    }
+  },
+  "curvas_xy": {}
+}

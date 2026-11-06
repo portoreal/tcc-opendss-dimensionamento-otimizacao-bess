@@ -1,0 +1,148 @@
+Periodo de conversao do sistema IEEE 13 barras para o formato do editor de rede
+===============================================================================
+
+O que foi feito
+---------------
+O projeto tcc_opendss/projetos/ieee13/ nao foi montado a mao. Ele saiu do
+conversor canonico do proprio trabalho
+(bibliotecas/validacao_exportar_projeto.py), alimentado pela instancia DSS ja
+resolvida devolvida por validar_sistema("IEEE 13 Node Test Feeder"). A
+conversao e, portanto, reprodutivel: rodar as duas funcoes de novo gera o
+mesmo projeto. Sobre a saida do conversor houve dois ajustes manuais, ambos
+descritos abaixo (Ajustes 1 e 3).
+
+As aproximacoes estruturais (enderecamento de fase, regulador, impedancia de
+linha) estao documentadas no topo daquele modulo e nao se repetem aqui. Este
+arquivo cobre o que e especifico deste projeto.
+
+Contagens obtidas
+-----------------
+16 barras, 15 ramos (12 linhas, 3 transformadores) e 19 derivacoes
+(15 cargas, 2 capacitores, 1 fonte, 1 PVSystem). A soma das cargas e
+3.466 kW / 2.102 kvar, identica a soma das quinze cargas declaradas em
+IEEE/13Bus/IEEE13Nodeckt.dss. As cargas ficaram uma por elemento, sem
+agregacao.
+
+Ajuste 1 - tensao de saida do banco regulador
+---------------------------------------------
+O conversor representa o banco Reg1/Reg2/Reg3 como um unico transformador
+1:1 de impedancia minima (TR_1_650_rg60). Como o modelo nao tem RegControl,
+esse transformador nao eleva tensao nenhuma, e a rede inteira passa a
+operar abaixo do que o sistema real entrega.
+
+A correcao adotada foi dar a ele um ganho fixo igual a media dos taps
+oficiais usados na validacao do modelo computacional - Reg1 1,0625,
+Reg2 1,0500 e Reg3 1,06875, media 1,060417. Multiplicando pela tensao do
+enrolamento primario: kv2 = 4,16 x 1,060417 = 4,411333 kV.
+
+Duas ressalvas sobre esse numero. Primeiro, e um ganho simetrico: aplica a
+mesma elevacao nas tres fases, enquanto o original tem tap por fase. A
+diferenca residual entre fases fica em ~1%, o que altera o perfil de tensao
+mas nao a ordem de grandeza do resultado. Segundo, o tap medio foi calculado
+sobre os valores da lista comandos_taps_fixos de validacao_ieee.py, onde o
+terceiro tap e 1,06875. A instrucao de trabalho citava 1,078125 para Reg3;
+foi mantido o valor que esta no codigo, porque e ele que a validacao do
+trabalho efetivamente aplica, e divergir dele faria o projeto de estudo
+descrever uma rede que nao corresponde a referencia validada.
+
+Substituir por tres transformadores monofasicos, um por fase, com o tap
+exato de cada um, produziria resultado mais fiel. Nao foi feito aqui.
+
+
+Ajuste 2 - unidade de comprimento e impedancia das linhas (na conversao)
+------------------------------------------------------------------------
+A versao anterior deste projeto tinha duas doenças de uma so causa. O
+conversor lia a matriz de impedancia pelo atributo Lines.RMatrix, que nao
+existe no binding (dss-python 0.15.7: o nome e Rmatrix, com 'm' minusculo);
+a excecao era engolida e TODA linha herdava o fallback r1=x1=0,3. Ao mesmo
+tempo, o par comprimento/unidade era gravado como veio do motor (2.000 ft) e
+reexportado sem coerencia garantida com a unidade da impedancia.
+
+Medicoes feitas no motor real fecharam a regra do binding. A mesma linha
+fisica (1 km, 3 ohm/km), grafada em quilometro, milha ou sem unidade, produz
+fluxo identico bit a bit (perdas 13.512,4 W nas tres grafias). Grafada em pes
+com impedancia declarada diretamente na linha, a MESMA linha fisica da
+resultado divergente (13.689,7 W, 1,3% a mais) - e com a impedancia na
+unidade trocada a rede colapsa (queda integral de tensao). Conclusao pratica:
+a representacao invariante e o quilometro.
+
+Por isso, o exportador (bibliotecas/exportador_dss.py) passou a normalizar
+tudo para km na emissao do comando New Line (comprimento multiplicado pelo
+fator da unidade, impedancias por unidade divididas pelo mesmo fator,
+units=km), e o conversor grava comprimento em km e impedancias em ohm/km,
+lidas da matriz de fase do circuito de origem na unidade declarada da linha
+(pe nesta fonte; a consulta '? line.<nome>.units' e a unica leitura
+confiavel - a propriedade ILines.Units devolve 0 em qualquer caso). A
+extracao de sequencia positiva usa elemento proprio medio menos elemento
+mutuo medio (d - m), que devolve exatamente Z1 quando a matriz deriva de
+componentes simetricas; a media da diagonal sozinha, nao. Sem arredondamento
+antes da normalizacao: valores por pe (casa de 1e-5) zerariam num round de 4
+casas.
+
+Regressao medida: o projeto "teste", que ja usava km, exporta com perdas,
+tensao minima e as 18 tensoes nodais IDENTICAS antes e depois da correcao.
+
+Ajuste 3 - geracao fotovoltaica
+-------------------------------
+Inserido o PVSystem FV_675 na barra 675 (trifasico, 4,16 kV, 1.000 kVA,
+1.000 kWp, irradiancia 1,0), sem curva diaria vinculada. A barra 675 foi
+escolhida por ser o no trifasico de maior carga do alimentador (843 kW nas
+tres fases) e por ja concentrar o banco de capacitores Cap1. As curvas
+diarias entram na exportacao, nao no projeto - o exportador injeta a curva
+padrao do dia quando o elemento nao tem curva propria, o que mantem o
+rede.json independente do dia simulado.
+
+Nao foi criado medidor de energia. O editor sugere a posicao padrao (o ramo
+que sai da barra da fonte) quando o usuario cria o medidor.
+
+
+Resultado da simulacao e leitura critica
+----------------------------------------
+Exportado com dia_curvas_padrao="Quarta" (FV ativa) e resolvido no motor
+real (dss-python 0.15.7):
+
+  projeto ieee13 ...  perdas 192,23 kW, tensao minima 0,8407 pu (fase 1)
+  oficial (mesmo motor, mesmo metodo) ... 110,50 kW, 0,9750 pu
+  comparacao por no (31 nos): erro medio 7,99%, maximo 14,52% (675 f1)
+  desdobramento por fase: f1 erro medio 11,19%; f2 7,26%; f3 4,97%
+
+O resultado e da ordem de grandeza certa (perdas de centena de kW, tensao
+abaixo de 1,0 pu) e as cargas batem exatamente com o arquivo oficial, mas o
+perfil de tensao NAO reproduz o gabarito. A causa dominante esta quantificada
+e e estrutural: o modelo nao guarda enderecamento de fase (limitacao 1 da
+nota do conversor), e o exportador coloca toda carga monofasica na fase 1.
+Sete cargas monofasicas somam 1.540 kW, todas empilhadas na fase A - no
+original, elas ocupam as tres fases (634, 670 e 675 tem uma carga por fase).
+A fase A sobrecarregada explica o gradiente do erro entre fases (11,2% na
+fase 1 contra 5,0% na fase 3) e parte das perdas: corrente de fase ~2x as
+demais significa perdas ~1,7x maiores, e 192/110,5 = 1,74. Soma-se a isso as
+aproximacoes documentadas: sequencia positiva de matrizes com acoplamento
+mutuo real, r0 = 3xR1, capacitancia shunt de linha nao representada,
+regulador simetrico com xhl minimo.
+
+Fechar esse residuo exigiria dar enderecamento de fase ao modelo (campo novo
+em RedeEletrica, exportador e editor), decisao fora do escopo desta conversao.
+Para o uso previsto do projeto - experimentos de alocacao e dimensionamento de
+BESS -, o alimentador conserva topologia oficial, niveis de carga exatos e
+impedancias por km fidéis aos linecodes; o desequilibrio entre fases, porem,
+nao deve ser lido como fenomeno fisico do IEEE 13.
+
+O que foi verificado
+--------------------
+- Contagens de barras, ramos e derivacoes apos recarregar o rede.json.
+- Soma de kW e kvar das cargas contra o arquivo oficial: diferenca zero.
+- Impedancias por km distintas por linecode (mtx601: 0,1156 ohm/km =
+  0,186 ohm/mi; mtx602, 603, 604, 605, 606, 607 e a chave com valores
+  proprios).
+- Exportacao completa e compilacao no motor real, com solucao convergindo.
+- Comparacao no a no e fase a fase com ieee13_referencia.csv, com
+  desdobramento por fase.
+- Contraste com o circuito oficial rodado no mesmo motor e processo.
+- Regressao do projeto "teste": exporta identico antes/depois da correcao.
+
+O que NAO foi verificado
+------------------------
+- Interacao real no editor de rede (abrir, arrastar, simular pela interface).
+- O estudo de otimizacao e o dimensionamento sobre este projeto.
+- Comportamento do exportador com linecode referenciado (caminho que o
+  conversor nao produz; passou sem normalizacao, documentado no codigo).

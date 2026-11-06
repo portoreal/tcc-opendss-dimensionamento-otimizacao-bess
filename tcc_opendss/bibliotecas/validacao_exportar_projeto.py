@@ -23,10 +23,12 @@ da rede se preserva; a função de regulação automática de tensão, não.
 
 (3) IMPEDÂNCIA DE LINHA: o modelo guarda apenas R1/X1/R0/X0, valores
 agregados, e não a matriz de impedância completa por fase usada pelos
-sistemas IEEE. R1/X1 saem da média dos elementos próprios (diagonal) da
-matriz de cada linha; R0 é aproximado como 3xR1 — a mesma aproximação de
-engenharia já usada em dimensionamento_regras.py para linhas dimensionadas
-manualmente.
+sistemas IEEE. R1/X1 saem da extração de sequência positiva da matriz de
+cada linha (elemento próprio médio menos elemento mútuo médio),
+normalizados para ohm/km conforme a unidade declarada da linha —
+normalização que também elimina a ambiguidade de unidade na reexportação;
+R0 é aproximado como 3xR1 — a mesma aproximação de engenharia já usada em
+dimensionamento_regras.py para linhas dimensionadas manualmente.
 
 Este conversor substitui a Validação do Modelo Computacional
 (validacao_ieee.py)? Não. O papel dele é outro: fornecer base de rede
@@ -38,6 +40,7 @@ import os
 
 from .modelo_rede import RedeEletrica
 from .projeto import criar_ou_abrir_projeto_por_nome, Projeto
+from .exportador_dss import FATOR_PARA_KM
 
 
 # ============================================================
@@ -83,30 +86,57 @@ def _bus_ativo_todos(objeto_dss) -> list:
         return []
 
 
-def _r1_x1_aproximados(objeto_dss) -> tuple:
-    """Aproxima R1/X1 (ohm/milha) pela média dos elementos próprios
-    (diagonal) da matriz de impedância da linha ativa.
+def _r1_x1_aproximados(dssLines, nfases: int) -> tuple:
+    """Extrai R1/X1 da matriz de impedância em fase da linha ativa,
+    pelo par elemento próprio médio menos elemento mútuo médio (d − m).
+    Quando a matriz deriva de componentes simétricas, d − m devolve
+    exatamente a sequência positiva; a média da diagonal sozinha, não.
 
-    A matriz vem achatada em lista, então o elemento da diagonal i é
-    acessado em i*nfases + i. Ver a nota de transparência metodológica no
-    topo do arquivo, item 3.
+    A matriz vem achatada em lista, com o elemento i,j em i*nfases + j.
+    A leitura PRECISA ser feita pelo mesmo objeto Lines que itera o
+    circuito: reobter `ActiveCircuit.Lines` dentro da função devolve uma
+    instância sem índice posicionado, e a matriz que vem é de outro
+    elemento. Os atributos do binding são Rmatrix/Xmatrix (com 'm'
+    minúsculo) — a grafia RMatrix não existe em dss-python 0.15.7, e a
+    exceção resultante derrubava toda leitura para o fallback, com todas
+    as linhas herdando o mesmo valor genérico. Ver a nota de
+    transparência metodológica no topo do arquivo, item 3.
     """
     try:
-        nfases = objeto_dss.dssCktElement.NumPhases
-        rmatrix = list(objeto_dss.dssCircuit.Lines.RMatrix)
-        xmatrix = list(objeto_dss.dssCircuit.Lines.XMatrix)
+        rmatrix = list(dssLines.Rmatrix)
+        xmatrix = list(dssLines.Xmatrix)
 
-        diagonais_r = [rmatrix[i * nfases + i] for i in range(nfases)]
-        diagonais_x = [xmatrix[i * nfases + i] for i in range(nfases)]
+        def sequencia_positiva(matriz) -> float:
+            diagonal = [matriz[i * nfases + i] for i in range(nfases)]
+            mutuos = [matriz[i * nfases + j]
+                      for i in range(nfases) for j in range(nfases) if i != j]
+            media_mutuos = sum(mutuos) / len(mutuos) if mutuos else 0.0
+            return sum(diagonal) / len(diagonal) - media_mutuos
 
-        r1 = sum(diagonais_r) / len(diagonais_r)
-        x1 = sum(diagonais_x) / len(diagonais_x)
-        return round(r1, 4), round(x1, 4)
+        # Sem arredondamento aqui: o valor sai por unidade da linha (por
+        # pé, por exemplo, casa de 1e-5), e um round em 4 casas o zeraria
+        # antes da conversão. Quem arredonda é o chamador, já em ohm/km.
+        return sequencia_positiva(rmatrix), sequencia_positiva(xmatrix)
     except Exception:
-        # Fallback conservador para quando a matriz não está acessível.
-        # Valores neutros de linha de distribuição; a aproximação fica
-        # registrada no item 3 da nota metodológica.
+        # Fallback conservador (em ohm/km) para quando a matriz não está
+        # acessível: valores típicos de linha de distribuição média. A
+        # aproximação fica registrada no item 3 da nota metodológica.
         return 0.3, 0.3
+
+
+def _unidade_da_linha(objeto_dss, nome: str) -> str:
+    """Unidade de comprimento declarada da linha, lida pelo Texto do motor.
+
+    A propriedade ILines.Units do binding devolve 0 em qualquer situação
+    nesta versão do dss-python, e a consulta '? line.<nome>.units' é a
+    única leitura confiável. Linha sem unidade declarada responde 'none',
+    que o motor trata como quilometro.
+    """
+    try:
+        objeto_dss.dssText.Command = f"? line.{nome}.units"
+        return objeto_dss.dssText.Result.strip().lower()
+    except Exception:
+        return ""
 
 
 # ============================================================
@@ -130,14 +160,29 @@ def _converter_linhas(objeto_dss, rede: RedeEletrica):
         return
 
     while True:
-        nome = f"L_{dssLines.Name}"
+        nome_dss = dssLines.Name
+        nome = f"L_{nome_dss}"
         bus1 = _nome_base_barra(dssLines.Bus1)
         bus2 = _nome_base_barra(dssLines.Bus2)
         fases = objeto_dss.dssCktElement.NumPhases
-        comprimento = dssLines.Length
-        unidade = dssLines.Units or "km"
 
-        r1, x1 = _r1_x1_aproximados(objeto_dss)
+        # A consulta textual da unidade fica por último: a matriz é lida
+        # pelo próprio iterador (dssLines), que é a única leitura em que
+        # cada linha devolve a matriz dela mesma.
+        comprimento = dssLines.Length
+        r1, x1 = _r1_x1_aproximados(dssLines, fases)
+        unidade = _unidade_da_linha(objeto_dss, nome_dss)
+
+        # No circuito de origem, o comprimento declarado e a impedância por
+        # unidade compartilham a MESMA unidade. Normalizar os dois para km
+        # (mesma linha física, valores por km) elimina a ambiguidade de
+        # unidade na reexportação: com impedância direta na linha, o motor
+        # não reproduz fielmente unidades como o pé, e km é a representação
+        # invariante medida nele.
+        fator = FATOR_PARA_KM.get(unidade, 1.0)
+        comprimento_km = round(comprimento * fator, 8)
+
+        r1, x1 = round(r1 / fator, 4), round(x1 / fator, 4)
         # Mesma regra prática de dimensionamento_regras.py: sequência zero
         # como 3x a sequência positiva.
         r0, x0 = round(r1 * 3, 4), round(x1 * 3, 4)
@@ -146,7 +191,7 @@ def _converter_linhas(objeto_dss, rede: RedeEletrica):
             try:
                 rede.adicionar_ramo(
                     "Line", nome, bus1, bus2,
-                    {"phases": fases, "length": comprimento, "units": unidade,
+                    {"phases": fases, "length": comprimento_km, "units": "km",
                      "linecode": "", "r1": r1, "x1": x1, "r0": r0, "x0": x0})
             except ValueError:
                 # Ramo duplicado ou inválido: a linha é descartada sem

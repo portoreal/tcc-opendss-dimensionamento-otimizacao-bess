@@ -108,7 +108,14 @@ def executar_estudo_completo(caminho_master, barras_candidatas, barras_falta,
                                horario_ponta_inicio: int = 18,
                                horario_ponta_fim: int = 21,
                                dias_equivalentes_mes: float = 22,
-                               callback_progresso=None, callback_status=None):
+                               callback_progresso=None, callback_status=None,
+                               rede=None, pasta_curvas=None):
+    """Executa o estudo completo de alocação de BESS.
+
+    rede e pasta_curvas são a rede em memória do projeto e a pasta de curvas
+    (Projeto.caminho_curvas); só a análise semanal os usa — sem eles o estudo
+    roda igual, apenas sem economia_semanal.
+    """
 
     catalogo_bess = catalogo_bess or CATALOGO_BESS_PADRAO
 
@@ -271,6 +278,8 @@ def executar_estudo_completo(caminho_master, barras_candidatas, barras_falta,
     analise_reativo = None
     resultado_economia = None
     memorial_economia_texto = None
+    economia_semanal = None
+    avisos_semanais = None
 
     if selecionados:
         bess_conjunto = [
@@ -310,6 +319,30 @@ def executar_estudo_completo(caminho_master, barras_candidatas, barras_falta,
             )
             memorial_economia_texto = memorial_econ.gerar_memorial_economia(resultado_economia)
 
+    # -------- 4c) Economia semanal (sete dias, não um dia representativo) -------- #
+    # A análise de 4b mede um dia só. A semana muda o número porque carga e
+    # geração têm curva própria por dia; sem a rede e as curvas em mão não
+    # há como reexportar cada dia, então o passo se autodesliga em vez de
+    # falhar. Derrubar o estudo inteiro por causa de um gráfico seria pior
+    # que devolver a semana ausente com o motivo registrado em avisos.
+    if (rede is not None and pasta_curvas and tarifa is not None
+            and resultado_economia is not None):
+        _status("Executando análise de economia semanal (sete dias)...")
+        try:
+            economia_semanal = economia_energia.analisar_economia_semanal(
+                rede=rede,
+                pasta_curvas=pasta_curvas,
+                dia_padrao=None,
+                bess_list=bess_conjunto,
+                tarifa=tarifa,
+                horario_ponta_inicio=horario_ponta_inicio,
+                horario_ponta_fim=horario_ponta_fim,
+                dias_equivalentes_mes=dias_equivalentes_mes,
+                callback_status=callback_status)
+        except Exception as e:
+            economia_semanal = None
+            avisos_semanais = [str(e)]
+
     # -------- 5) Memorial de cálculo do afundamento (transparência/auditoria) -------- #
     _status("Gerando memorial de cálculo...")
     if resultado_conjunto is not None:
@@ -327,7 +360,7 @@ def executar_estudo_completo(caminho_master, barras_candidatas, barras_falta,
             titulo="Caso Base (SEM BESS) — nenhuma alocação foi "
                    "selecionada pelo otimizador")
 
-    return {
+    retorno = {
         "barras_em_sag_baseline": sorted(barras_em_sag_baseline),
         "resultado_baseline": resultado_baseline,
         "profundidade_baseline": profundidade_baseline,
@@ -347,4 +380,9 @@ def executar_estudo_completo(caminho_master, barras_candidatas, barras_falta,
         "memorial_calculo": memorial_texto,
         "resultado_economia": resultado_economia,
         "memorial_economia": memorial_economia_texto,
+        "economia_semanal": economia_semanal,
     }
+
+    if avisos_semanais:
+        retorno["avisos_semanais"] = avisos_semanais
+    return retorno

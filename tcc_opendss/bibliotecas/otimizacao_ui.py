@@ -47,7 +47,7 @@ from datetime import datetime
 import webbrowser
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -1223,12 +1223,82 @@ class ResultadosDialog(QDialog):
         barra_topo.addWidget(botao_salvar)
         layout.addLayout(barra_topo)
 
+        self._adicionar_graficos_semanais(layout)
+
         area_texto = QPlainTextEdit()
         area_texto.setFont(QFont("Consolas", 9))
         area_texto.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         area_texto.setPlainText(memorial_economia_texto or "")
         area_texto.setReadOnly(True)
         layout.addWidget(area_texto, 1)
+
+    def _semana_para_pixmap(self, base64_png: str):
+        """
+        Converte o PNG base64 devolvido pelo exportador em ``QPixmap``.
+
+        As funções de gráfico de ``otimizacao_exportar_roi`` devolvem a string
+        completa ``data:image/png;base64,...`` — o prefixo é removido antes de
+        decodificar, senão o base64 falha e o pixmap volta nulo. Devolve ``None``
+        em qualquer falha: um gráfico ausente é um incômodo, um exceção aqui
+        derrubaria a janela inteira de resultados.
+        """
+        import base64
+
+        try:
+            carga = str(base64_png).split(",", 1)[-1]
+            dados = base64.b64decode(carga)
+            pixmap = QPixmap()
+            if not pixmap.loadFromData(dados):
+                return None
+            return pixmap
+        except Exception:
+            return None
+
+    def _adicionar_graficos_semanais(self, layout) -> None:
+        """
+        Insere os gráficos G5 e G6 acima do memorial, quando há análise semanal.
+
+        A ausência de ``economia_semanal`` é o caso comum: só quem habilitou a
+        análise semanal no estudo a produz. Nesse caso a aba termina exatamente
+        como antes desta função existir.
+        """
+        semana = self.resultado.get("economia_semanal")
+        if not isinstance(semana, dict) or not semana.get("dias"):
+            return
+
+        blocos = (
+            ("Economia semanal ao instalar o sistema",
+             otimizacao_exportar_roi._grafico_economia_semanal),
+            ("Composição percentual das fontes de energia por dia",
+             otimizacao_exportar_roi._grafico_composicao_fontes),
+        )
+
+        linha = QHBoxLayout()
+        linha.setSpacing(8)
+        for titulo, gerador in blocos:
+            try:
+                pixmap = self._semana_para_pixmap(gerador(semana))
+            except Exception:
+                pixmap = None
+            if pixmap is None:
+                continue
+            caixa = QVBoxLayout()
+            caixa.setSpacing(2)
+            caixa.addWidget(_rotulo_negrito(titulo))
+            rotulo = QLabel()
+            # O PNG é gerado em 110 dpi; reduzi-lo mantém o gráfico legível na
+            # largura da aba sem esticar os pixels.
+            rotulo.setPixmap(pixmap.scaledToWidth(
+                max(pixmap.width() // 2, 1),
+                Qt.TransformationMode.SmoothTransformation))
+            rotulo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            caixa.addWidget(rotulo)
+            container = QWidget()
+            container.setLayout(caixa)
+            linha.addWidget(container, 1)
+
+        if linha.count() > 0:
+            layout.addLayout(linha)
 
     def _salvar_memorial_economia(self) -> None:
         texto_memorial = self.resultado.get("memorial_economia")
@@ -1449,6 +1519,8 @@ def abrir_dialogo_configuracao(projeto: Projeto, rede: RedeEletrica,
                 dias_equivalentes_mes=config.get("dias_equivalentes_mes", 22),
                 callback_progresso=callback_progresso,
                 callback_status=callback_status,
+                rede=rede,
+                pasta_curvas=projeto.caminho_curvas,
             )
             resultado_container["valor"] = resultado
         except Exception as e:
