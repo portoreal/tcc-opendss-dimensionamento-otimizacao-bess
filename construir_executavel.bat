@@ -11,8 +11,9 @@ REM    tcc_opendss\          <- projetos, hardware, validacao_ieee,
 REM                             verificar_dependencias.py
 REM    IEEE\ doc\ LICENSE.md README.md
 REM
-REM  Script AUTONOMO: nao chama analisar_dependencias_build.py nem
-REM  qualquer utilitario externo. Tudo o que o build precisa esta aqui.
+REM  Script ORQUESTRADOR: limpa os artefatos, confere o interpretador e
+REM  chama "pyinstaller TccOpendss.spec". As opcoes de empacotamento e o
+REM  layout dos dados estao no spec, que fica versionado junto do codigo.
 REM
 REM  O executavel NAO depende do interpretador que o gerou: PyInstaller
 REM  embute uma copia do runtime Python + bibliotecas. O venv e usado
@@ -98,10 +99,6 @@ if exist "%SAIDA%" (
     echo [LIMPEZA] "%SAIDA%"
     rmdir /s /q "%SAIDA%"
 )
-if exist "%SPEC%" (
-    echo [LIMPEZA] "%SPEC%"
-    del /f /q "%SPEC%" >nul 2>&1
-)
 echo [OK] Limpeza concluida.
 echo.
 
@@ -139,54 +136,18 @@ echo.
 REM ------------------------------------------------------------
 REM  Empacotamento
 REM ------------------------------------------------------------
-REM  --collect-all dss               : pacote dss e o backend nativo
-REM                                    (dss_python_backend: dss_capi.dll,
-REM                                    libklusolvex.dll, _dss_capi.pyd)
-REM  --collect-all pulp              : pulp/solverdir/cbc/win/*/cbc.exe
-REM  --collect-submodules bibliotecas: garante os 47 modulos, inclusive
-REM                                    os lancadores que so sao importados
-REM                                    dentro de subprocesso (modo script)
-REM  hidden-import dos 5 lancadores  : redundancia explicita (sao o alvo
-REM                                    do shim --modulo-congelado)
-REM  --hidden-import constantes_controle : modulo vazio nao era pego
-REM                                    pelo collect-submodules
-REM  --paths tcc_opendss             : o pacote "bibliotecas" vive dentro
-REM                                    da pasta do projeto, nao na raiz
-REM ------------------------------------------------------------
-REM  --hidden-import _cffi_backend   : OBRIGATORIO. O pacote "dss" delega
-REM                                    ao dss_python_backend, que executa
-REM                                    "from _cffi_backend import ..." no
-REM                                    import. A extensao compilada
-REM                                    _cffi_backend.cp314-win_amd64.pyd
-REM                                    NAO entra no grafo automaticamente
-REM                                    (o hook do PyInstaller cobre apenas
-REM                                    o pacote "cffi" em Python puro).
-REM                                    Sem esta linha o .exe aborta no
-REM                                    arranque com "ModuleNotFoundError:
-REM                                    No module named '_cffi_backend'".
+REM  As opcoes de empacotamento (collect-all dss e pulp, os 47 modulos da
+REM  biblioteca, o hidden-import _cffi_backend, o layout de dados ao lado do
+REM  .exe) vivem no TccOpendss.spec, que fica versionado. Este .bat so limpa
+REM  build\ e dist\ e chama o spec - manter as flags duplicadas aqui foi o
+REM  que fez o spec sumir em builds anteriores.
 REM ------------------------------------------------------------
 echo ===============================================================
 echo   Empacotando com PyInstaller (pode levar 5-10 minutos)...
 echo ===============================================================
 echo.
 
-"%PY%" -m PyInstaller ^
-    --clean ^
-    --onedir ^
-    --noconsole ^
-    --name %NOME% ^
-    --paths "%PROJETO%" ^
-    --hidden-import bibliotecas.editor_rede ^
-    --hidden-import bibliotecas.otimizacao_lancador ^
-    --hidden-import bibliotecas.dimensionamento_lancador ^
-    --hidden-import bibliotecas.ao_vivo_lancador ^
-    --hidden-import bibliotecas.validacao_lancador ^
-    --hidden-import _cffi_backend ^
-    --collect-submodules bibliotecas ^
-    --hidden-import bibliotecas.constantes_controle ^
-    --collect-all dss ^
-    --collect-all pulp ^
-    "%RAIZ%tcc_opendss.py"
+"%PY%" -m PyInstaller --noconfirm "%SPEC%"
 
 if errorlevel 1 (
     echo.

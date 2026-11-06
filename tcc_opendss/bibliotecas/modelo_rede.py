@@ -56,6 +56,20 @@ def gerar_nome_unico(nome_base: str, nomes_existentes: Iterable[str]) -> str:
 class Barra:
     nome: str
     kv_base: float = 13.8
+    # Onde o usuário deixou esta barra no diagrama, em coordenadas de
+    # cena do editor: [x, y]. Vazio (None) significa "nunca foi movida" e
+    # devolve o desenho ao layout automático. O par existe para que o
+    # arranjo montado à mão sobreviva ao fechamento do projeto — antes,
+    # a posição vivia só na memória do editor e se perdia a cada
+    # abertura.
+    posicao: Optional[List[float]] = None
+    # Rótulo "Barra / Tensão" visível no diagrama. Falso esconde o texto
+    # sem apagar a barra, útil em redes densas.
+    rotulo_visivel: bool = True
+    # Desvio [dx, dy] do rótulo em relação ao centro da barra. O padrão
+    # do desenho põe o texto logo acima da elipse; este campo guarda a
+    # correção que o usuário impôs arrastando o próprio texto.
+    rotulo_posicao: Optional[List[float]] = None
 
 
 @dataclass
@@ -70,6 +84,16 @@ class ElementoRamo:
     bus1: str
     bus2: str
     parametros: Dict[str, Any] = field(default_factory=dict)
+    # Rótulo do ramo (tipo e nome no meio da linha) visível. Nasceu junto
+    # com o clique que alterna o rótulo de cada elemento; antes disso, só
+    # o botão global governava os rótulos dos ramos.
+    rotulo_visivel: bool = True
+    # Desvio [dx, dy] do rótulo em relação ao ponto onde ele nasceria
+    # sozinho (o meio da linha, recuado na perpendicular). None significa
+    # "automático". Guardar o desvio, e não a coordenada absoluta, é o
+    # que mantém o texto colado ao ramo quando a topologia muda e o
+    # desenho se refaz.
+    rotulo_posicao: Optional[List[float]] = None
 
 
 @dataclass
@@ -98,6 +122,14 @@ class ElementoDerivacao:
     bus1: Optional[str] = None
     parametros: Dict[str, Any] = field(default_factory=dict)
     grupo: Optional[str] = None
+    # Mesmo contrato da Barra.posicao: coordenada de cena do ajuste
+    # manual, ou None para o leque automático ao redor da barra.
+    posicao: Optional[List[float]] = None
+    # Rótulo do elemento (tipo, nome e o ícone de curva) visível.
+    rotulo_visivel: bool = True
+    # Mesmo contrato do ElementoRamo.rotulo_posicao: desvio [dx, dy] em
+    # relação ao centro da caixa, onde o rótulo nasce.
+    rotulo_posicao: Optional[List[float]] = None
 
 
 @dataclass
@@ -412,6 +444,12 @@ class RedeEletrica:
         }
 
     def salvar_json(self, caminho: str):
+        """Grava a rede inteira em `caminho`, com o layout do diagrama.
+
+        As posições e a visibilidade de rótulos entram junto dos dados
+        elétricos: quem organizou o desenho encontra o mesmo arranjo na
+        próxima abertura.
+        """
         with open(caminho, "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, indent=2, ensure_ascii=False)
 
@@ -419,22 +457,40 @@ class RedeEletrica:
     def carregar_json(cls, caminho: str) -> "RedeEletrica":
         """Lê a rede de um rede.json e devolve o objeto pronto.
 
-        Barras são filtradas nos campos conhecidos antes de virar dataclass,
-        para que um JSON com campo extra não quebre a leitura.
+        Cada barra é filtrada nos campos conhecidos antes de virar
+        dataclass. Assim um JSON com campo extra — de versão futura ou de
+        edição manual — não quebra a leitura. Os campos de layout entram
+        nesse filtro: rede salva antes de existir posição não traz a
+        chave, o padrão do dataclass assume e o arranjo automático de
+        sempre é reproduzido.
         """
         with open(caminho, "r", encoding="utf-8") as f:
             dados = json.load(f)
 
         rede = cls()
         for nome, b in dados.get("barras", {}).items():
-            b_filtrado = {k: v for k, v in b.items() if k in ("nome", "kv_base")}
+            b_filtrado = {
+                k: v for k, v in b.items()
+                if k in ("nome", "kv_base", "posicao", "rotulo_visivel",
+                         "rotulo_posicao")
+            }
             rede.barras[nome] = Barra(**b_filtrado)
         for nome, r in dados.get("ramos", {}).items():
-            rede.ramos[nome] = ElementoRamo(**r)
+            # Mesmo filtro das barras, pelo mesmo motivo: ramo salvo
+            # antes dos campos de rótulo não os traz no JSON, e os
+            # padrões do dataclass devolvem o rótulo visível no lugar
+            # automático.
+            r_filtrado = {
+                k: v for k, v in r.items()
+                if k in ("tipo", "nome", "bus1", "bus2", "parametros",
+                         "rotulo_visivel", "rotulo_posicao")
+            }
+            rede.ramos[nome] = ElementoRamo(**r_filtrado)
         for nome, d in dados.get("derivacoes", {}).items():
-            # Projetos salvos antes de existirem o campo 'grupo' e o bus1
-            # opcional não trazem essas chaves. Ausentes no JSON, valem os
-            # padrões do dataclass (None) e o arquivo antigo continua abrindo.
+            # Projetos salvos antes de existirem 'grupo', 'posicao' e o
+            # bus1 opcional não trazem essas chaves. Ausentes no JSON,
+            # valem os padrões do dataclass e o arquivo antigo continua
+            # abrindo.
             rede.derivacoes[nome] = ElementoDerivacao(**d)
         for nome, c in dados.get("curvas_xy", {}).items():
             rede.curvas_xy[nome] = CurvaXY(**c)

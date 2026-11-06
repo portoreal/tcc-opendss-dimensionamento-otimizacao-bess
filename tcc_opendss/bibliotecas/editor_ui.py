@@ -125,6 +125,7 @@ tempo — e é a raiz de quase todas as divergências listadas abaixo.
 """
 
 import os
+import sys
 
 # MPLBACKEND deve ser definido ANTES de qualquer import de terceiros
 # (matplotlib é importado indiretamente pelo editor de curvas).
@@ -135,13 +136,23 @@ import tempfile
 from typing import Dict, List, Optional
 
 from PySide6.QtCore import QRectF, Qt, QTimer
-from PySide6.QtCore import QRectF, Qt, QTimer, Signal
-from PySide6.QtGui import QAction, QBrush, QColor, QFont, QPen
+from PySide6.QtCore import QEasingCurve, QLineF, QPointF, QRect, QVariantAnimation, Signal
+from PySide6.QtGui import (
+    QAction,
+    QBrush,
+    QColor,
+    QFont,
+    QFontMetricsF,
+    QPainter,
+    QPainterPath,
+    QPen,
+)
 from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
     QFileDialog,
     QFrame,
+    QGraphicsDropShadowEffect,
     QGraphicsEllipseItem,
     QGraphicsItem,
     QGraphicsLineItem,
@@ -151,11 +162,14 @@ from PySide6.QtWidgets import (
     QGraphicsView,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QMessageBox,
     QPushButton,
     QRadioButton,
+    QSizePolicy,
     QTreeWidget,
     QTreeWidgetItem,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -389,6 +403,58 @@ MARGEM_FIT = 150
 # reposiciona ao vivo durante o movimento, e duas cópias do valor fariam
 # o texto saltar de lado no instante em que o botão do mouse fosse solto.
 DESLOCAMENTO_ROTULO_RAMO = 16
+# Distância (pixels de cena) do rótulo "Barra / Tensão" acima da elipse.
+# Está aqui, e não embutida no desenho, porque o desvio do usuário é
+# gravado em relação a este ponto: dois valores diferentes fariam o texto
+# voltar ao lugar errado na reabertura do projeto.
+DESLOCAMENTO_ROTULO_BARRA = 18
+
+# ------------------------------------------------------------------ #
+# Paleta do desenho do diagrama
+#
+# A gramática é a dos editores de diagrama atuais (Figma, Mermaid):
+# superfície clara, contorno fino e um único acento cromático. A regra
+# prática é deixar o desenho carregar a informação e a decoração não
+# disputar atenção com ela — daí a sombra discreta e a grade de pontos
+# quase invisível.
+# ------------------------------------------------------------------ #
+FUNDO_CANVAS = "#ffffff"
+# A grade fica três tons abaixo do papel: aparece quando se olha para
+# ela e some quando se olha para a rede.
+COR_GRADE_PONTOS = "#dbe2ea"
+ESPACO_GRADE = 24.0
+# Escala mínima para desenhar a grade. Com o diagrama afastado os
+# pontos viram um borrão cinza que escurece o fundo inteiro sem ajudar
+# a ler nada.
+ESCALA_MINIMA_GRADE = 0.5
+
+# Sombra pintada à mão, e não QGraphicsDropShadowEffect. O efeito do Qt
+# é um filtro de pixel refeito a cada repintura; num item que anda a
+# cada evento de mouse isso trava o arraste. Um retângulo deslocado
+# custa duas chamadas de desenho.
+COR_SOMBRA = QColor(15, 23, 42, 40)
+DESLOCAMENTO_SOMBRA = 2.0
+RAIO_CAIXA = 8.0
+RAIO_CARTAO = 10.0
+
+# Texto do cartão de propriedades sem seleção. Fica em constante porque
+# o mesmo texto aparece no cartão (HTML) e no teste de estado vazio.
+TEXTO_SEM_SELECAO = "Clique num elemento do diagrama para ver suas propriedades."
+
+
+def _ponto_salvo_valido(posicao):
+    """Converte a posição gravada no modelo em (x, y), ou None.
+
+    O campo vem de um arquivo JSON, que pode ter sido editado à mão.
+    Só passa o que for uma lista (ou tupla) de dois números; o resto é
+    tratado como ausente, e o elemento volta ao layout automático.
+    """
+    if not isinstance(posicao, (list, tuple)) or len(posicao) != 2:
+        return None
+    try:
+        return (float(posicao[0]), float(posicao[1]))
+    except (TypeError, ValueError):
+        return None
 
 
 def _reposicionar_segmento(item, novo_ponto, mover_fim: bool) -> None:
@@ -437,6 +503,31 @@ def _centralizar_rotulo(rotulo, x, y) -> None:
     rotulo.setPos(x - rect.width() / 2, y - rect.height() / 2)
 
 
+def _desvio_rotulo_valido(desvio):
+    """Converte o desvio [dx, dy] gravado no modelo em tupla, ou None.
+
+    Vem do JSON e pode ter sido editado à mão. Só passa lista de dois
+    números; qualquer outra coisa devolve o rótulo ao lugar automático,
+    que é melhor do que um texto perdido fora da cena.
+    """
+    return _ponto_salvo_valido(desvio)
+
+
+def _posicionar_rotulo_em(rotulo, x, y, desvio) -> None:
+    """Centraliza o rótulo em (x, y) somando o desvio do usuário.
+
+    `desvio` é o ajuste relativo ao lugar automático, e não uma
+    coordenada. Aplicá-lo aqui, em todos os caminhos que posicionam
+    rótulo, é o que faz o texto seguir o elemento arrastado mantendo a
+    distância que o usuário escolheu.
+    """
+    ajuste = _desvio_rotulo_valido(desvio)
+    if ajuste is not None:
+        x += ajuste[0]
+        y += ajuste[1]
+    _centralizar_rotulo(rotulo, x, y)
+
+
 def _qcolor(nome: str) -> QColor:
     """Converte um nome de cor do Tk (ex.: 'steelblue') em QColor.
 
@@ -478,12 +569,238 @@ def _cor_texto_id() -> str:
     return COR_ACCENT_MARCA
 
 
+def _formatar_potencia(valor: float) -> str:
+    """Mostra potência sem casa decimal quando ela não acrescenta nada.
+
+    "10.0 kW" e "10 kW" informam o mesmo; o segundo ocupa menos espaço
+    numa bolha de tooltip que já traz tensão e contagem de ramos. A
+    vírgula decimal entra porque o resto da interface é em português.
+    """
+    if abs(valor - round(valor)) < 0.05:
+        return f"{int(round(valor))}"
+    return f"{valor:.1f}".replace(".", ",")
+
+
+def _somar_parametro(elementos, chave: str):
+    """Soma um parâmetro numérico dos elementos, ignorando os vazios.
+
+    Devolve None quando nenhum elemento declara o parâmetro — caso em
+    que não há o que somar, e mostrar zero seria afirmar um valor que
+    ninguém informou. Valor não numérico propaga ValueError de propósito:
+    quem chama decide se omite o resumo ou trata de outro jeito.
+    """
+    valores = [e.parametros.get(chave) for e in elementos]
+    preenchidos = [v for v in valores if v not in (None, "")]
+    if not preenchidos:
+        return None
+    return sum(_converter_numero(v) for v in preenchidos)
+
+
+def _converter_numero(valor) -> float:
+    """Lê número digitado à mão, aceitando vírgula decimal.
+
+    Os campos do formulário são de texto livre e o usuário brasileiro
+    escreve "75,5". O float() do Python só entende ponto, então a
+    vírgula é trocada antes da conversão — do contrário o resumo da
+    barra sairia sem a potência que está escrita na tela.
+    """
+    if isinstance(valor, (int, float)):
+        return float(valor)
+    return float(str(valor).strip().replace(",", "."))
+
+
+def _escapar_html(texto) -> str:
+    """Neutraliza os caracteres que o Qt interpretaria como marcação.
+
+    O nome de uma barra é digitado pelo usuário e vai para dentro de um
+    HTML: um "<" solto abriria uma tag e engoliria o resto do cartão. A
+    troca cobre os três caracteres que o subconjunto de HTML do Qt trata
+    como sintaxe — nenhum nome técnico legítimo perde informação com
+    isso, porque "<", ">" e "&" não fazem parte de nomes de barra do
+    OpenDSS.
+    """
+    return (str(texto).replace("&", "&amp;")
+            .replace("<", "&lt;").replace(">", "&gt;"))
+
+
+def _potencia_do_elemento(derivacao) -> str:
+    """Resume a potência declarada por uma derivação, se houver alguma.
+
+    Cada tipo de elemento declara potência com uma chave diferente, e o
+    cartão precisa mostrar o número que o próprio formulário pediu — não
+    uma grandeza inventada. Devolve texto vazio quando o elemento não tem
+    potência a mostrar (medidor, InvControl) ou quando o campo ainda está
+    em branco. Campo não numérico é tratado como ausente: o valor está
+    na tela do formulário, e derrubar o cartão por causa dele seria
+    desproporcional.
+    """
+    parametros = getattr(derivacao, "parametros", None) or {}
+
+    def _ler(chave):
+        valor = parametros.get(chave)
+        if valor in (None, ""):
+            return None
+        try:
+            return _converter_numero(valor)
+        except (TypeError, ValueError):
+            return None
+
+    # A ordem importa: PVSystem e Generator declaram kVA (ou kW) e não
+    # têm kvar próprio; capacitor e reator trabalham só com kvar.
+    if derivacao.tipo == "Load":
+        kw, kvar = _ler("kw"), _ler("kvar")
+        partes = []
+        if kw is not None:
+            partes.append(f"{_formatar_potencia(kw)} kW")
+        if kvar is not None:
+            partes.append(f"{_formatar_potencia(kvar)} kvar")
+        return " / ".join(partes)
+
+    if derivacao.tipo in ("PVSystem", "Generator"):
+        kva = _ler("kva")
+        if kva is not None:
+            return f"{_formatar_potencia(kva)} kVA"
+        kw = _ler("kw")
+        if kw is not None:
+            return f"{_formatar_potencia(kw)} kW"
+        return ""
+
+    if derivacao.tipo in ("Capacitor", "Reactor"):
+        kvar = _ler("kvar")
+        if kvar is not None:
+            return f"{_formatar_potencia(kvar)} kvar"
+        return ""
+
+    if derivacao.tipo == "Storage":
+        kva = _ler("kva")
+        kwh = _ler("kwh")
+        partes = []
+        if kva is not None:
+            partes.append(f"{_formatar_potencia(kva)} kVA")
+        if kwh is not None:
+            partes.append(f"{_formatar_potencia(kwh)} kWh")
+        return " / ".join(partes)
+
+    if derivacao.tipo == "EnergyMeter":
+        # O medidor não consome: o dado útil é o que ele mede.
+        alvo = parametros.get("elemento") or parametros.get("element")
+        if alvo:
+            terminal = parametros.get("terminal")
+            if terminal not in (None, ""):
+                return f"mede {alvo}, terminal {terminal}"
+            return f"mede {alvo}"
+        return ""
+
+    return ""
+
+
+class _CartaoBarra(QGraphicsRectItem):
+    """Painel de informações de uma barra, fixado ao lado dela.
+
+    A bolha do tooltip resolve a consulta rápida, mas some quando o mouse
+    se desloca — e comparar duas barras exige sair de uma para entrar na
+    outra. O cartão é a versão que fica: abre no clique, permanece até
+    outro clique, e acompanha a barra enquanto ela é arrastada.
+
+    O desenho usa a paleta da interface (fundo claro, borda fina na cor
+    institucional) e é montado com um único QGraphicsTextItem interno em
+    HTML, porque uma tabela de elementos em várias linhas com alinhamento
+    próprio é justamente o que texto rico resolve sem código de layout.
+
+    Nada aqui é interativo: o cartão não aceita clique nem hover, e fica
+    abaixo das barras em Z. Uma caixa de leitura que interceptasse o
+    mouse atrapalharia exatamente a edição que ela deveria ajudar.
+    """
+
+    LARGURA = 240.0
+
+    def __init__(self, nome_barra: str):
+        super().__init__()
+        self.nome_barra = nome_barra
+        self._texto = QGraphicsTextItem(self)
+        self._texto.setDefaultTextColor(_qcolor("#1B1B1B"))
+        fonte = QFont()
+        fonte.setPointSizeF(7.5)
+        self._texto.setFont(fonte)
+        self._texto.setTextWidth(self.LARGURA - 2 * self.MARGEM)
+        # Z abaixo das barras (2.0) e das caixas (1.0)? Não: o cartão
+        # precisa ficar visível, mas nunca na frente do item que o
+        # usuário quer clicar. O valor 0.5 o coloca sobre as linhas e sob
+        # as barras — quem estiver por baixo do cartão continua clicável.
+        self.setZValue(0.5)
+        # Sem brush nem pen: o corpo é pintado em paint(), com cantos
+        # arredondados. Deixar o QGraphicsRectItem preencher um retângulo
+        # reto por baixo do arredondado faria os cantos aparecerem em
+        # ângulo reto sob a borda curva.
+        self.setBrush(Qt.BrushStyle.NoBrush)
+        self.setPen(Qt.PenStyle.NoPen)
+
+    MARGEM = 8.0
+
+    def boundingRect(self):
+        """Área a repintar, com a folga da sombra deslocada.
+
+        A sombra sai do rect do cartão (DESLOCAMENTO_SOMBRA para baixo e
+        para a direita). Sem a folga, o Qt repintaria só o retângulo do
+        corpo e o rastro da sombra ficaria no fundo quando o cartão
+        andasse junto com a barra.
+        """
+        return self.rect().adjusted(
+            0.0, 0.0,
+            DESLOCAMENTO_SOMBRA + 1.0, DESLOCAMENTO_SOMBRA + 1.0)
+
+    def paint(self, painter, option, widget=None):
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        corpo = self.rect()
+        # Sombra primeiro, deslocada e sem contorno: ela fica atrás e
+        # descolada do corpo, o que é o que dá a impressão de o cartão
+        # estar suspenso sobre o diagrama.
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(COR_SOMBRA))
+        painter.drawRoundedRect(
+            corpo.translated(DESLOCAMENTO_SOMBRA, DESLOCAMENTO_SOMBRA),
+            RAIO_CARTAO, RAIO_CARTAO)
+        painter.setBrush(QBrush(_qcolor("#fbfcfe")))
+        painter.setPen(QPen(_qcolor(COR_ACCENT_MARCA), 1))
+        painter.drawRoundedRect(corpo, RAIO_CARTAO, RAIO_CARTAO)
+
+    def atualizar(self, titulo: str, linhas: list) -> None:
+        """Redesenha o conteúdo e reajusta o retângulo ao texto.
+
+        A altura sai do boundingRect do próprio texto: fixar uma altura
+        deixaria espaço morto numa barra com dois elementos e cortaria a
+        lista numa barra com dez.
+        """
+        partes = [
+            f"<div style='font-size:9pt; font-weight:600;"
+            f" color:{COR_ACCENT_MARCA};'>{_escapar_html(titulo)}</div>"
+        ]
+        for linha in linhas:
+            partes.append(
+                f"<div style='margin-top:2px;'>{_escapar_html(linha)}</div>")
+        self._texto.setHtml("".join(partes))
+        self._texto.setPos(self.MARGEM, self.MARGEM)
+        altura = self._texto.boundingRect().height() + 2 * self.MARGEM
+        self.setRect(0, 0, self.LARGURA, altura)
+
+    def altura(self) -> float:
+        """Altura corrente do retângulo, já com as margens."""
+        return self.rect().height()
+
+
 class _BarraItem(QGraphicsEllipseItem):
     """Barra da rede desenhada como elipse (substitui o create_oval do Tk).
 
-    Móvel e selecionável. Ao ser arrastada, grava a posição de tela de
-    volta em `editor._posicoes[nome]` — ajuste visual transitório, porque
-    o layout continua automático (ver TRANSPARÊNCIA TÉCNICA).
+    Móvel e selecionável. Ao ser arrastada, grava a posição de tela em
+    `editor._posicoes[nome]` e no campo `posicao` da barra no modelo. O
+    primeiro alimenta o desenho corrente; o segundo, gravado no
+    rede.json, é o que faz o arranjo reaparecer na próxima abertura
+    (ver TRANSPARÊNCIA TÉCNICA).
+
+    O destaque sob o cursor existe porque num alimentador real a elipse
+    sozinha não diz nada: saber que ali há três ramos e uma carga de
+    200 kW exige abrir o formulário. O resumo aparece sem clique e
+    desaparece quando o mouse sai.
     """
 
     def __init__(self, nome: str, raio: float, editor: "EditorRede"):
@@ -491,6 +808,7 @@ class _BarraItem(QGraphicsEllipseItem):
         self.nome_barra = nome
         self._editor = editor
         self._raio = raio
+        self._sob_cursor = False
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable
             | QGraphicsItem.GraphicsItemFlag.ItemIsSelectable
@@ -502,15 +820,46 @@ class _BarraItem(QGraphicsEllipseItem):
         # para trás.
         self.setFlag(
             QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
+        # Eventos de hover chegam só nos itens que os pedem. Sem esta
+        # linha o Qt nunca chama hoverEnterEvent, e o destaque jamais
+        # acenderia.
+        self.setAcceptHoverEvents(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
         # Z-order decide quem cobre quem: barra acima do ramo, rótulo
         # (3.0) acima da barra.
         self.setZValue(2.0)
 
     def paint(self, painter, option, widget=None):
         selecionado = self.isSelected()
-        painter.setPen(QPen(_qcolor("black"), 2))
+        # O cartão aberto vale como estado de seleção para o halo: a
+        # barra que está sendo lida continua realçada mesmo com o mouse
+        # fora dela, e sai do realce no instante em que o cartão fecha.
+        destacada = selecionado or (
+            self._editor is not None
+            and getattr(self._editor, "_cartao_barra_nome", None) == self.nome_barra)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        # Preenchimento branco chapado e contorno por estado: cinza
+        # grafite em repouso, acento institucional ao passar o mouse ou
+        # enquanto o cartão da barra está aberto. O contorno é quem
+        # carrega o estado; o miolo branco mantém a barra legível sobre
+        # qualquer linha que passe por baixo dela.
+        cor_contorno = (_qcolor(COR_ACCENT_MARCA)
+                        if (self._sob_cursor or destacada)
+                        else _qcolor("#334155"))
+        painter.setPen(QPen(cor_contorno, 2))
         painter.setBrush(QBrush(_qcolor("white")))
         painter.drawEllipse(self.rect())
+        if (self._sob_cursor or destacada) and not selecionado:
+            # Halo na cor institucional, por fora da elipse. Fica atrás
+            # do anel de seleção na ordem de desenho (só um dos dois
+            # aparece, porque o selecionado tem precedência): dois
+            # anéis concêntricos ao mesmo tempo confundiriam mais do que
+            # informariam.
+            pen = QPen(_qcolor(COR_ACCENT_MARCA), 2)
+            painter.setPen(pen)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            r = self._raio + 3
+            painter.drawEllipse(QRectF(-r, -r, 2 * r, 2 * r))
         if selecionado:
             # Marca de seleção: anel tracejado por fora da elipse. Não
             # existia no Tk, onde o Canvas não tinha estado de seleção.
@@ -520,17 +869,273 @@ class _BarraItem(QGraphicsEllipseItem):
             r = self._raio + 4
             painter.drawEllipse(QRectF(-r, -r, 2 * r, 2 * r))
 
+    def boundingRect(self):
+        """Região a repintar, com folga para o halo de destaque.
+
+        O halo excede a elipse: sem a margem, o Qt repinta só o rect da
+        elipse e o que ficou para fora permanece no fundo — o rastro que
+        o usuário relata. Margem constante dispensa prepareGeometryChange.
+        """
+        margem = 6.0
+        return QRectF(self.rect().adjusted(-margem, -margem, margem, margem))
+
+    # ------------------------------ HOVER ------------------------------ #
+
+    def hoverEnterEvent(self, event):
+        self._sob_cursor = True
+        # O tooltip é montado no instante do hover, não no redesenho: a
+        # rede muda por baixo do cursor (elemento criado, carga editada)
+        # e um texto guardado desde o desenho anterior mentiria.
+        self.setToolTip(self._resumo_para_tooltip())
+        self.update()
+        super().hoverEnterEvent(event)
+
+    def hoverLeaveEvent(self, event):
+        self._sob_cursor = False
+        # Texto vazio é como o Qt entende "não há o que mostrar"; a
+        # bolha some sozinha ao sair do item.
+        self.setToolTip("")
+        self.update()
+        super().hoverLeaveEvent(event)
+
+    # ------------------------------ CLIQUE ----------------------------- #
+
+    def mousePressEvent(self, event):
+        # O clique é registrado no press, e não no release, porque é o
+        # press que decide se o item vai ser arrastado: o Qt entrega o
+        # movimento subsequente a este item e o release chega mesmo que o
+        # arraste tenha terminado longe da elipse. Guardar a posição
+        # inicial aqui permite comparar no release e separar "clicou"
+        # de "arrastou a barra para outro lugar".
+        self._press_pos = event.screenPos() if hasattr(event, "screenPos") else None
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(event)
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+        inicio = getattr(self, "_press_pos", None)
+        self._press_pos = None
+        if inicio is not None:
+            fim = event.screenPos() if hasattr(event, "screenPos") else inicio
+            distancia = ((fim.x() - inicio.x()) ** 2
+                         + (fim.y() - inicio.y()) ** 2) ** 0.5
+            if distancia > _CanvasRede.LIMIAR_ARRASTE:
+                # Foi um arraste: a barra mudou de lugar e o cartão deve
+                # continuar exatamente como estava, agora na posição nova.
+                return
+        if self._editor is not None:
+            self._editor.alternar_cartao_barra(self.nome_barra)
+            # O cartão flutuante é a leitura rápida no mapa; o painel de
+            # propriedades é a leitura completa. Os dois abrem no mesmo
+            # clique, porque o usuário pediu as duas coisas e obrigá-lo a
+            # clicar duas vezes para ver o detalhe seria atrito sem
+            # motivo.
+            self._editor._selecionar_no_mapa("barra", self.nome_barra)
+
+    def _resumo_para_tooltip(self) -> str:
+        """Uma linha de contexto sobre a barra: tensão, ramos e carga.
+
+        Os números vêm do modelo vivo a cada hover, porque a rede
+        editada é a fonte da verdade — o rótulo fixo da cena pode estar
+        defasado em relação ao que o usuário acabou de digitar num
+        formulário.
+        """
+        if self._editor is None:
+            return self.nome_barra
+
+        rede = self._editor.rede
+        barra = rede.barras.get(self.nome_barra)
+        tensao = barra.kv_base if barra is not None else None
+
+        incidentes = [r for r in rede.ramos.values()
+                      if r.bus1 == self.nome_barra or r.bus2 == self.nome_barra]
+        penduradas = [d for d in rede.derivacoes.values()
+                      if d.bus1 == self.nome_barra]
+
+        partes = [self.nome_barra]
+        if tensao is not None:
+            partes.append(f"{tensao} kV")
+
+        # Singular e plural escritos por extenso: "1 ramos" num tooltip
+        # parece descuido de quem escreveu o programa.
+        partes.append(f"{len(incidentes)} ramo" + ("" if len(incidentes) == 1 else "s"))
+        if penduradas:
+            partes.append(f"{len(penduradas)} elemento"
+                          + ("" if len(penduradas) == 1 else "s"))
+
+        # Só faz sentido somar potência quando há carga: gerador,
+        # capacitor e medidor não têm kW no mesmo sentido, e somá-los
+        # daria um número sem significado físico.
+        cargas = [d for d in penduradas if d.tipo == "Load"]
+        if cargas:
+            try:
+                # Campo em branco fica de fora da soma em vez de entrar
+                # como zero. Uma carga recém-criada, com kW ainda não
+                # preenchido, não consome nada — dizer "carga 0 kW" numa
+                # carga de verdade seria um dado falso, não um arredondamento.
+                kw = _somar_parametro(cargas, "kw")
+                kvar = _somar_parametro(cargas, "kvar")
+            except (TypeError, ValueError):
+                # Campo texto com conteúdo não numérico não pode quebrar
+                # o hover: o resumo simplesmente omite a potência.
+                kw = kvar = None
+            if kw is not None:
+                texto_carga = f"carga {_formatar_potencia(kw)} kW"
+                # kW e kvar são campos independentes: um pode estar
+                # preenchido e o outro não. Só entra na frase o que existe.
+                if kvar is not None:
+                    texto_carga += f" / {_formatar_potencia(kvar)} kvar"
+                partes.append(texto_carga)
+
+        return " · ".join(partes)
+
     def itemChange(self, change, value):
         # Chamado pelo Qt a cada mudança de estado do item. Aqui só
         # interessa a posição: sincroniza a coordenada de tela com o
         # dicionário que o redesenhar() consulta e, em seguida, refaz a
         # geometria do que está pendurado nesta barra. O modelo não é
         # tocado.
+        #
+        # A seleção também passa por aqui porque muda o que a elipse
+        # pinta (contorno e anel tracejado) e o Qt não repinta o item
+        # sozinho ao trocar esse estado — a área antiga ficaria com o
+        # desenho de antes no fundo, o rastro.
+        if change == QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged:
+            self.update()
         if (change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged
                 and self._editor is not None):
             self._editor._ao_mover_barra(self.nome_barra, self.pos())
             self._editor._atualizar_geometria_barra(self.nome_barra)
         return super().itemChange(change, value)
+
+
+class _LinhaRamoItem(QGraphicsLineItem):
+    """Segmento de ramo (ou ligação pontilhada) com destaque de seleção.
+
+    A linha em si é geometria pura; o que esta classe acrescenta é o
+    estado visual. Selecionada, ela engrossa e assume o azul
+    institucional, com um traço claro por baixo que a separa do fundo —
+    sem esse contorno, uma linha azul fina sobre a grade de pontos se
+    confunde com a própria grade.
+
+    A espessura de repouso é guardada na criação: o redesenho em zoom
+    diferente gera outra espessura, e a restauração pós-seleção devolve
+    exatamente a que o desenho pediu.
+    """
+
+    def __init__(self, linha, nome_ramo: str = "", editor=None):
+        super().__init__(linha)
+        self.nome_ramo = nome_ramo
+        self._editor = editor
+        # A caneta de repouso é a que o redesenho vai aplicar logo
+        # abaixo, com setPen(). Capturá-la aqui, do construtor do
+        # QGraphicsLineItem, pegaria a caneta padrão do Qt (1 px preta) e
+        # a linha perderia cor e espessura ao ser repintada.
+        self._caneta_repouso = QPen(Qt.GlobalColor.black, 1)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
+        self.setAcceptHoverEvents(True)
+        self._sob_cursor = False
+
+    def setPen(self, caneta) -> None:
+        """Guarda a caneta de repouso junto com a aplicação.
+
+        Sobrescrever setPen é o que mantém a espessura correta: o
+        desenho muda de espessura com a escala, e a versão destacada sai
+        dela.
+        """
+        self._caneta_repouso = QPen(caneta)
+        super().setPen(caneta)
+
+    def _caneta_destaque(self) -> QPen:
+        caneta = QPen(_qcolor(COR_ACCENT_MARCA),
+                      self._caneta_repouso.widthF() + 2.0)
+        caneta.setCapStyle(Qt.PenCapStyle.RoundCap)
+        caneta.setStyle(self._caneta_repouso.style())
+        return caneta
+
+    def _caneta_hover(self) -> QPen:
+        caneta = QPen(self._caneta_repouso)
+        caneta.setWidthF(self._caneta_repouso.widthF() + 1.0)
+        caneta.setCapStyle(Qt.PenCapStyle.RoundCap)
+        return caneta
+
+    def paint(self, painter, option, widget=None):
+        selecionada = self.isSelected()
+        if selecionada:
+            # O halo claro é pintado primeiro e mais grosso; a linha
+            # colorida por cima. É o mesmo recurso do halo da barra,
+            # na mesma linguagem.
+            halo = QPen(_qcolor("#dbe9f7"),
+                        self._caneta_repouso.widthF() + 6.0)
+            halo.setCapStyle(Qt.PenCapStyle.RoundCap)
+            painter.setPen(halo)
+            painter.drawLine(self.line())
+            painter.setPen(self._caneta_destaque())
+        elif self._sob_cursor:
+            painter.setPen(self._caneta_hover())
+        else:
+            painter.setPen(self._caneta_repouso)
+        painter.drawLine(self.line())
+
+    def boundingRect(self):
+        """Rect com folga para halo e espessura.
+
+        A base do Qt já considera a grossura da caneta de repouso, mas
+        não os 6 px do halo de seleção. Sem a folga, trocar a seleção
+        deixaria o rastro do halo no fundo.
+        """
+        # QLineF não expõe boundingRect: o retângulo é montado a partir
+        # das duas pontas, com a folga em todos os lados para cobrir
+        # halo, espessura e o arredondamento do cap round.
+        #
+        # A folga é a soma exata do que sai do rect: metade da
+        # espessura de repouso, os 3 px de cada lado que o halo
+        # selecionado acrescenta (largura + 6, menos a de repouso, sobre
+        # dois) e 1 px de arredondamento. Deixar por baixo deixa rastro
+        # no fundo — medido: 2.986 px sobravam com folga de 4.
+        folga = self._caneta_repouso.widthF() / 2.0 + 4.0 + 1.0
+        linha = self.line()
+        return QRectF(linha.p1(), linha.p2()).normalized().adjusted(
+            -folga, -folga, folga, folga)
+
+    def hoverEnterEvent(self, event):
+        self._sob_cursor = True
+        self.update()
+        super().hoverEnterEvent(event)
+
+    def hoverLeaveEvent(self, event):
+        self._sob_cursor = False
+        self.update()
+        super().hoverLeaveEvent(event)
+
+    def itemChange(self, change, value):
+        # Troca de seleção muda o que este item pinta (halo e cor da
+        # caneta), mas o Qt não repinta sozinho: setSelected() avisa o
+        # item e para por aí. Sem o update() aqui, a área antiga fica
+        # com o desenho de antes no fundo — o rastro.
+        if change == QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged:
+            self.update()
+        return super().itemChange(change, value)
+
+    def mousePressEvent(self, event):
+        # A posição do press separa clique de pan. O release da vista é
+        # quem decide; aqui só se guarda a origem.
+        self._press_pos = event.screenPos() if hasattr(event, "screenPos") else None
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(event)
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+        inicio = getattr(self, "_press_pos", None)
+        self._press_pos = None
+        if inicio is not None:
+            deslocamento = event.screenPos() - inicio
+            if (abs(deslocamento.x()) > 5 or abs(deslocamento.y()) > 5):
+                return
+        if self._editor is not None and self.nome_ramo:
+            self._editor._selecionar_no_mapa("ramo", self.nome_ramo)
 
 
 class _DerivacaoItem(QGraphicsRectItem):
@@ -540,10 +1145,10 @@ class _DerivacaoItem(QGraphicsRectItem):
     pendurados o leque se atravessa, e tirar dali o que está incomodando
     é mais rápido do que qualquer reorganização automática.
 
-    A posição arrastada vira override da sessão: o redesenhar() passa a
-    usar esse valor no lugar do ângulo calculado. Nada vai para o JSON —
-    o modelo segue sem campo de posição, então entre execuções o layout
-    volta a ser o automático.
+    A posição arrastada vira override: o redesenhar() passa a usar esse
+    valor no lugar do ângulo calculado. Ela fica no espelho de tela e
+    também no campo `posicao` da derivação, de onde é gravada no
+    rede.json — o arranjo sobrevive ao fechamento do projeto.
 
     O retângulo base nasce em (0, 0), com o canto superior esquerdo na
     origem. Isso deixa o item ser posicionado pelo CENTRO, que é também
@@ -569,6 +1174,90 @@ class _DerivacaoItem(QGraphicsRectItem):
         # estava.
         self.setFlag(
             QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
+        # Eventos de hover só chegam a quem os pede. Sem esta linha o Qt
+        # nunca chama hoverEnterEvent e o realce da borda não acende.
+        self.setAcceptHoverEvents(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._sob_cursor = False
+        # A cor de preenchimento chega depois, pelo setBrush() do
+        # redesenhar(). O paint() lê o brush do item para não duplicar a
+        # informação de cor em dois lugares.
+
+    def boundingRect(self):
+        """Rect do corpo com folga para sombra e borda de destaque.
+
+        A sombra é pintada fora do retângulo (deslocada para baixo e
+        para a direita) e o hover engrossa a borda para FORA do corpo.
+        Sem a folga, os dois ficariam no fundo quando a caixa andasse —
+        é o mesmo mecanismo que produzia os rastros nas barras.
+        """
+        folga_borda = 2.0
+        return self.rect().adjusted(
+            -folga_borda, -folga_borda,
+            DESLOCAMENTO_SOMBRA + folga_borda, DESLOCAMENTO_SOMBRA + folga_borda)
+
+    def paint(self, painter, option, widget=None):
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        corpo = self.rect()
+        cor = self.brush().color()
+        if not cor.isValid():
+            cor = _qcolor("gray")
+
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(COR_SOMBRA))
+        painter.drawRoundedRect(
+            corpo.translated(DESLOCAMENTO_SOMBRA, DESLOCAMENTO_SOMBRA),
+            RAIO_CAIXA, RAIO_CAIXA)
+
+        painter.setBrush(QBrush(cor))
+        if self._sob_cursor or self.isSelected():
+            # Realce do hover: borda no acento institucional, 2 px. A
+            # cor de estado da caixa continua no preenchimento, então o
+            # tipo do elemento não se perde no destaque.
+            pintor_pen = QPen(_qcolor(COR_ACCENT_MARCA), 2)
+        else:
+            # Borda de 1 px num tom escurecido da própria cor: dá
+            # definição ao contorno sem introduzir uma cor estranha à
+            # paleta do elemento.
+            pintor_pen = QPen(cor.darker(150), 1)
+        painter.setPen(pintor_pen)
+        painter.drawRoundedRect(corpo, RAIO_CAIXA, RAIO_CAIXA)
+
+    def hoverEnterEvent(self, event):
+        self._sob_cursor = True
+        self.update()
+        super().hoverEnterEvent(event)
+
+    def hoverLeaveEvent(self, event):
+        self._sob_cursor = False
+        self.update()
+        super().hoverLeaveEvent(event)
+
+    # ------------------------------ CLIQUE ----------------------------- #
+
+    def mousePressEvent(self, event):
+        # Mesma separação clique/arraste da barra e do rótulo: guarda a
+        # posição de tela do press e compara no release. A distância é
+        # medida em pixels de TELA, então o limiar vale igual em
+        # qualquer zoom.
+        self._press_pos = event.screenPos() if hasattr(event, "screenPos") else None
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(event)
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+        inicio = getattr(self, "_press_pos", None)
+        self._press_pos = None
+        if inicio is not None:
+            deslocamento = event.screenPos() - inicio
+            if abs(deslocamento.x()) > 5 or abs(deslocamento.y()) > 5:
+                # Arrastou a caixa de lugar: o itemChange já cuidou da
+                # posição, e o painel de propriedades não tem por que
+                # mudar.
+                return
+        if self._editor is not None:
+            self._editor._selecionar_no_mapa("derivacao", self.nome_derivacao)
 
     def itemChange(self, change, value):
         if (change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged
@@ -590,17 +1279,99 @@ class _RotuloItem(QGraphicsTextItem):
     branco cobria o preenchimento colorido do elemento e o texto sumia
     no meio dele."""
 
+    # Teto de largura do texto. Sem ele o rótulo cresce junto com o
+    # conteúdo e o retângulo de fundo atravessa meia cena.
+    LARGURA_MAXIMA = 170.0
+
     def __init__(self, texto: str, cor: str, tamanho_fonte: int = 8,
-                 fundo: str = "white"):
+                 fundo: str = "white", editor=None, alvo=None,
+                 tipo_alvo: str = ""):
         super().__init__(texto)
+        # Origem do rótulo: quem é o dono (`alvo`, o nome do elemento) e
+        # de que categoria ele é. Vazio no caso dos rótulos de texto
+        # livre, que não respondem a clique.
+        self.editor = editor
+        self.alvo = alvo
+        self.tipo_alvo = tipo_alvo
         self.setDefaultTextColor(_qcolor(cor))
         fonte = QFont()
         fonte.setPointSizeF(max(5.0, float(tamanho_fonte)))
         self.setFont(fonte)
-        self.setTextWidth(-1)
+        # O alinhamento central pertence ao documento, não à caixa:
+        # `centralizar_rotulo` centra o retângulo no elemento, mas sem
+        # esta linha o texto dentro dele continua encostado à esquerda.
+        # Num rótulo de duas linhas de larguras diferentes ("Load" sobre
+        # "CARGA_670a") o resultado é o texto parecendo escapar da
+        # caixa. O Tk original fazia o mesmo via justify="center".
+        #
+        # A volta pelo setDefaultTextOption não é enfeite. Em PySide6
+        # 6.12, defaultTextOption() devolve uma CÓPIA: mexer no objeto
+        # devolvido (ou encadear `defaultTextOption().setAlignment(...)`)
+        # modifica o descartável e o documento continua alinhado à
+        # esquerda. Só atribuir de volta surte efeito.
+        opcao_texto = self.document().defaultTextOption()
+        opcao_texto.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        self.document().setDefaultTextOption(opcao_texto)
+        # Capa de largura: rótulos curtos medem como antes; textos longos
+        # quebram e a caixa de fundo deixa de crescer sem limite.
+        # A medida vem de QFontMetricsF e não de document().idealWidth():
+        # esta última só devolve a largura definitiva depois que o
+        # documento passa por um layout, e no construtor ela ainda está
+        # zerada — a capa disparava para rótulos de 15 caracteres e não
+        # disparava para os de 25. QFontMetricsF mede com a fonte final,
+        # na hora, sem depender de layout.
+        medida = QFontMetricsF(fonte)
+        mais_larga = max(
+            (medida.horizontalAdvance(linha) for linha in texto.split("\n")),
+            default=0.0)
+        if mais_larga > self.LARGURA_MAXIMA:
+            self.setTextWidth(self.LARGURA_MAXIMA)
         self._cor_fundo = _qcolor(fundo) if fundo is not None else None
         self._tamanho_fonte = tamanho_fonte
         self.setZValue(1.0)
+        # Todo rótulo com dono pode ser arrastado sozinho: separar o
+        # texto do elemento é o ajuste fino que resolve sobreposição sem
+        # mexer na posição elétrica de nada. ItemSendsGeometryChanges é
+        # obrigatório aqui pela mesma razão da barra: sem ele o Qt não
+        # emite ItemPositionHasChanged e o novo lugar nunca chega ao
+        # modelo.
+        if alvo is not None:
+            self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
+            self.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
+            self.setCursor(Qt.CursorShape.SizeAllCursor)
+            self.setAcceptHoverEvents(True)
+
+    # ------------------------------ CLIQUE ----------------------------- #
+
+    def mousePressEvent(self, event):
+        # Mesmo padrão da barra: guardar a posição do press separa
+        # "clicou" de "arrastou" ao soltar. A posição é a de TELA, e não
+        # a da cena, para que o limiar de 5 px valha em qualquer zoom.
+        self._press_pos = event.screenPos() if hasattr(event, "screenPos") else None
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(event)
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+        inicio = getattr(self, "_press_pos", None)
+        self._press_pos = None
+        if inicio is not None:
+            fim = event.screenPos() if hasattr(event, "screenPos") else inicio
+            distancia = ((fim.x() - inicio.x()) ** 2
+                         + (fim.y() - inicio.y()) ** 2) ** 0.5
+            if distancia > _CanvasRede.LIMIAR_ARRASTE:
+                # Arraste: o itemChange já cuidou de gravar o desvio.
+                return
+        if self.editor is not None and self.alvo is not None:
+            self.editor.alternar_rotulo(self.tipo_alvo, self.alvo)
+
+    def itemChange(self, change, value):
+        if (change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged
+                and self.editor is not None and self.alvo is not None):
+            self.editor._ao_mover_rotulo(self, self.pos())
+        return super().itemChange(change, value)
 
     def paint(self, painter, option, widget=None):
         # Fundo com 3px de folga horizontal e 1px vertical, os mesmos
@@ -643,6 +1414,13 @@ class _CanvasRede(QGraphicsView):
     FATOR_MIN = 0.1
     FATOR_MAX = 10.0
     PASSO_ZOOM = 1.15
+    # Distância (pixels de tela) que separa um clique de um pan. Abaixo
+    # disso o gesto foi um clique, e soltar o botão no fundo vazio deve
+    # fechar o cartão de informações; acima, o usuário estava movendo a
+    # vista e o cartão aberto não pode desaparecer no meio do gesto.
+    # Cinco pixels é o mesmo limiar que o Qt adota internamente para
+    # decidir quando um clique virou arraste.
+    LIMIAR_ARRASTE = 5
 
     # Emitido quando o modo de zoom de janela termina por conta própria
     # (retângulo concluído ou Esc), para o botão do painel voltar ao
@@ -673,12 +1451,112 @@ class _CanvasRede(QGraphicsView):
         self._retangulo_janela = None
         self._pan_ultimo = None
         self._pan_ativo = False
+        # Ponto onde o botão desceu e distância percorrida desde então.
+        # O release consulta os dois para saber se houve arraste de fato.
+        self._origem_pan = None
+        self._pan_distancia = 0.0
+        # Gancho preenchido pelo editor. O fundo vazio é o único lugar em
+        # que a vista sabe que o clique não foi num elemento, então é ela
+        # quem avisa que o cartão de informações deve fechar.
+        self.ao_clicar_fundo = None
+        # Ganchos da barra de ferramentas flutuante e da barra de
+        # status. A vista conhece a própria escala e o próprio retângulo
+        # visível; o editor conhece a contagem de elementos. Cada um
+        # preenche o que sabe, sem que um passe a importar o outro.
+        self.ao_mudar_escala = None
+        self.ao_mudar_modo_janela = None
+        self.ao_redimensionar = None
 
+        # Animação do zoom. A roda dispara muitos eventos por gesto, e
+        # aplicar cada passo na hora produz o salto seco que dá a
+        # sensação de "grudar". A animação interpola da escala corrente
+        # até a alvo em 140 ms; pedidos que chegam durante a animação
+        # atualizam o alvo e a animação é reiniciada a partir do valor
+        # corrente, o que acumula os passos sem enfileirar.
+        self._animacao_zoom = QVariantAnimation(self)
+        self._animacao_zoom.setDuration(140)
+        self._animacao_zoom.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._animacao_zoom.valueChanged.connect(self._aplicar_escala_animada)
+        self._escala_animada_de = 1.0
+        self._escala_animada_para = 1.0
+        self._ancora_animada = None
+
+        self._barra_ferramentas = None
+        self._barra_status = None
+
+        # Intervalo entre o press e o release, em milissegundos, para o
+        # clique simples não ser confundido com o início de um arraste.
+        # O limiar de distância sozinho não basta: num clique com a mão
+        # trêmula o cursor desliza 1-2 px, e mesmo assim o elemento tem
+        # de ser selecionado.
+        self.LIMIAR_CLIQUE_MS = 400
     # ------------------------------------------------------------------ #
     # Zoom
     # ------------------------------------------------------------------ #
     def _escala_atual(self) -> float:
         return self.transform().m11()
+
+    def _aplicar_escala_absoluta(self, escala: float, ancora_tela=None) -> None:
+        """Leva a vista para `escala` absoluta, mantendo a âncora parada.
+
+        A animação de zoom trabalha com escala absoluta; fator relativo
+        exigiria saber de onde se partiu, e o ponto de partida muda a
+        cada quadro.
+
+        `ancora_tela` é o ponto de TELA que não pode se mover — na roda
+        do mouse, o cursor. Convertê-lo em coordenada de cena antes da
+        mudança e compensar o deslocamento depois é o que mantém o zoom
+        ancorado, em vez de o conteúdo fugir para um canto a cada passo.
+        """
+        escala = max(self.FATOR_MIN, min(self.FATOR_MAX, escala))
+        atual = self._escala_atual()
+        if atual <= 0 or abs(escala - atual) < 1e-9:
+            return
+        if ancora_tela is None:
+            self.scale(escala / atual, escala / atual)
+            self._avisar_escala()
+            return
+        # A âncora chega como QPointF (evento.position()) ou como QPoint
+        # (chamada programática). Normalizar aqui evita que a diferença
+        # entre os dois vire um AttributeError num caminho e funcione no
+        # outro — o tipo do argumento não é responsabilidade do chamador.
+        ancora_px = (ancora_tela.toPoint()
+                     if hasattr(ancora_tela, "toPoint")
+                     else QPointF(ancora_tela.x(), ancora_tela.y()).toPoint())
+        ponto_cena = self.mapToScene(ancora_px)
+        # A âncora automática do view é DESLIGADA de vez, não apenas
+        # durante a conta. Com AnchorUnderMouse ligado, o Qt recentraliza
+        # na posição do cursor do sistema em toda mudança de
+        # transformação — e desfazia a compensação logo depois de ela ser
+        # aplicada. Como este método já compensa explicitamente a partir
+        # da âncora recebida, a automática é redundante e conflitante.
+        self.setTransformationAnchor(
+            QGraphicsView.ViewportAnchor.NoAnchor)
+        self.scale(escala / atual, escala / atual)
+        # A barra de rolagem do QGraphicsView anda um pixel de tela por
+        # unidade de valor, em qualquer escala (medido: 10 unidades = 10
+        # px tanto em 1.0 quanto em 2.0). O deslocamento a compensar é
+        # portanto o próprio delta em pixels, sem conversão.
+        diferenca = ancora_px - self.mapFromScene(ponto_cena)
+        self.horizontalScrollBar().setValue(
+            self.horizontalScrollBar().value() - diferenca.x())
+        self.verticalScrollBar().setValue(
+            self.verticalScrollBar().value() - diferenca.y())
+        self._avisar_escala()
+
+    def _avisar_escala(self) -> None:
+        """Informa a escala corrente a quem exibe o percentual."""
+        if self.ao_mudar_escala is not None:
+            self.ao_mudar_escala(self._escala_atual())
+
+    def _aplicar_escala_animada(self, valor) -> None:
+        """Quadro da animação: aplica a escala interpolada.
+
+        Separado de _aplicar_escala_absoluta porque o sinal do Qt entrega
+        um objeto (float embrulhado) e a âncora da animação está
+        guardada na instância, não no sinal.
+        """
+        self._aplicar_escala_absoluta(float(valor), self._ancora_animada)
 
     def aplicar_zoom(self, fator: float, ancora_ponto=None) -> bool:
         """Multiplica a escala atual por `fator`, respeitando os limites.
@@ -718,7 +1596,25 @@ class _CanvasRede(QGraphicsView):
             self.centerOn(ancora_ponto)
             self.scale(fator, fator)
             self.setTransformationAnchor(antigo_ancora)
+        self._avisar_escala()
         return True
+
+    def _animar_zoom(self, escala_alvo: float, ancora_tela=None) -> None:
+        """Interpola a escala até `escala_alvo` em 140 ms.
+
+        Pedido que chega com a animação em curso não enfileira: o alvo é
+        substituído e a animação recomeça da escala corrente. É o que faz
+        uma rajada de eventos de roda virar um movimento contínuo, em vez
+        de uma fila de saltos secos.
+        """
+        escala_alvo = max(self.FATOR_MIN, min(self.FATOR_MAX, escala_alvo))
+        self._animacao_zoom.stop()
+        self._escala_animada_de = self._escala_atual()
+        self._escala_animada_para = escala_alvo
+        self._ancora_animada = ancora_tela
+        self._animacao_zoom.setStartValue(self._escala_animada_de)
+        self._animacao_zoom.setEndValue(escala_alvo)
+        self._animacao_zoom.start()
 
     def ampliar(self) -> None:
         self.aplicar_zoom(self.PASSO_ZOOM)
@@ -740,12 +1636,16 @@ class _CanvasRede(QGraphicsView):
             return
         folga = 20.0
         area = area.adjusted(-folga, -folga, folga, folga)
+        # Enquadrar é um salto deliberado; uma animação de zoom em curso
+        # o desfaria no quadro seguinte.
+        self._animacao_zoom.stop()
         self.fitInView(area, Qt.AspectRatioMode.KeepAspectRatio)
         escala = self._escala_atual()
         if escala < self.FATOR_MIN or escala > self.FATOR_MAX:
             fator = (self.FATOR_MIN / escala if escala < self.FATOR_MIN
                      else self.FATOR_MAX / escala)
             self.scale(fator, fator)
+        self._avisar_escala()
 
     # ------------------------------------------------------------------ #
     # Zoom de janela
@@ -786,6 +1686,11 @@ class _CanvasRede(QGraphicsView):
         area_cena = self.mapToScene(retangulo_int).boundingRect()
         if area_cena.isNull() or area_cena.isEmpty():
             return
+        # O enquadramento no retângulo é instantâneo por natureza: animar
+        # até uma área arbitrária daria a impressão de zoom perdido. Uma
+        # animação em curso é interrompida para não sobrescrever o
+        # resultado no quadro seguinte.
+        self._animacao_zoom.stop()
         # O fitInView calcula a transformação a partir do centro da
         # vista. Com a âncora presa ao cursor, o resultado sairia
         # deslocado do retângulo desenhado; a âncora é suspensa durante
@@ -802,6 +1707,7 @@ class _CanvasRede(QGraphicsView):
         elif escala > self.FATOR_MAX:
             fator = self.FATOR_MAX / escala
             self.scale(fator, fator)
+        self._avisar_escala()
         self.definir_modo_zoom_janela(False)
 
     # ------------------------------------------------------------------ #
@@ -829,6 +1735,11 @@ class _CanvasRede(QGraphicsView):
             # sempre com o esquerdo.
             self._pan_ativo = True
             self._pan_ultimo = evento.position().toPoint()
+            # A origem é preservada mesmo com o mouse parado: é o que
+            # permite medir a distância total no release e separar o
+            # clique do arraste.
+            self._origem_pan = self._pan_ultimo
+            self._pan_distancia = 0.0
             self.setCursor(Qt.CursorShape.ClosedHandCursor)
             evento.accept()
             return
@@ -848,6 +1759,14 @@ class _CanvasRede(QGraphicsView):
             atual = evento.position().toPoint()
             delta = atual - self._pan_ultimo
             self._pan_ultimo = atual
+            if self._origem_pan is not None:
+                # Distância acumulada desde o press, e não o deslocamento
+                # do último evento: um arraste lento chega ao release
+                # com passos de um pixel e ainda assim é um arraste.
+                self._pan_distancia = max(
+                    self._pan_distancia,
+                    ((atual.x() - self._origem_pan.x()) ** 2
+                     + (atual.y() - self._origem_pan.y()) ** 2) ** 0.5)
             self.horizontalScrollBar().setValue(
                 self.horizontalScrollBar().value() - delta.x())
             self.verticalScrollBar().setValue(
@@ -873,7 +1792,16 @@ class _CanvasRede(QGraphicsView):
                 Qt.MouseButton.LeftButton, Qt.MouseButton.MiddleButton)):
             self._pan_ativo = False
             self._pan_ultimo = None
+            houve_arraste = self._pan_distancia > self.LIMIAR_ARRASTE
+            self._origem_pan = None
+            self._pan_distancia = 0.0
             self.unsetCursor()
+            # Clique no fundo sem deslocamento: o gesto não foi pan, foi
+            # um pedido para dispensar o que estiver aberto sobre a cena.
+            if (not houve_arraste
+                    and evento.button() == Qt.MouseButton.LeftButton
+                    and self.ao_clicar_fundo is not None):
+                self.ao_clicar_fundo()
             evento.accept()
             return
 
@@ -884,20 +1812,34 @@ class _CanvasRede(QGraphicsView):
         if passo == 0:
             super().wheelEvent(evento)
             return
+        # O alvo é sempre calculado a partir da escala FINAL da animação
+        # em curso, não da escala do quadro atual: com a animação em
+        # andamento, ler _escala_atual() devolveria um valor intermediário
+        # e vários giros seguidos não somariam o zoom que o usuário pediu.
+        base = (self._escala_animada_para
+                if self._animacao_zoom.state() == QVariantAnimation.State.Running
+                else self._escala_atual())
         fator = self.PASSO_ZOOM if passo > 0 else 1.0 / self.PASSO_ZOOM
-        if self.aplicar_zoom(fator):
-            evento.accept()
-        else:
-            # No limite da faixa o evento é consumido mesmo assim. Deixar
-            # o Qt rolar a vista aqui faria a roda ter um comportamento
-            # nas bordas e outro no meio, o que confunde mais do que
-            # ajuda.
-            evento.accept()
+        self._animar_zoom(base * fator, evento.position())
+        # O evento é consumido mesmo no limite da faixa. Deixar o Qt
+        # rolar a vista aqui faria a roda ter um comportamento nas bordas
+        # e outro no meio, o que confunde mais do que ajuda.
+        evento.accept()
 
     def keyPressEvent(self, evento):
         if (evento.key() == Qt.Key.Key_Escape
                 and self._zoom_janela_ativo):
             self.definir_modo_zoom_janela(False)
+            evento.accept()
+            return
+        # Esc também dispensa o cartão de informações. A vista não
+        # conhece o cartão — quem o mantém é o editor —, então o
+        # fechamento é pedido pelo mesmo gancho usado no clique de fundo.
+        # A ordem importa: com o modo de zoom de janela ligado o Esc já
+        # foi consumido acima, e cancelar o modo tem precedência sobre
+        # fechar um painel lateral.
+        if evento.key() == Qt.Key.Key_Escape and self.ao_clicar_fundo is not None:
+            self.ao_clicar_fundo()
             evento.accept()
             return
         super().keyPressEvent(evento)
@@ -915,6 +1857,51 @@ class _CanvasRede(QGraphicsView):
         painter.drawRect(self._retangulo_janela)
         painter.restore()
 
+    def drawBackground(self, painter, retangulo):
+        """Fundo do canvas: papel branco com grade de pontos.
+
+        A grade é desenhada em coordenadas de CENA (`retangulo` já vem
+        nelas), então os pontos ficam presos ao mundo: andam com o pan e
+        abrem com o zoom, como papel milimetrado. Pintar em coordenadas
+        de tela daria uma malha fixa, que se move por baixo do diagrama
+        e destrói a referência de posição.
+        """
+        painter.fillRect(retangulo, QBrush(_qcolor(FUNDO_CANVAS)))
+        if self._escala_atual() < ESCALA_MINIMA_GRADE:
+            return
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+        # Caneta sem largura: no Qt isso pinta sempre 1 pixel de tela,
+        # independentemente do zoom. Com caneta de 1 unidade de cena, os
+        # pontos sumiriam ao afastar e virariam borrões ao aproximar.
+        painter.setPen(QPen(_qcolor(COR_GRADE_PONTOS), 0))
+        esquerda = math.floor(retangulo.left() / ESPACO_GRADE) * ESPACO_GRADE
+        topo = math.floor(retangulo.top() / ESPACO_GRADE) * ESPACO_GRADE
+        pontos = []
+        x = esquerda
+        while x <= retangulo.right():
+            y = topo
+            while y <= retangulo.bottom():
+                # Um ponto de cada célula, no cruzamento: é o que dá a
+                # textura de "editor", sem a densidade de uma malha
+                # completa, que atrapalharia a leitura das linhas.
+                pontos.append(QPointF(x, y))
+                y += ESPACO_GRADE
+            x += ESPACO_GRADE
+        if pontos:
+            painter.drawPoints(pontos)
+        painter.restore()
+
+    def resizeEvent(self, evento):
+        super().resizeEvent(evento)
+        # A pílula é posicionada em pixels de tela, então quem sabe onde
+        # ela cabe é a própria vista. O editor é avisado porque é ele
+        # quem monta os widgets flutuantes.
+        if self.ao_redimensionar is not None:
+            self.ao_redimensionar()
+        if self.ao_mudar_escala is not None:
+            self.ao_mudar_escala(self._escala_atual())
+
 
 class EditorRede(QWidget):
     """Widget central do editor: painel de ferramentas, diagrama e lista.
@@ -931,6 +1918,24 @@ class EditorRede(QWidget):
         self.projeto = projeto
         self.orientacao = "vertical"
 
+        # Quem está selecionado no diagrama, na forma (categoria, nome)
+        # — a mesma chave que a árvore usa. Só existe um por vez: a
+        # seleção do mapa é uma pergunta ("de quem são estas
+        # propriedades?") e múltiplas respostas não caberiam no painel.
+        # Os itens de cena marcados como selecionados são guardados
+        # junto para que a desmarcação não precise varrer a cena atrás
+        # deles a cada clique.
+        self._selecao_mapa: Optional[tuple] = None
+        self._itens_selecionados: list = []
+        # O cartão de propriedades é construído sob demanda: criá-lo no
+        # layout custaria altura do painel mesmo quando o usuário nunca
+        # seleciona nada.
+        self._card_propriedades: Optional[QFrame] = None
+        self._rotulo_props: Optional[QLabel] = None
+        self._corpo_props: Optional[QLabel] = None
+        self._acoes_props: Optional[QWidget] = None
+        self._dica_selecao: Optional[QLabel] = None
+
         # Posições de tela da última renderização, já passadas pelo
         # auto-encaixe. Reconstruídas inteiras a cada redesenhar().
         self._posicoes: Dict[str, tuple] = {}
@@ -941,14 +1946,21 @@ class EditorRede(QWidget):
         self._redesenhando = False
 
         # Posições que o usuário impôs às caixas de derivação, por nome.
-        # Sobrevivem ao redesenhar() e morrem com o editor: ajuste de
-        # visualização, não dado de projeto.
+        # Espelho em memória do campo `posicao` de cada derivação: o
+        # modelo é a fonte da verdade, e o dicionário existe para o
+        # arraste não precisar procurar no modelo a cada pixel.
         self._posicoes_derivacoes: Dict[str, tuple] = {}
         # O que precisa ser regeometrizado quando uma barra se desloca:
         # barra -> [(item_linha, qual extremidade se move, rótulo)].
         # Sem esse índice, arrastar uma barra deixaria as conexões para
         # trás até o próximo redesenho.
         self._dependencias_por_barra: Dict[str, list] = {}
+        # Afastamento do rótulo em relação ao centro da própria barra,
+        # por nome. Calculado no redesenho e reaplicado a cada passo do
+        # arraste, para que o texto acompanhe a elipse mantendo a mesma
+        # distância — inclusive quando a fonte do rótulo muda de largura
+        # e o ponto de ancoragem deixa de ser o mesmo.
+        self._offsets_rotulos_barras: Dict[str, tuple] = {}
         # Ligação pontilhada de cada derivação com sua barra: nome ->
         # (item_linha, nome_da_barra). Guardada porque o arraste da caixa
         # redesenha só essa linha, e não a cena.
@@ -959,18 +1971,54 @@ class EditorRede(QWidget):
         # movimento. Daí a atualização de geometria no lugar.
         self._ligacoes_derivacoes: Dict[str, tuple] = {}
         self._rotulos_derivacoes: Dict[str, "_RotuloItem"] = {}
-        # Estado do checkbox "Mostrar rótulos". Os nomes de barra não
-        # entram nisso: são a referência de leitura do diagrama.
+        # Espelho do último comando global de rótulos ("mostrar todos" /
+        # "ocultar todos"). A visibilidade que vale é a de cada elemento,
+        # no modelo; este atributo só evita reler os três dicionários a
+        # cada consulta.
         self.mostrar_rotulos = True
         self._rotulos_ramos: list = []
         self._rotulos_elementos: list = []
 
+        # Cartão de informações fixado numa barra. Um por vez, por
+        # decisão de desenho: dois painéis abertos em barras vizinhas
+        # cobrem a própria topologia que se queria comparar. Guarda o
+        # item e o nome da barra a que ele pertence.
+        self._cartao_barra: Optional[_CartaoBarra] = None
+        self._cartao_barra_nome: Optional[str] = None
+        # O quadro da cena em que o cartão estava posicionado, para
+        # recolocá-lo quando a janela mudar de tamanho.
+        self._retangulo_cena_cartao = None
+
+        # Gravação do layout em disco. Cada pixel de arraste altera o
+        # modelo, mas escrever o rede.json a cada itemChange seria
+        # desperdício: o arquivo só interessa com o arraste encerrado.
+        # O timer de disparo único agrupa a rajada de movimentos numa
+        # gravação só, meio segundo depois da última mudança.
+        self._timer_salvar_layout = QTimer(self)
+        self._timer_salvar_layout.setSingleShot(True)
+        self._timer_salvar_layout.setInterval(500)
+        self._timer_salvar_layout.timeout.connect(self._salvar_layout)
+
         self._montar_layout()
         self._carregar_projeto_automaticamente()
+        # O cartão vive na cena, não na vista, mas é a vista quem sabe
+        # distinguir clique de pan no fundo vazio. O gancho fecha o
+        # buraco entre os dois sem que a vista precise conhecer o editor.
+        self.view.ao_clicar_fundo = self._ao_clicar_fundo_mapa
         # Equivalente ao self.after(50, self.redesenhar) do Tk. O layout
         # só tem dimensão útil depois do primeiro ciclo de eventos; antes
         # disso o enquadramento seria calculado sobre uma área nula.
         QTimer.singleShot(0, self.redesenhar)
+
+    def _ao_clicar_fundo_mapa(self) -> None:
+        """Clique no fundo vazio: fecha o cartão e desfaz a seleção.
+
+        Os dois gestos dizem a mesma coisa — "não quero mais olhar para
+        este elemento" —, e separá-los deixaria o painel de propriedades
+        mostrando algo que o usuário acabou de descartar no mapa.
+        """
+        self.fechar_cartao_barra()
+        self.limpar_selecao_mapa()
 
     # ------------------------------------------------------------------ #
     def _carregar_projeto_automaticamente(self):
@@ -1041,20 +2089,23 @@ class EditorRede(QWidget):
         # visualização do painel esquerdo (zoom, enquadrar) precisam do
         # objeto já existente para se conectar aos métodos dele.
         self.cena = QGraphicsScene(self)
-        self.cena.setBackgroundBrush(QBrush(_qcolor("white")))
+        # O fundo do canvas é pintado pelo drawBackground da vista, que
+        # desenha a grade de pontos. Um brush de cena aqui cobriria a
+        # grade: o Qt pinta o brush da cena ANTES do drawBackground.
+        self.cena.setBackgroundBrush(Qt.BrushStyle.NoBrush)
         self.view = _CanvasRede(self.cena)
         self.view.setRenderHint(self.view.renderHints().SmoothPixmapTransform, True)
-        self.view.setFrameShape(QFrame.Shape.StyledPanel)
 
         # ---------------- Painel de ferramentas (esquerda) ----------------
         painel_ferramentas = QFrame()
-        painel_ferramentas.setFrameShape(QFrame.Shape.StyledPanel)
-        painel_ferramentas.setFixedWidth(220)
+        painel_ferramentas.setObjectName("painelLateral")
+        painel_ferramentas.setFrameShape(QFrame.Shape.NoFrame)
+        painel_ferramentas.setFixedWidth(224)
         self.painel_ferramentas = painel_ferramentas
 
         coluna = QVBoxLayout(painel_ferramentas)
-        coluna.setContentsMargins(6, 8, 6, 8)
-        coluna.setSpacing(4)
+        coluna.setContentsMargins(10, 12, 10, 12)
+        coluna.setSpacing(5)
 
         if self.projeto:
             label_projeto = QLabel(f"Projeto:\n{self.projeto.nome}")
@@ -1069,17 +2120,18 @@ class EditorRede(QWidget):
         fonte_titulo = fonte_padrao(10)
         fonte_titulo.setBold(True)
         label_titulo.setFont(fonte_titulo)
+        label_titulo.setObjectName("tituloPainel")
         coluna.addWidget(label_titulo)
 
         coluna.addWidget(self._botao_painel("➕ Nova Barra", self._criar_barra))
 
-        coluna.addWidget(self._label_secao("— Ramos (2 barras) —"))
+        coluna.addWidget(self._label_secao("Ramos (2 barras)"))
         for texto, tipo in [("── Linha", "Line"), ("── Chave", "Switch"),
                             ("⧈ Transformador", "Transformer")]:
             coluna.addWidget(self._botao_painel(
                 texto, lambda _checked=False, t=tipo: self._criar_ramo(t)))
 
-        coluna.addWidget(self._label_secao("— Conectados (1 barra) —"))
+        coluna.addWidget(self._label_secao("Conectados (1 barra)"))
         # Storage não tem botão próprio aqui: nasce pelo fluxo
         # "🔋 Sistema BESS", que é o único caminho que garante o
         # InvControl associado a ele.
@@ -1096,14 +2148,15 @@ class EditorRede(QWidget):
         coluna.addWidget(self._botao_painel("⏱ Medidor de energia",
                                             self._criar_medidor))
 
-        coluna.addWidget(self._label_secao("— Sistemas compostos —"))
+        coluna.addWidget(self._label_secao("Sistemas compostos"))
         coluna.addWidget(self._botao_painel(
-            "🔋 Sistema BESS", self._criar_sistema_bess, fundo="#e0f2f1"))
+            "🔋 Sistema BESS", self._criar_sistema_bess))
 
         label_orientacao = QLabel("Orientação do layout")
         fonte_orientacao = fonte_padrao(10)
         fonte_orientacao.setBold(True)
         label_orientacao.setFont(fonte_orientacao)
+        label_orientacao.setObjectName("tituloPainel")
         coluna.addWidget(label_orientacao)
 
         linha_orientacao = QHBoxLayout()
@@ -1120,66 +2173,14 @@ class EditorRede(QWidget):
         linha_orientacao.addWidget(self.radio_horizontal)
         coluna.addLayout(linha_orientacao)
 
-        # Controles de vista. Ficam no painel, e não flutuando sobre a
-        # área de desenho: num diagrama denso, botão flutuante cai em
-        # cima de elemento e esconde justamente a barra que se queria
-        # clicar.
-        coluna.addWidget(self._label_secao("— Visualização —"))
-
-        linha_zoom = QHBoxLayout()
-        linha_zoom.setSpacing(4)
-        self.botao_zoom_mais = self._botao_painel("＋", self.view.ampliar)
-        self.botao_zoom_mais.setToolTip("Ampliar a vista")
-        self.botao_zoom_menos = self._botao_painel("−", self.view.reduzir)
-        self.botao_zoom_menos.setToolTip("Reduzir a vista")
-        linha_zoom.addWidget(self.botao_zoom_mais)
-        linha_zoom.addWidget(self.botao_zoom_menos)
-        coluna.addLayout(linha_zoom)
-
-        self.botao_zoom_janela = QPushButton("Zoom de janela")
-        self.botao_zoom_janela.setFont(fonte_padrao(10))
-        self.botao_zoom_janela.setMinimumHeight(26)
-        self.botao_zoom_janela.setCheckable(True)
-        self.botao_zoom_janela.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.botao_zoom_janela.setStyleSheet(
-            f"QPushButton {{ border: 1px solid {COR_ACCENT_MARCA};"
-            f" border-radius: 4px; padding: 3px 6px; }}"
-            f"QPushButton:hover {{ background-color: #e8eef5; }}"
-            f"QPushButton:checked {{ background-color: #cfe2f3;"
-            f" color: #1B1B1B; }}")
-        self.botao_zoom_janela.setToolTip(
-            "Marque e arraste um retângulo sobre a área desejada.\n"
-            "Esc cancela o modo.")
-        self.botao_zoom_janela.toggled.connect(
-            self.view.definir_modo_zoom_janela)
-        # A vista sai do modo por conta própria ao concluir o retângulo
-        # ou no Esc. Sem este caminho de volta, o botão continuaria
-        # marcado anunciando um modo que já não existe.
-        self.view.zoom_janela_encerrado.connect(self._ao_encerrar_zoom_janela)
-        coluna.addWidget(self.botao_zoom_janela)
-
-        self.botao_enquadrar = self._botao_painel(
-            "Enquadrar tudo", self.view.enquadrar_tudo)
-        self.botao_enquadrar.setToolTip(
-            "Reenquadra o diagrama inteiro na janela.\n"
-            "Não refaz o layout da rede.")
-        coluna.addWidget(self.botao_enquadrar)
-
-        # Em diagrama denso os rótulos de elemento cobrem as linhas e uns
-        # aos outros. Desligá-los é a saída rápida para enxergar a
-        # topologia. Os nomes de barra não entram no desligamento: são a
-        # referência com que a pessoa se localiza no desenho.
-        self.check_mostrar_rotulos = QCheckBox("Mostrar rótulos")
-        self.check_mostrar_rotulos.setFont(fonte_padrao(9))
-        self.check_mostrar_rotulos.setChecked(self.mostrar_rotulos)
-        self.check_mostrar_rotulos.setToolTip(
-            "Exibe os nomes dos ramos e dos elementos.\n"
-            "Os nomes das barras continuam visíveis.")
-        self.check_mostrar_rotulos.toggled.connect(self._ao_alternar_rotulos)
-        coluna.addWidget(self.check_mostrar_rotulos)
+        # Os controles de vista saíram do painel: eles agora moram numa
+        # pílula flutuante sobre o canvas, que é onde a mão do usuário
+        # está quando ele quer dar zoom. A montagem fica em
+        # _montar_barra_ferramentas(), chamada depois do layout porque a
+        # pílula é filha da VISTA e precisa dela já no lugar.
 
         coluna.addWidget(self._botao_painel(
-            "Simular no OpenDSS", self.simular, fundo="#c8e6c9"))
+            "▶ Simular no OpenDSS", self.simular, variante="primario"))
 
         coluna.addStretch(1)
 
@@ -1190,7 +2191,7 @@ class EditorRede(QWidget):
         fonte_dica_vista = fonte_padrao(8)
         fonte_dica_vista.setItalic(True)
         label_dica_vista.setFont(fonte_dica_vista)
-        label_dica_vista.setStyleSheet("color: gray;")
+        label_dica_vista.setObjectName("dicaPainel")
         label_dica_vista.setWordWrap(True)
         coluna.addWidget(label_dica_vista)
 
@@ -1204,47 +2205,383 @@ class EditorRede(QWidget):
 
         # ---------------- Lista de elementos (direita) ----------------
         painel_lista = QFrame()
-        painel_lista.setFrameShape(QFrame.Shape.StyledPanel)
-        painel_lista.setFixedWidth(260)
+        painel_lista.setObjectName("painelLista")
+        painel_lista.setFrameShape(QFrame.Shape.NoFrame)
+        painel_lista.setFixedWidth(290)
         self.painel_lista = painel_lista
 
         coluna_lista = QVBoxLayout(painel_lista)
-        coluna_lista.setContentsMargins(6, 8, 6, 8)
-        coluna_lista.setSpacing(4)
+        coluna_lista.setContentsMargins(10, 12, 10, 12)
+        coluna_lista.setSpacing(5)
+
+        # O cartão de propriedades fica no topo, acima da lista: é
+        # resposta ao clique, e o olho já está subindo do diagrama. A
+        # árvore vem depois, com peso, porque é ela que rola.
+        coluna_lista.addWidget(self._montar_card_propriedades())
 
         label_lista = QLabel("Elementos da rede")
         fonte_lista = fonte_padrao(10)
         fonte_lista.setBold(True)
         label_lista.setFont(fonte_lista)
+        label_lista.setObjectName("tituloPainel")
         coluna_lista.addWidget(label_lista)
 
         label_dica = QLabel("(duplo clique para editar,\ninclusive trocar o tipo)")
         fonte_dica = fonte_padrao(8)
         fonte_dica.setItalic(True)
         label_dica.setFont(fonte_dica)
-        label_dica.setStyleSheet("color: gray;")
+        label_dica.setObjectName("dicaPainel")
         coluna_lista.addWidget(label_dica)
 
         self.tree = QTreeWidget()
         self.tree.setColumnCount(3)
         self.tree.setHeaderLabels(["Nome", "Tipo", "Detalhes"])
         self.tree.setColumnWidth(0, 100)
-        self.tree.setColumnWidth(1, 70)
-        self.tree.setColumnWidth(2, 90)
+        self.tree.setColumnWidth(1, 76)
+        self.tree.setColumnWidth(2, 92)
         self.tree.setRootIsDecorated(True)
+        self.tree.setAlternatingRowColors(True)
         self.tree.setSelectionMode(QTreeWidget.SelectionMode.ExtendedSelection)
         self.tree.setFont(fonte_padrao(9))
+        self.tree.setStyleSheet(self.ESTILO_ARVORE)
         self.tree.itemDoubleClicked.connect(self._ao_dar_duplo_clique)
         coluna_lista.addWidget(self.tree, 1)
 
         coluna_lista.addWidget(self._botao_painel(
-            "Excluir selecionado(s)", self._excluir_selecionado, fundo="#ffcdd2"))
+            "Excluir selecionado(s)", self._excluir_selecionado,
+            variante="perigo"))
+
+        dica_selecao = QLabel(
+            "Clique num elemento para ver as propriedades; "
+            "duplo clique para editar.")
+        fonte_dica_selecao = fonte_padrao(8)
+        fonte_dica_selecao.setItalic(True)
+        dica_selecao.setFont(fonte_dica_selecao)
+        dica_selecao.setObjectName("dicaPainel")
+        dica_selecao.setWordWrap(True)
+        dica_selecao.setFixedHeight(28)
+        coluna_lista.addWidget(dica_selecao)
 
         layout_principal.addWidget(painel_lista)
+
+        # A folha de estilo dos painéis entra depois de os widgets
+        # existirem: o Qt resolve os seletores por objectName em tempo de
+        # pintura, não na criação, mas aplicar no fim deixa a montagem
+        # numa passada só.
+        self.setStyleSheet(self.ESTILO_PAINEL)
+
+        # Os widgets flutuantes dependem de a vista já pertencer ao
+        # layout: o reposicionamento usa a geometria do viewport, que só
+        # existe depois da primeira passada de layout.
+        self._montar_widgets_flutuantes()
 
     # ------------------------------------------------------------------ #
     # Helpers de UI (estilo único, paleta institucional)
     # ------------------------------------------------------------------ #
+    # Estilo das pílulas flutuantes. Fica em constante de módulo porque
+    # a barra de ferramentas e a de status compartilham exatamente a
+    # mesma linguagem: fundo branco quase opaco, borda fina de um tom
+    # abaixo do branco e cantos totalmente arredondados. Duas folhas de
+    # estilo separadas divergiriam no primeiro ajuste.
+    ESTILO_PILULA = (
+        "QFrame#pilula {"
+        " background-color: rgba(255, 255, 255, 242);"
+        " border: 1px solid #e5e7eb;"
+        " border-radius: 18px;"
+        "}"
+    )
+    ESTILO_BOTAO_PILULA = (
+        "QToolButton {"
+        " border: none;"
+        " border-radius: 14px;"
+        " background: transparent;"
+        " padding: 4px 8px;"
+        " color: #334155;"
+        "}"
+        "QToolButton:hover { background-color: #f3f4f6; }"
+        "QToolButton:checked {"
+        f" background-color: {COR_ACCENT_MARCA};"
+        " color: white;"
+        "}"
+        "QToolButton:pressed { background-color: #e5e7eb; }"
+    )
+
+    # ------------------------------------------------------------------ #
+    # Tema dos painéis laterais
+    # ------------------------------------------------------------------ #
+    # A folha fica nos widgets do editor (painéis, árvore, botões) e não
+    # na aplicação: o resto do programa tem o próprio visual, e um QSS
+    # global vazaria para janelas que ninguém pediu para pintar.
+    #
+    # As cores vêm da mesma família de cinzas usada no resto da
+    # interface (#f8fafc de fundo, #e2e8f0 de contorno, #64748b para
+    # texto secundário). São tons da borda azul do cinza: com o azul
+    # institucional ao lado, funcionam como neutros e não como uma cor a
+    # mais competindo com a rede desenhada.
+    ESTILO_PAINEL = (
+        "QFrame#painelLateral { background-color: #f8fafc; border: none;"
+        " border-right: 1px solid #e9eef5; }"
+        "QFrame#painelLista { background-color: #f8fafc; border: none;"
+        " border-left: 1px solid #e9eef5; }"
+        "QLabel#dicaPainel { color: #94a3b8; }"
+        "QLabel#tituloSecao { color: #64748b; font-weight: 600;"
+        " letter-spacing: 1px; }"
+        "QLabel#tituloPainel { color: #1e293b; font-weight: 600; }"
+        "QRadioButton { color: #475569; spacing: 5px; }"
+    )
+
+    # Botão de ação do painel. Três variantes, declaradas como chave de
+    # propriedade do Qt para o QSS escolher: "primario" (a ação que
+    # interessa na tela: simular), "perigo" (exclusão) e neutro (o
+    # padrão, que é a maioria).
+    ESTILO_BOTAO_PAINEL = (
+        "QPushButton {"
+        " background-color: #ffffff;"
+        " border: 1px solid #e2e8f0;"
+        " border-radius: 8px;"
+        " padding: 5px 8px;"
+        " color: #334155;"
+        " text-align: left;"
+        "}"
+        "QPushButton:hover { background-color: #f1f5f9; border-color: #cbd5e1; }"
+        "QPushButton:pressed { background-color: #e2e8f0; }"
+        "QPushButton[acao=\"primario\"] {"
+        f" background-color: {COR_ACCENT_MARCA};"
+        " border: 1px solid " + COR_ACCENT_MARCA + ";"
+        " color: #ffffff; font-weight: 600; text-align: center;"
+        "}"
+        "QPushButton[acao=\"primario\"]:hover { background-color: #00356b; }"
+        "QPushButton[acao=\"perigo\"] { color: #b91c1c; text-align: center; }"
+        "QPushButton[acao=\"perigo\"]:hover {"
+        " background-color: #fef2f2; border-color: #fecaca; }"
+    )
+
+    # Árvore de elementos. A seleção usa o azul institucional em versão
+    # clara, com a barra lateral de acento que os editores atuais
+    # desenham — a cor cheia no fundo escurece as três colunas de texto.
+    ESTILO_ARVORE = (
+        "QTreeWidget {"
+        " background-color: #ffffff;"
+        " border: 1px solid #e2e8f0;"
+        " border-radius: 10px;"
+        " padding: 2px;"
+        " alternate-background-color: #f8fafc;"
+        " outline: none;"
+        "}"
+        "QTreeWidget::item { padding: 3px 2px; border-radius: 5px; }"
+        "QTreeWidget::item:hover { background-color: #eef2f7; }"
+        "QTreeWidget::item:selected {"
+        " background-color: #e8f0fa; color: #004587; }"
+        "QHeaderView::section {"
+        " background-color: #ffffff; border: none;"
+        " border-bottom: 1px solid #e2e8f0;"
+        " padding: 4px 2px; color: #94a3b8; font-weight: 600; }"
+    )
+
+    # Cartão de propriedades. Borda fina, canto de 10 px e fundo branco
+    # contra o cinza do painel: é o mesmo recurso do cartão do diagrama,
+    # aplicado ao widget — o objeto selecionado fica suspenso sobre a
+    # superfície da lista.
+    ESTILO_CARD_PROPS = (
+        "QFrame#cardProps {"
+        " background-color: #ffffff;"
+        " border: 1px solid #e2e8f0;"
+        " border-radius: 10px;"
+        "}"
+    )
+    ESTILO_CORPO_PROPS = "color: #475569;"
+    ESTILO_TITULO_CARD = "color: #0f172a; font-weight: 600;"
+    ESTILO_TAG_CARD = (
+        f"color: {COR_ACCENT_MARCA}; background-color: #eef4fb;"
+        " border-radius: 6px; padding: 1px 6px; font-weight: 600;"
+    )
+    ESTILO_VAZIO_CARD = "color: #94a3b8;"
+
+    def _montar_widgets_flutuantes(self):
+        """Cria a pílula de ferramentas (topo) e a de status (rodapé).
+
+        Os dois são widgets filhos da VISTA, e não itens de cena: item de
+        cena sofreria o zoom e o pan junto com o diagrama, e a barra de
+        ferramentas iria embora na primeira rolagem.
+
+        A escolha de tirar os controles do painel esquerdo tem um custo
+        reconhecido — num diagrama denso a pílula cobre uma faixa de 44
+        px no topo. Ela é centralizada e estreita, e a área de desenho
+        útil continua bem maior do que o painel consumia.
+        """
+        pilula = QFrame(self.view)
+        pilula.setObjectName("pilula")
+        pilula.setStyleSheet(self.ESTILO_PILULA)
+        linha = QHBoxLayout(pilula)
+        linha.setContentsMargins(6, 4, 6, 4)
+        linha.setSpacing(2)
+
+        def _botao(texto, dica, callback, marcavel=False):
+            botao = QToolButton(pilula)
+            botao.setText(texto)
+            botao.setToolTip(dica)
+            botao.setCursor(Qt.CursorShape.PointingHandCursor)
+            botao.setCheckable(marcavel)
+            botao.setStyleSheet(self.ESTILO_BOTAO_PILULA)
+            botao.setMinimumHeight(28)
+            botao.setMinimumWidth(28)
+            if marcavel:
+                botao.toggled.connect(callback)
+            else:
+                botao.clicked.connect(lambda _c=False: callback())
+            linha.addWidget(botao)
+            return botao
+
+        def _separador():
+            risco = QFrame(pilula)
+            risco.setFrameShape(QFrame.Shape.VLine)
+            risco.setFrameShadow(QFrame.Shadow.Plain)
+            risco.setStyleSheet("color: #e5e7eb;")
+            risco.setFixedHeight(20)
+            linha.addWidget(risco)
+
+        self.botao_zoom_menos = _botao(
+            "−", "Reduzir a vista", self.view.reduzir)
+        self.label_zoom = QLabel("100%", pilula)
+        self.label_zoom.setFont(fonte_padrao(9))
+        self.label_zoom.setStyleSheet("color: #334155; border: none;")
+        self.label_zoom.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Largura fixa: sem ela o percentual pularia de 3 para 4 dígitos
+        # e empurraria os botões vizinhos a cada passo de zoom.
+        self.label_zoom.setFixedWidth(44)
+        linha.addWidget(self.label_zoom)
+        self.botao_zoom_mais = _botao(
+            "＋", "Ampliar a vista", self.view.ampliar)
+
+        _separador()
+        self.botao_enquadrar = _botao(
+            "⤢", "Reenquadra o diagrama inteiro na janela.\n"
+                 "Não refaz o layout da rede.", self.view.enquadrar_tudo)
+        self.botao_zoom_janela = _botao(
+            "⧉", "Marque e arraste um retângulo sobre a área desejada.\n"
+                 "Esc cancela o modo.",
+            self.view.definir_modo_zoom_janela, marcavel=True)
+        # A vista sai do modo por conta própria ao concluir o retângulo
+        # ou no Esc. Sem o caminho de volta, o botão continuaria
+        # marcado anunciando um modo que já não existe.
+        self.view.zoom_janela_encerrado.connect(self._ao_encerrar_zoom_janela)
+
+        _separador()
+        self.botao_mostrar_todos = _botao(
+            "Aa", "Exibe os nomes de todas as barras, ramos e elementos.",
+            lambda: self._ao_alternar_rotulos(True))
+        self.botao_ocultar_todos = _botao(
+            "Aa", "Esconde todos os textos, para enxergar só a topologia.\n"
+                  "As barras continuam clicáveis: clique numa elipse para ver\n"
+                  "os dados dela no cartão, ou no texto dela para reexibi-lo.",
+            lambda: self._ao_alternar_rotulos(False))
+        # Mesmo rótulo, leitura diferente: o "Aa" cheio é mostrar, o
+        # vazado é ocultar. Um ícone só repetido obrigaria a ler o
+        # tooltip toda vez.
+        self.botao_mostrar_todos.setStyleSheet(
+            self.ESTILO_BOTAO_PILULA
+            + "QToolButton { font-weight: 700; }")
+        self.botao_ocultar_todos.setStyleSheet(
+            self.ESTILO_BOTAO_PILULA
+            + "QToolButton { color: #94a3b8; }")
+
+        sombra = QGraphicsDropShadowEffect(pilula)
+        sombra.setBlurRadius(16)
+        sombra.setColor(QColor(15, 23, 42, 30))
+        sombra.setOffset(0, 2)
+        pilula.setGraphicsEffect(sombra)
+        pilula.adjustSize()
+        self._barra_ferramentas = pilula
+
+        # ---- Barra de status (rodapé, alinhada à esquerda) ---- #
+        status = QFrame(self.view)
+        status.setObjectName("pilula")
+        status.setStyleSheet(self.ESTILO_PILULA)
+        linha_status = QHBoxLayout(status)
+        linha_status.setContentsMargins(10, 2, 10, 2)
+        self.label_status = QLabel("", status)
+        self.label_status.setFont(fonte_padrao(8))
+        self.label_status.setStyleSheet("color: #64748b; border: none;")
+        linha_status.addWidget(self.label_status)
+        sombra_status = QGraphicsDropShadowEffect(status)
+        sombra_status.setBlurRadius(12)
+        sombra_status.setColor(QColor(15, 23, 42, 22))
+        sombra_status.setOffset(0, 1)
+        status.setGraphicsEffect(sombra_status)
+        status.adjustSize()
+        self._barra_status = status
+
+        # A pílula de ferramentas é quem recebe o percentual; o mesmo
+        # aviso alimenta o rodapé, porque os dois mostram a escala.
+        self.view.ao_mudar_escala = self._ao_mudar_escala
+        self.view.ao_redimensionar = self._posicionar_widgets_flutuantes
+        self._posicionar_widgets_flutuantes()
+
+    def _ao_mudar_escala(self, escala: float) -> None:
+        """Atualiza o percentual exibido na pílula e no rodapé."""
+        if hasattr(self, "label_zoom"):
+            self.label_zoom.setText(f"{escala * 100:.0f}%")
+        self._atualizar_status()
+
+    def _atualizar_status(self):
+        """Reescreve o texto da barra de status com os números da rede.
+
+        A contagem vem do MODELO, não dos itens da cena: elemento sem
+        barra válida não é desenhado, e anunciá-lo no rodapé daria um
+        total que não corresponde ao que está à vista.
+        """
+        if getattr(self, "label_status", None) is None:
+            return
+        rede = getattr(self, "rede", None)
+        if rede is None:
+            self.label_status.setText("")
+            return
+        zoom = self.view._escala_atual() * 100 if hasattr(self, "view") else 100
+        self.label_status.setText(
+            f"{len(rede.barras)} barras  ·  {len(rede.ramos)} ramos  ·  "
+            f"{len(rede.derivacoes)} elementos  ·  zoom {zoom:.0f}%")
+        self._barra_status.adjustSize()
+        self._posicionar_widgets_flutuantes()
+
+    def _posicionar_widgets_flutuantes(self):
+        """Centraliza a pílula no topo e ancora o status no rodapé.
+
+        Chamado no resize da vista e em toda mudança de conteúdo. A
+        margem de 12 px dá o afastamento das bordas; sem ela a pílula
+        encostaria na barra de rolagem e a sombra sumiria sob o quadro.
+        """
+        if getattr(self, "_barra_ferramentas", None) is None:
+            return
+        margem = 12
+        largura_pai = self.view.viewport().width()
+        altura_pai = self.view.viewport().height()
+        if largura_pai <= 0 or altura_pai <= 0:
+            return
+        # Numa vista estreita a pílula pode ser mais larga que o espaço
+        # disponível. Centrar sem checar jogaria o excesso para fora dos
+        # dois lados e o último botão ficaria inalcançável. O limite de
+        # largura (e não uma largura fixa) deixa o layout interno se
+        # comprimir e redistribuir os botões dentro do que cabe.
+        disponivel = max(0, largura_pai - 2 * margem)
+        self._barra_ferramentas.setMaximumWidth(disponivel)
+        self._barra_ferramentas.adjustSize()
+        self._barra_ferramentas.setMaximumWidth(16777215)
+        largura_ferramentas = min(
+            self._barra_ferramentas.sizeHint().width(), disponivel)
+        x = max(margem, (largura_pai - largura_ferramentas) // 2)
+        self._barra_ferramentas.move(x, margem)
+        self._barra_ferramentas.raise_()
+        if getattr(self, "_barra_status", None) is not None:
+            altura_status = self._barra_status.sizeHint().height()
+            # Mesmo limite de largura da pílula de ferramentas: o texto
+            # de status numera a rede e cresce com ela, e numa vista
+            # estreita ele sairia pela borda direita.
+            self._barra_status.setMaximumWidth(
+                max(0, largura_pai - 2 * margem))
+            self._barra_status.adjustSize()
+            self._barra_status.move(margem, altura_pai - altura_status - margem)
+            self._barra_status.raise_()
+
     def _ao_encerrar_zoom_janela(self):
         # Desmarca o botão quando a vista encerra o modo por conta
         # própria. O toggled resultante chama de volta o método da vista,
@@ -1254,50 +2591,80 @@ class EditorRede(QWidget):
         if self.botao_zoom_janela.isChecked():
             self.botao_zoom_janela.setChecked(False)
 
-    def _botao_painel(self, texto, callback, fundo: str = None) -> QPushButton:
-        # TRANSPARÊNCIA TÉCNICA: nos botões com fundo pastel fixo, a cor
-        # do texto é declarada junto. Sem isso o texto herdava a
-        # QPalette do sistema — no tema escuro do Windows, ButtonText é
-        # branco — e sumia sobre os fundos claros. O ramo sem fundo
-        # continua intocado de propósito: ali o fundo é o nativo, e ele
-        # já acompanha a paleta.
+    def _botao_painel(self, texto, callback, variante: str = None) -> QPushButton:
+        """Botão de ação dos painéis.
+
+        `variante` escolhe a aparência pela propriedade dinâmica `acao`,
+        que a folha de estilo do painel lê: "primario" pinta o botão de
+        azul institucional e "perigo" pinta o texto de vermelho. O
+        restante é o botão neutro.
+
+        A cor do texto acompanha cada variante na própria folha de
+        estilo. Declarar só o fundo deixava o texto herdar a QPalette do
+        sistema — branco no tema escuro do Windows — e sumir em cima
+        dos fundos claros.
+        """
         botao = QPushButton(texto)
         botao.setFont(fonte_padrao(10))
-        botao.setMinimumHeight(26)
+        botao.setMinimumHeight(28)
         botao.setCursor(Qt.CursorShape.PointingHandCursor)
-        if fundo:
-            botao.setStyleSheet(
-                f"QPushButton {{ background-color: {fundo}; color: #1B1B1B;"
-                f" border: 1px solid {COR_ACCENT_MARCA}; border-radius: 4px;"
-                f" padding: 3px 6px; }}"
-                f"QPushButton:hover {{ background-color: {_escurecer(fundo, 0.92)}; }}")
-        else:
-            botao.setStyleSheet(
-                f"QPushButton {{ border: 1px solid {COR_ACCENT_MARCA};"
-                f" border-radius: 4px; padding: 3px 6px; }}"
-                f"QPushButton:hover {{ background-color: #e8eef5; }}")
+        botao.setStyleSheet(self.ESTILO_BOTAO_PAINEL)
+        if variante:
+            botao.setProperty("acao", variante)
         botao.clicked.connect(lambda _checked=False: callback())
         return botao
 
     def _label_secao(self, texto: str) -> QLabel:
-        """Título de seção do painel: pequeno, itálico e centralizado."""
-        label = QLabel(texto)
+        """Título de seção do painel.
+
+        Caixa alta discreta com espaçamento entre letras, em cinza
+        azulado — o mesmo tratamento que os editores de diagrama usam
+        para separar grupos de ferramentas sem desenhar uma linha.
+        """
+        label = QLabel(texto.upper())
         fonte = fonte_padrao(8)
-        fonte.setItalic(True)
+        fonte.setBold(True)
         label.setFont(fonte)
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet("color: #444444;")
+        label.setObjectName("tituloSecao")
+        # Margem superior: a seção respira em relação ao botão de cima.
+        label.setStyleSheet("margin-top: 6px;")
         return label
 
     def _ao_mudar_orientacao(self, _marcado: bool = False):
-        """Troca vertical/horizontal e redesenha.
+        """Troca vertical/horizontal e refaz o layout do zero.
 
-        O layout é integralmente recalculado, então não há posição antiga
-        a preservar — inclusive os overrides de arraste continuam
-        valendo, porque são consultados por nome no redesenhar().
+        A troca de orientação é o único gesto que devolve o diagrama ao
+        arranjo automático, e por isso descarta as posições salvas. Manter
+        um arranjo montado à mão debaixo de uma orientação diferente
+        misturaria dois referenciais: as barras salvas ficariam onde estavam
+        e as demais migrariam, com as linhas atravessando o desenho.
+
+        Quem quiser guardar o arranjo não troca a orientação; enquadrar e
+        dar zoom não mexem em posição nenhuma.
         """
         self.orientacao = "vertical" if self.radio_vertical.isChecked() else "horizontal"
+        self._limpar_posicoes_salvas()
         self.redesenhar()
+
+    def _limpar_posicoes_salvas(self):
+        """Devolve barras e derivações ao layout automático.
+
+        Zera as posições no modelo e no espelho de tela, e grava, para
+        que o próximo carregamento já encontre o arranjo recalculado.
+        """
+        for barra in self.rede.barras.values():
+            barra.posicao = None
+        for derivacao in self.rede.derivacoes.values():
+            derivacao.posicao = None
+        self._posicoes_derivacoes.clear()
+        if self.projeto:
+            caminho = os.path.join(self.projeto.caminho_rede, "rede.json")
+            try:
+                self.rede.salvar_json(caminho)
+            except OSError as erro:
+                print(
+                    f"Aviso: posições não limpas em {caminho}: {erro}",
+                    file=sys.stderr)
 
     # ------------------------------------------------------------------ #
     # Curvas características (daily / duty / yearly) — botões 📈
@@ -1902,6 +3269,414 @@ class EditorRede(QWidget):
         return base + self._campos_tecnicos_derivacao(tipo)
 
     # ------------------------------------------------------------------ #
+    # Inspetor de propriedades (clique num elemento)
+    # ------------------------------------------------------------------ #
+    def _montar_card_propriedades(self) -> QWidget:
+        """Monta o cartão fixo do topo do painel direito.
+
+        O cartão nasce no estado vazio e é preenchido na seleção. A
+        estrutura é fixa — título, linha de tipo, corpo e linha de ações
+        — e só o conteúdo muda; reconstruir o widget a cada clique
+        causaria o piscar que o usuário percebe como lentidão.
+        """
+        card = QFrame()
+        card.setObjectName("cardProps")
+        card.setStyleSheet(self.ESTILO_CARD_PROPS)
+
+        dentro = QVBoxLayout(card)
+        dentro.setContentsMargins(10, 8, 10, 8)
+        dentro.setSpacing(4)
+
+        linha_titulo = QHBoxLayout()
+        linha_titulo.setSpacing(6)
+
+        titulo = QLabel("Propriedades")
+        fonte_titulo = fonte_padrao(10)
+        fonte_titulo.setBold(True)
+        titulo.setFont(fonte_titulo)
+        titulo.setObjectName("tituloCard")
+        titulo.setStyleSheet(self.ESTILO_TITULO_CARD)
+        linha_titulo.addWidget(titulo)
+        linha_titulo.addStretch(1)
+
+        # A etiqueta do tipo só aparece na seleção; no estado vazio ela
+        # fica escondida em vez de exibir um rótulo sem valor.
+        etiqueta = QLabel("")
+        fonte_etiqueta = fonte_padrao(8)
+        fonte_etiqueta.setBold(True)
+        etiqueta.setFont(fonte_etiqueta)
+        etiqueta.setStyleSheet(self.ESTILO_TAG_CARD)
+        etiqueta.setVisible(False)
+        linha_titulo.addWidget(etiqueta)
+
+        dentro.addLayout(linha_titulo)
+
+        corpo = QLabel(TEXTO_SEM_SELECAO)
+        corpo.setFont(fonte_padrao(9))
+        corpo.setWordWrap(True)
+        corpo.setTextFormat(Qt.TextFormat.RichText)
+        corpo.setAlignment(Qt.AlignmentFlag.AlignTop)
+        corpo.setStyleSheet(self.ESTILO_VAZIO_CARD)
+        dentro.addWidget(corpo)
+
+        # Ações ficam num widget à parte para sumirem juntas no estado
+        # vazio — dois botões soltos logo abaixo de "selecione um
+        # elemento" seriam um convite a clicar no que não existe.
+        acoes = QWidget()
+        linha_acoes = QHBoxLayout(acoes)
+        linha_acoes.setContentsMargins(0, 2, 0, 0)
+        linha_acoes.setSpacing(6)
+        botao_editar = QPushButton("✏ Editar")
+        botao_editar.setCursor(Qt.CursorShape.PointingHandCursor)
+        botao_editar.setStyleSheet(self.ESTILO_BOTAO_PAINEL)
+        botao_editar.clicked.connect(self._editar_selecionado_no_mapa)
+        botao_excluir = QPushButton("🗑 Excluir")
+        botao_excluir.setCursor(Qt.CursorShape.PointingHandCursor)
+        botao_excluir.setProperty("acao", "perigo")
+        botao_excluir.setStyleSheet(self.ESTILO_BOTAO_PAINEL)
+        botao_excluir.clicked.connect(self._excluir_selecionado_no_mapa)
+        linha_acoes.addWidget(botao_editar)
+        linha_acoes.addWidget(botao_excluir)
+        acoes.setVisible(False)
+        dentro.addWidget(acoes)
+
+        self._card_propriedades = card
+        self._rotulo_props_titulo = titulo
+        self._rotulo_props_tag = etiqueta
+        self._corpo_props = corpo
+        self._acoes_props = acoes
+        return card
+
+    def atualizar_card_propriedades(self) -> None:
+        """Reescreve o cartão a partir da seleção corrente do diagrama.
+
+        A leitura é feita no modelo vivo, e não nos itens de cena: o
+        mesmo clique que seleciona pode ter acontecido logo depois de
+        uma edição, e o resumo guardado no item já estaria velho.
+        """
+        if self._card_propriedades is None:
+            return
+        corpo = self._corpo_props
+        tag = self._rotulo_props_tag
+        selecao = self._selecao_mapa
+
+        dados = self._descricao_selecao(selecao) if selecao else None
+        if not dados:
+            corpo.setText(f"<span style='color:#94a3b8'>{TEXTO_SEM_SELECAO}</span>")
+            corpo.setStyleSheet(self.ESTILO_VAZIO_CARD)
+            tag.setVisible(False)
+            self._acoes_props.setVisible(False)
+            return
+
+        nome, tipo, linhas, editavel = dados
+        corpo.setText("<br>".join(linhas))
+        corpo.setStyleSheet(self.ESTILO_CORPO_PROPS)
+        tag.setText(tipo)
+        tag.setVisible(bool(tipo))
+        # Grupo BESS não tem formulário próprio de propriedades — ele é
+        # editado pelo fluxo composto, e o botão de excluir já cobre o
+        # conjunto inteiro. Mostrar "Editar" ali abriria o formulário
+        # errado.
+        self._acoes_props.setVisible(editavel)
+
+    def _descricao_selecao(self, selecao):
+        """Devolve (nome, tipo, linhas_html, editavel) do que está selecionado.
+
+        Devolve None quando o alvo não existe mais no modelo — caso
+        frequente após uma exclusão em cascata, em que a seleção
+        sobrevive ao que selecionou.
+        """
+        if not selecao:
+            return None
+        categoria, nome = selecao
+
+        if categoria == "barra":
+            barra = self.rede.barras.get(nome)
+            if barra is None:
+                return None
+            return (nome, "Barra", self._linhas_props_barra(nome, barra), True)
+
+        if categoria == "ramo":
+            ramo = self.rede.ramos.get(nome)
+            if ramo is None:
+                return None
+            return (nome, ramo.tipo, self._linhas_props_ramo(ramo), True)
+
+        if categoria == "derivacao":
+            der = self.rede.derivacoes.get(nome)
+            if der is None:
+                return None
+            return (nome, der.tipo, self._linhas_props_derivacao(der), True)
+
+        if categoria == "grupobess":
+            membros = self.rede.obter_grupo(nome)
+            if not membros:
+                return None
+            linhas = [f"<b>{len(membros)}</b> elemento(s) no conjunto"]
+            for membro in sorted(membros.values(), key=lambda d: d.nome):
+                linhas.append(f"• {membro.tipo} {membro.nome}")
+            return (nome, "Sistema BESS", linhas, False)
+
+        return None
+
+    def _linhas_props_barra(self, nome: str, barra) -> List[str]:
+        """Linhas do cartão para uma barra: tensão, ramos, elementos e carga."""
+        linhas = [f"Tensão de base: <b>{barra.kv_base} kV</b>"]
+
+        incidentes = [r for r in self.rede.ramos.values()
+                      if r.bus1 == nome or r.bus2 == nome]
+        rotulo_ramos = "ramo incidente" if len(incidentes) == 1 else "ramos incidentes"
+        linhas.append(f"<b>{len(incidentes)}</b> {rotulo_ramos}")
+
+        penduradas = sorted(
+            (d for d in self.rede.derivacoes.values() if d.bus1 == nome),
+            key=lambda d: d.nome)
+        if penduradas:
+            linhas.append("<br><b>Conectados</b>")
+            for der in penduradas:
+                potencia = _potencia_do_elemento(der)
+                texto = f"• {der.tipo} {der.nome}"
+                if potencia:
+                    texto += f" — {potencia}"
+                linhas.append(texto)
+
+        cargas = [d for d in penduradas if d.tipo == "Load"]
+        if cargas:
+            try:
+                kw = _somar_parametro(cargas, "kw")
+                kvar = _somar_parametro(cargas, "kvar")
+            except (TypeError, ValueError):
+                kw = kvar = None
+            if kw is not None:
+                total = f"Carga total: <b>{_formatar_potencia(kw)} kW</b>"
+                if kvar is not None:
+                    total += f" / {_formatar_potencia(kvar)} kvar"
+                linhas.append(total)
+
+        medidores = [d for d in self.rede.derivacoes.values()
+                     if d.tipo == "EnergyMeter" and d.bus1 == nome]
+        for medidor in medidores:
+            alvo = medidor.parametros.get("element", "?")
+            linhas.append(f"Medidor <b>{medidor.nome}</b> em {alvo}")
+
+        return linhas
+
+    def _linhas_props_ramo(self, ramo) -> List[str]:
+        """Linhas do cartão para um ramo, com os parâmetros que ele tiver."""
+        linhas = [
+            f"Liga <b>{ramo.bus1}</b> → <b>{ramo.bus2}</b>",
+        ]
+        if ramo.tipo == "Switch":
+            estado = ramo.parametros.get("fechada", "yes")
+            linhas.append("Estado inicial: "
+                          + ("<b>fechada</b>" if str(estado).lower() == "yes"
+                             else "<b>aberta</b>"))
+        elif ramo.tipo == "Line":
+            comprimento = ramo.parametros.get("length")
+            unidade = ramo.parametros.get("units", "km")
+            if comprimento not in (None, ""):
+                linhas.append(f"Comprimento: <b>{comprimento} {unidade}</b>")
+            linecode = ramo.parametros.get("linecode")
+            if linecode not in (None, "", "Nenhuma"):
+                linhas.append(f"Linecode: <b>{linecode}</b>")
+            else:
+                r1 = ramo.parametros.get("r1")
+                x1 = ramo.parametros.get("x1")
+                if r1 not in (None, "") or x1 not in (None, ""):
+                    linhas.append(f"R1 = {r1 or '—'} / X1 = {x1 or '—'} Ω/{unidade}")
+        elif ramo.tipo == "Transformer":
+            kv1 = ramo.parametros.get("kv1", "—")
+            kv2 = ramo.parametros.get("kv2", "—")
+            linhas.append(f"Tensão: <b>{kv1} / {kv2} kV</b>")
+            kva = ramo.parametros.get("kva")
+            if kva not in (None, ""):
+                linhas.append(f"Potência: <b>{kva} kVA</b>")
+            xhl = ramo.parametros.get("xhl")
+            if xhl not in (None, ""):
+                linhas.append(f"%XHL: {xhl}")
+            conexoes = (ramo.parametros.get("conn1"), ramo.parametros.get("conn2"))
+            if all(conexoes):
+                linhas.append(f"Conexões: {conexoes[0]} → {conexoes[1]}")
+        fases = ramo.parametros.get("phases")
+        if fases not in (None, ""):
+            linhas.append(f"Fases: {fases}")
+        return linhas
+
+    def _linhas_props_derivacao(self, der) -> List[str]:
+        """Linhas do cartão para um elemento conectado a uma barra."""
+        linhas = []
+        if der.bus1:
+            linhas.append(f"Barra: <b>{der.bus1}</b>")
+        else:
+            linhas.append("Sem barra própria (controlador)")
+
+        if der.tipo == "EnergyMeter":
+            alvo = der.parametros.get("element", "—")
+            terminal = der.parametros.get("terminal", "—")
+            linhas.append(f"Mede: <b>{alvo}</b> (terminal {terminal})")
+        else:
+            potencia = _potencia_do_elemento(der)
+            if potencia:
+                linhas.append(f"Potência: <b>{potencia}</b>")
+
+        # O resumo de potência acima já cobre o que o usuário mais
+        # procura. Repetir kW/kvar linha a linha embaixo dele enche o
+        # cartão com a mesma informação dita duas vezes — daí a lista de
+        # chaves que ficam de fora.
+        chaves_ja_usadas = {
+            "element", "terminal",
+            # cobertas pelo resumo de _potencia_do_elemento
+            "kw", "kvar", "kva", "pmpp", "kwrated", "kwhrated", "kv",
+        }
+        for chave, rotulo, _tipo_campo, *_ in CAMPOS_DERIVACAO_PARAMS.get(der.tipo, []):
+            if chave in chaves_ja_usadas:
+                continue
+            valor = der.parametros.get(chave)
+            if valor in (None, ""):
+                continue
+            linhas.append(f"{rotulo}: <b>{valor}</b>")
+
+        curvas = [c for c in ("daily", "duty", "yearly")
+                  if der.parametros.get(c) not in (None, "", "Nenhuma")]
+        if curvas:
+            nomes = ", ".join(f"{c} ({der.parametros[c]})" for c in curvas)
+            linhas.append(f"Curvas: <b>{nomes}</b>")
+
+        if der.grupo:
+            linhas.append(f"Sistema BESS: <b>{der.grupo}</b>")
+        return linhas
+
+    def _selecionar_no_mapa(self, categoria: str, nome: str) -> None:
+        """Seleciona um elemento no diagrama e atualiza o cartão.
+
+        Clicar no mesmo elemento outra vez desfaz a seleção — é o mesmo
+        padrão do cartão flutuante da barra, e evita a sensação de que
+        o painel "grudou" no último clique.
+        """
+        referencia = (categoria, nome)
+        if self._selecao_mapa == referencia:
+            self.limpar_selecao_mapa()
+            return
+        self._selecao_mapa = referencia
+        self._marcar_itens_da_selecao()
+        self.atualizar_card_propriedades()
+
+    def limpar_selecao_mapa(self) -> None:
+        """Desfaz a seleção do diagrama. Idempotente."""
+        if self._selecao_mapa is None and not self._itens_selecionados:
+            return
+        self._selecao_mapa = None
+        for item in self._itens_selecionados:
+            try:
+                item.setSelected(False)
+            except RuntimeError:
+                # Item já destruído pelo redesenhar. Não há o que
+                # desmarcar, e o except evita derrubar o editor por
+                # causa de um ponteiro morto.
+                pass
+        self._itens_selecionados = []
+        self.atualizar_card_propriedades()
+
+    def _marcar_itens_da_selecao(self) -> None:
+        """Aplica o estado de seleção aos itens de cena correspondentes.
+
+        A marcação é feita procurando os itens com a mesma identidade da
+        seleção. A cena é pequena (dezenas de itens) e a busca só
+        acontece no clique — indexar por identidade custaria mais
+        memória do que economiza.
+        """
+        for item in self._itens_selecionados:
+            try:
+                item.setSelected(False)
+            except RuntimeError:
+                pass
+        self._itens_selecionados = []
+        if self._selecao_mapa is None:
+            return
+        categoria, nome = self._selecao_mapa
+
+        for item in self.cena.items():
+            if categoria == "barra" and isinstance(item, _BarraItem):
+                if item.nome_barra == nome:
+                    item.setSelected(True)
+                    self._itens_selecionados.append(item)
+            elif categoria == "derivacao" and isinstance(item, _DerivacaoItem):
+                if item.nome_derivacao == nome:
+                    item.setSelected(True)
+                    self._itens_selecionados.append(item)
+            elif categoria == "ramo" and isinstance(item, _LinhaRamoItem):
+                if item.nome_ramo == nome:
+                    item.setSelected(True)
+                    self._itens_selecionados.append(item)
+
+    def _editar_selecionado_no_mapa(self) -> None:
+        """Abre o formulário do elemento selecionado — mesmo caminho do
+        duplo clique na árvore, para não existirem duas regras de edição."""
+        if self._selecao_mapa is None:
+            return
+        categoria, nome = self._selecao_mapa
+        if categoria == "barra":
+            self._editar_barra(nome)
+        elif categoria == "ramo":
+            self._editar_ramo(nome)
+        elif categoria == "derivacao":
+            der = self.rede.derivacoes.get(nome)
+            if der and der.tipo == "InvControl":
+                self._editar_invcontrol(nome)
+            elif der and der.tipo == "EnergyMeter":
+                self._editar_medidor(nome)
+            else:
+                self._editar_derivacao(nome)
+
+    def _excluir_selecionado_no_mapa(self) -> None:
+        """Exclui o elemento selecionado no mapa.
+
+        Reaproveita _excluir_selecionado passando o item da árvore
+        correspondente: a confirmação em cascata e o aviso de medidor
+        órfão vivem lá, e duplicar essa lógica seria duplicar a chance
+        de divergir.
+        """
+        selecao = self._selecao_mapa
+        if selecao is None:
+            return
+        item_arvore = self._item_da_arvore(*selecao)
+        if item_arvore is None:
+            # Sem linha na árvore (grupo BESS com nome repetido, por
+            # exemplo), a exclusão cai no caminho direto do modelo.
+            categoria, nome = selecao
+            if categoria == "ramo":
+                self.rede.remover_ramo(nome)
+            elif categoria == "derivacao":
+                self.rede.remover_derivacao(nome)
+            elif categoria == "grupobess":
+                self.rede.remover_grupo(nome)
+            elif categoria == "barra":
+                self.rede.remover_barra(nome)
+            self.limpar_selecao_mapa()
+            self.redesenhar()
+            return
+
+        self.tree.clearSelection()
+        item_arvore.setSelected(True)
+        self._excluir_selecionado()
+        # A exclusão reconstruiu a árvore e a cena; a seleção do mapa
+        # aponta para algo que não existe mais.
+        self.limpar_selecao_mapa()
+
+    def _item_da_arvore(self, categoria: str, nome: str):
+        """Localiza a linha da árvore que representa (categoria, nome)."""
+        pilha = [self.tree.topLevelItem(i)
+                 for i in range(self.tree.topLevelItemCount())]
+        while pilha:
+            item = pilha.pop()
+            if item is None:
+                continue
+            if item.data(0, Qt.ItemDataRole.UserRole) == (categoria, nome):
+                return item
+            pilha.extend(item.child(i) for i in range(item.childCount()))
+        return None
+
+    # ------------------------------------------------------------------ #
     # Edição via duplo clique (inclui troca de TIPO)
     # ------------------------------------------------------------------ #
     def _ao_dar_duplo_clique(self, item, coluna=0):
@@ -2253,6 +4028,17 @@ class EditorRede(QWidget):
                     item_atual.setSelected(True)
                 pilha.extend(item_atual.child(i) for i in range(item_atual.childCount()))
 
+        # A lista é reconstruída ao fim de toda edição, então este é o
+        # ponto em que o cartão aberto fica sabendo que a rede mudou.
+        # Atualizar só no redesenhar() deixaria o painel mostrando a
+        # carga anterior até o próximo relayout.
+        self._atualizar_cartao_barra()
+        # O cartão de propriedades lê o modelo vivo, e a lista é
+        # remontada em toda edição — daí ser este o ponto certo para
+        # reler. Sem isso, editar a carga pelo formulário deixaria o
+        # painel exibindo a potência antiga até o próximo clique.
+        self.atualizar_card_propriedades()
+
     # ------------------------------------------------------------------ #
     # Auto-encaixe (fit-to-view): converte coordenada de modelo em
     # coordenada de tela, aplicando escala e centralização. A margem é
@@ -2375,26 +4161,78 @@ class EditorRede(QWidget):
 
     # ------------------------------------------------------------------ #
     def _desenhar_rotulo(self, x, y, texto, cor, tamanho_fonte=8,
-                         fundo: str = "white"):
-        """Desenha um rótulo com (x, y) no centro do texto e devolve o item."""
-        rotulo = _RotuloItem(texto, cor, tamanho_fonte, fundo)
+                         fundo: str = "white", alvo=None, tipo_alvo: str = "",
+                         desvio=None):
+        """Desenha um rótulo com (x, y) no centro do texto e devolve o item.
+
+        `alvo` identifica o elemento a que o rótulo pertence e
+        `tipo_alvo` sua categoria ("barra", "ramo" ou "derivacao"). Com
+        os dois preenchidos, o rótulo vira clicável — o clique esconde e
+        mostra o texto — e arrastável. `desvio` aplica o ajuste que o
+        usuário já tinha imposto a este texto.
+        """
+        rotulo = _RotuloItem(texto, cor, tamanho_fonte, fundo,
+                             editor=self, alvo=alvo, tipo_alvo=tipo_alvo)
         # O create_text do Tk recebia (x, y) como CENTRO do texto, com
         # justify="center". QGraphicsTextItem se posiciona pelo canto
         # superior esquerdo — daí o recuo de meia largura e meia altura.
-        rect = rotulo.boundingRect()
-        rotulo.setPos(x - rect.width() / 2, y - rect.height() / 2)
+        _posicionar_rotulo_em(rotulo, x, y, desvio)
         rotulo.setZValue(3.0)
         self.cena.addItem(rotulo)
         return rotulo
 
+    def _agendar_salvar_layout(self):
+        """Marca o layout como alterado e programa a gravação.
+
+        Chamado a cada movimento de barra ou de caixa. Só arma o timer;
+        quem escreve no disco é o _salvar_layout, quando a rajada de
+        arraste se aquieta.
+
+        Sem projeto aberto não há onde gravar, e o ajuste segue o
+        comportamento de antes: vale até fechar o editor.
+        """
+        if not self.projeto:
+            return
+        self._timer_salvar_layout.start()
+
+    def _salvar_layout(self):
+        """Grava o rede.json com as posições do diagrama.
+
+        A falha de escrita não interrompe o trabalho: o arranjo em tela
+        continua válido e o aviso vai para o stderr. Um diálogo modal a
+        cada arraste fracassado seria insuportável.
+        """
+        if not self.projeto:
+            return
+        caminho = os.path.join(self.projeto.caminho_rede, "rede.json")
+        try:
+            self.rede.salvar_json(caminho)
+        except OSError as erro:
+            # Sem diálogo: uma caixa modal a cada arraste fracassado
+            # travaria o trabalho. O aviso vai para o stderr e o arranjo
+            # em tela segue válido, à espera de um "Salvar" manual.
+            print(
+                f"Aviso: layout não gravado em {caminho}: {erro}",
+                file=sys.stderr)
+
     def _ao_mover_barra(self, nome, ponto):
-        """Sincroniza a posição arrastada com o dicionário de posições de
-        tela (ver _BarraItem.itemChange). NÃO persiste no modelo — a Barra
-        não possui campo de posição e o layout é sempre automático."""
+        """Sincroniza a posição arrastada com o dicionário de tela e com o
+        modelo (ver _BarraItem.itemChange).
+
+        O dicionário alimenta o desenho imediato. O modelo, somado à
+        gravação em disco, é o que faz o arranjo sobreviver ao fechamento
+        do projeto. A coordenada guardada é a de cena, a mesma que o
+        redesenhar() entrega ao setPos das barras.
+        """
         if self._redesenhando:
             return
-        if nome in self._posicoes:
-            self._posicoes[nome] = (ponto.x(), ponto.y())
+        if nome not in self._posicoes:
+            return
+        self._posicoes[nome] = (ponto.x(), ponto.y())
+        barra = self.rede.barras.get(nome)
+        if barra is not None:
+            barra.posicao = [ponto.x(), ponto.y()]
+            self._agendar_salvar_layout()
 
     def _ao_mover_derivacao(self, nome, barra, ponto):
         """Grava a posição imposta à caixa e regeometriza só o que depende
@@ -2408,6 +4246,10 @@ class EditorRede(QWidget):
             return
         self._posicoes_derivacoes[nome] = (ponto.x(), ponto.y())
         self._posicoes[nome] = (ponto.x(), ponto.y())
+        derivacao = self.rede.derivacoes.get(nome)
+        if derivacao is not None:
+            derivacao.posicao = [ponto.x(), ponto.y()]
+            self._agendar_salvar_layout()
 
         ligacao = self._ligacoes_derivacoes.get(nome)
         if ligacao is not None:
@@ -2417,7 +4259,11 @@ class EditorRede(QWidget):
 
         rotulo = self._rotulos_derivacoes.get(nome)
         if rotulo is not None:
-            _centralizar_rotulo(rotulo, ponto.x(), ponto.y())
+            # A caixa andou: o rótulo vai junto mantendo o desvio que o
+            # usuário tiver imposto a ele.
+            _posicionar_rotulo_em(
+                rotulo, ponto.x(), ponto.y(),
+                derivacao.rotulo_posicao if derivacao is not None else None)
 
     def _atualizar_geometria_barra(self, nome):
         """Redesenha no lugar as conexões que tocam a barra `nome`.
@@ -2434,6 +4280,24 @@ class EditorRede(QWidget):
             return
 
         for item, mover_fim, rotulo in self._dependencias_por_barra.get(nome, ()):
+            if item is None:
+                # Esta entrada agrupa os satélites da barra: o rótulo do
+                # nome e, quando aberto, o cartão de informações. Não há
+                # segmento a reposicionar — cada um se recoloca segundo
+                # a própria regra.
+                if isinstance(rotulo, _CartaoBarra):
+                    # O cartão recalcula a própria posição a partir de
+                    # _posicoes, que itemChange acaba de atualizar.
+                    self._reposicionar_cartao_barra()
+                    continue
+                # Rótulo do nome: o afastamento foi medido no redesenho,
+                # então aqui basta somá-lo ao centro atual — e a conta
+                # vale em qualquer zoom, porque ambos os lados estão nas
+                # mesmas coordenadas de cena.
+                offset = self._offsets_rotulos_barras.get(nome)
+                if rotulo is not None and offset is not None:
+                    rotulo.setPos(pos[0] + offset[0], pos[1] + offset[1])
+                continue
             _reposicionar_segmento(item, pos, mover_fim)
             if rotulo is not None:
                 # O rótulo do ramo mora no ponto médio recuado na
@@ -2441,7 +4305,11 @@ class EditorRede(QWidget):
                 # redesenhar(). Duas fórmulas diferentes fariam o texto
                 # pular de lado no instante em que o mouse fosse solto.
                 mx, my = _ponto_medio_deslocado(item, DESLOCAMENTO_ROTULO_RAMO)
-                _centralizar_rotulo(rotulo, mx, my)
+                # O desvio do usuário entra aqui também: sem isso o texto
+                # voltaria ao lugar automático no primeiro pixel de
+                # arraste e saltaria de volta ao soltar.
+                desvio = self._desvio_do_ramo(rotulo.alvo)
+                _posicionar_rotulo_em(rotulo, mx, my, desvio)
 
         # As caixas do leque pendem desta barra, e a linha de ligação tem
         # de acompanhar. Parada, ela passaria a apontar para outro ponto
@@ -2457,20 +4325,308 @@ class EditorRede(QWidget):
             # ela que _reposicionar_segmento preserva.
             _reposicionar_segmento(item, pos, mover_fim=False)
 
+    def _desvio_do_ramo(self, nome):
+        """Desvio de rótulo gravado no ramo `nome`, ou None.
+
+        Existe para poupar o _atualizar_geometria_barra de carregar o
+        modelo a cada passo do arraste: lá se conhece o item, não o
+        registrador do ramo.
+        """
+        ramo = self.rede.ramos.get(nome) if nome is not None else None
+        return ramo.rotulo_posicao if ramo is not None else None
+
     def _ao_alternar_rotulos(self, marcado: bool):
-        """Mostra ou esconde os rótulos de ramo e de elemento.
+        """Esconde ou mostra TODOS os rótulos de uma vez.
 
         Alterna a visibilidade dos itens que já existem, sem redesenhar.
         A cena continua montada, o zoom e a rolagem ficam onde estavam, e
-        marcar um checkbox não pode custar um relayout inteiro do
+        um comando de visibilidade não pode custar um relayout inteiro do
         diagrama. Efeito colateral, e desejado: as posições impostas às
         caixas continuam valendo.
+
+        O estado vai para o modelo de cada elemento. Um "ocultar todos"
+        que valesse só até fechar a janela faria o usuário repetir o
+        trabalho a cada abertura do projeto.
         """
-        self.mostrar_rotulos = bool(marcado)
-        for rotulo in self._rotulos_ramos + self._rotulos_elementos:
-            rotulo.setVisible(self.mostrar_rotulos)
+        visivel = bool(marcado)
+        self.mostrar_rotulos = visivel
+        for barra in self.rede.barras.values():
+            barra.rotulo_visivel = visivel
+        for ramo in self.rede.ramos.values():
+            ramo.rotulo_visivel = visivel
+        for der in self.rede.derivacoes.values():
+            der.rotulo_visivel = visivel
+        self._agendar_salvar_layout()
+        self.redesenhar()
+
+    def alternar_rotulo(self, tipo_alvo: str, nome: str) -> None:
+        """Inverte a visibilidade do rótulo de UM elemento e redesenha.
+
+        É o que o clique no próprio texto faz. Redesenhar em vez de
+        esconder o item na mão custa um relayout, mas garante um só
+        caminho de desenho: o item que volta a aparecer nasce na posição
+        correta, com o desvio salvo aplicado, em vez de reaparecer onde
+        foi escondido.
+        """
+        if tipo_alvo == "barra":
+            alvo = self.rede.barras.get(nome)
+        elif tipo_alvo == "ramo":
+            alvo = self.rede.ramos.get(nome)
+        elif tipo_alvo == "derivacao":
+            alvo = self.rede.derivacoes.get(nome)
+        else:
+            return
+        if alvo is None:
+            return
+        alvo.rotulo_visivel = not alvo.rotulo_visivel
+        self._agendar_salvar_layout()
+        self.redesenhar()
+
+    def _ao_mover_rotulo(self, rotulo, ponto) -> None:
+        """Converte a posição arrastada do rótulo em desvio e grava.
+
+        O que fica guardado é a distância até o lugar automático
+        (o centro do elemento), nunca a coordenada de tela. Assim o texto
+        continua acompanhando o elemento quando ele se move e mantém o
+        ajuste quando o layout automático é recalculado — guardar a
+        coordenada absoluta deixaria o rótulo plantado no desenho antigo
+        no primeiro redesenho.
+        """
+        if self._redesenhando or rotulo.alvo is None:
+            return
+        alvo = None
+        if rotulo.tipo_alvo == "barra":
+            alvo = self.rede.barras.get(rotulo.alvo)
+        elif rotulo.tipo_alvo == "ramo":
+            alvo = self.rede.ramos.get(rotulo.alvo)
+        elif rotulo.tipo_alvo == "derivacao":
+            alvo = self.rede.derivacoes.get(rotulo.alvo)
+        if alvo is None:
+            return
+
+        base = self._base_do_rotulo(rotulo.tipo_alvo, rotulo.alvo)
+        if base is None:
+            return
+        # O ponto guardado é o canto superior esquerdo do item; o centro
+        # do texto fica meia caixa adiante. Trabalhar com o centro é o
+        # que mantém o desvio independente do tamanho do texto.
+        rect = rotulo.boundingRect()
+        centro_texto = (ponto.x() + rect.width() / 2,
+                        ponto.y() + rect.height() / 2)
+        alvo.rotulo_posicao = [centro_texto[0] - base[0],
+                               centro_texto[1] - base[1]]
+        self._agendar_salvar_layout()
+
+    def _base_do_rotulo(self, tipo_alvo: str, nome: str):
+        """Ponto de referência do desvio do rótulo de um elemento.
+
+        É o lugar em que o texto nasceria sozinho, e não o centro do
+        elemento: o rótulo da barra paira 18 px acima da elipse, o do
+        ramo fica no meio da linha recuado na perpendicular e o da caixa
+        coincide com o centro dela. Gravar e aplicar o desvio contra a
+        MESMA base é o que faz o texto voltar exatamente ao lugar
+        escolhido depois de fechar e reabrir o projeto.
+        """
+        if tipo_alvo == "barra":
+            pos = self._posicoes.get(nome)
+            if pos is None:
+                return None
+            return (pos[0], pos[1] - DESLOCAMENTO_ROTULO_BARRA)
+        if tipo_alvo == "ramo":
+            ramo = self.rede.ramos.get(nome)
+            if ramo is None:
+                return None
+            p1, p2 = self._posicoes.get(ramo.bus1), self._posicoes.get(ramo.bus2)
+            if p1 is None or p2 is None:
+                return None
+            # Mesma fórmula do _ponto_medio_deslocado, aplicada aos
+            # centros das barras: o item de linha pode ter sido
+            # reposicionado no arraste e serviria de referência errada.
+            mx, my = (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2
+            dx, dy = p2[0] - p1[0], p2[1] - p1[1]
+            comprimento = math.hypot(dx, dy)
+            if comprimento < 1e-9:
+                return (mx, my)
+            return (mx - dy / comprimento * DESLOCAMENTO_ROTULO_RAMO,
+                    my + dx / comprimento * DESLOCAMENTO_ROTULO_RAMO)
+        # Derivação: o texto nasce no centro da própria caixa, e é ele
+        # que serve de referência.
+        return self._posicoes.get(nome)
 
     # ------------------------------------------------------------------ #
+    # Cartão de informações da barra
+    # ------------------------------------------------------------------ #
+    def _cartao_barras(self):
+        """(cartão, lista de dependências da barra) do cartão aberto.
+
+        Devolve (None, None) quando não há cartão. A lista de
+        dependências é devolvida junto porque o cartão precisa entrar
+        nela para acompanhar o arraste, e sair dela ao fechar — misturar
+        os dois usos num método só evita divergência entre os dois.
+        """
+        return self._cartao_barra, self._cartao_barra_nome
+
+    def alternar_cartao_barra(self, nome_barra: str) -> None:
+        """Abre o cartão da barra `nome`, ou fecha se for a mesma barra.
+
+        Este é o único ponto de entrada do toggle: clique na barra,
+        clique em outra barra e reabertura depois de fechar passam todos
+        por aqui. A política de "um cartão por vez" sai de graça —
+        abrir numa barra fecha a anterior antes.
+        """
+        if self._cartao_barra is not None and self._cartao_barra_nome == nome_barra:
+            self.fechar_cartao_barra()
+            return
+        self.fechar_cartao_barra()
+        self.abrir_cartao_barra(nome_barra)
+
+    def abrir_cartao_barra(self, nome_barra: str) -> None:
+        """Monta o cartão da barra e o prende ao lado dela na cena."""
+        cartao = _CartaoBarra(nome_barra)
+        self.cena.addItem(cartao)
+        self._cartao_barra = cartao
+        self._cartao_barra_nome = nome_barra
+        self._atualizar_cartao_barra()
+        # A entrada usada é a mesma dos rótulos (item=None): o cartão é
+        # tratado como um satélite da barra e reposicionado pela mesma
+        # rotina que já leva rótulo e conexões junto no arraste.
+        self._dependencias_por_barra.setdefault(nome_barra, []).append(
+            (None, False, cartao))
+        self._reposicionar_cartao_barra()
+
+    def fechar_cartao_barra(self) -> None:
+        """Remove o cartão aberto, se houver. Idempotente.
+
+        Idempotência importa: o fechamento é disparado pelo clique na
+        barra, pelo clique no fundo, pelo Esc e pelo redesenho. Nenhum
+        desses caminhos pode depender de o cartão existir.
+        """
+        cartao = self._cartao_barra
+        nome = self._cartao_barra_nome
+        self._cartao_barra = None
+        self._cartao_barra_nome = None
+        if cartao is None:
+            return
+        if nome is not None:
+            dependencias = self._dependencias_por_barra.get(nome)
+            if dependencias:
+                # Filtro por identidade, e não por igualdade: o item não
+                # define __eq__, mas ser explícito deixa claro que a
+                # remoção é daquele objeto e de nenhum outro.
+                self._dependencias_por_barra[nome] = [
+                    d for d in dependencias if d[2] is not cartao]
+        if cartao.scene() is self.cena:
+            self.cena.removeItem(cartao)
+
+    def _atualizar_cartao_barra(self) -> None:
+        """Reescreve o conteúdo do cartão com o estado atual do modelo.
+
+        Chamado quando o cartão abre e quando a rede muda por baixo dele.
+        Ler a rede viva, e não um resumo guardado na abertura, é o que
+        impede o painel de exibir uma carga que o usuário acabou de
+        editar no formulário.
+        """
+        cartao = self._cartao_barra
+        if cartao is None:
+            return
+        nome = self._cartao_barra_nome
+        barra = self.rede.barras.get(nome)
+        if barra is None:
+            # A barra sumiu (exclusão ou rede trocada). O cartão não tem
+            # a que se ancorar, então ele sai de cena.
+            self.fechar_cartao_barra()
+            return
+
+        incidentes = [r for r in self.rede.ramos.values()
+                      if r.bus1 == nome or r.bus2 == nome]
+        penduradas = [d for d in self.rede.derivacoes.values()
+                      if d.bus1 == nome]
+
+        titulo = f"{nome} · {barra.kv_base} kV"
+        linhas = []
+
+        # "ramo" é masculino: o particípio vai no masculino, no singular
+        # e no plural. Uma frase de painel com erro de concordância
+        # desqualifica o resto das informações aos olhos de quem lê.
+        if len(incidentes) == 1:
+            linhas.append("1 ramo conectado a esta barra.")
+        else:
+            linhas.append(f"{len(incidentes)} ramos conectados a esta barra.")
+
+        if penduradas:
+            # A ordem alfabética por nome é estável entre aberturas: o
+            # cartão não reorganiza a lista a cada atualização, e o olho
+            # encontra o mesmo elemento no mesmo lugar.
+            for der in sorted(penduradas, key=lambda d: d.nome):
+                potencia = _potencia_do_elemento(der)
+                texto = f"• {der.tipo} {der.nome}"
+                if potencia:
+                    texto += f" — {potencia}"
+                linhas.append(texto)
+
+        cargas = [d for d in penduradas if d.tipo == "Load"]
+        if cargas:
+            try:
+                kw = _somar_parametro(cargas, "kw")
+                kvar = _somar_parametro(cargas, "kvar")
+            except (TypeError, ValueError):
+                kw = kvar = None
+            if kw is not None:
+                total = f"Carga total: {_formatar_potencia(kw)} kW"
+                if kvar is not None:
+                    total += f" / {_formatar_potencia(kvar)} kvar"
+                linhas.append(total)
+
+        cartao.atualizar(titulo, linhas)
+        self._reposicionar_cartao_barra()
+
+    def _reposicionar_cartao_barra(self) -> None:
+        """Coloca o cartão ao lado da barra, sem sair do retângulo da cena.
+
+        A posição preferida é à direita e um pouco acima da elipse, do
+        lado oposto ao rótulo do nome (que fica acima) para os dois não
+        se sobreporem. O clamp existe porque a rede ocupa a cena inteira:
+        sem ele, o cartão de uma barra na borda direita sairia da área
+        visível e o usuário acharia que o clique não funcionou.
+        """
+        cartao = self._cartao_barra
+        if cartao is None:
+            return
+        pos = self._posicoes.get(self._cartao_barra_nome)
+        if pos is None:
+            return
+
+        folga = RAIO_LEQUE * 0.45
+        x = pos[0] + folga
+        y = pos[1] - cartao.altura() / 2
+
+        area = self.cena.sceneRect()
+        if not area.isNull():
+            x = min(max(x, area.left() + 4), area.right() - cartao.LARGURA - 4)
+            y = min(max(y, area.top() + 4), area.bottom() - cartao.altura() - 4)
+        cartao.setPos(x, y)
+
+    # ------------------------------------------------------------------ #
+    def _aplicar_posicoes_salvas(self, posicoes):
+        """Troca as posições automáticas pelas que o projeto guardou.
+
+        Barras e derivações com `posicao` preenchida no modelo assumem a
+        coordenada de cena gravada; as demais ficam com o resultado do
+        cálculo automático. O dicionário recebido não é alterado, e sim
+        copiado — ele é o resultado do layout automático, que serve de
+        referência para quem não tem posição própria.
+
+        Coordenada salva fora do formato esperado (lista de dois números)
+        é descartada em silêncio: um rede.json editado à mão não pode
+        impedir o projeto de abrir.
+        """
+        resultado = dict(posicoes)
+        for nome, barra in self.rede.barras.items():
+            ponto = _ponto_salvo_valido(barra.posicao)
+            if ponto is not None and nome in resultado:
+                resultado[nome] = ponto
+        return resultado
+
     def redesenhar(self):
         """Reconstrói a cena inteira a partir do modelo.
 
@@ -2484,11 +4640,27 @@ class EditorRede(QWidget):
             return
         self._redesenhando = True
         try:
+            # A cena inteira será descartada, e com ela o cartão. Fechar
+            # antes do clear é o que evita guardar referência a um item
+            # morto — o mesmo motivo pelo qual os índices abaixo são
+            # remontados do zero.
+            cartao_aberto = self._cartao_barra_nome
+            self.fechar_cartao_barra()
             self.cena.clear()
+            # Os itens que representavam a seleção morreram com o clear.
+            # Manter a referência seria guardar ponteiros para objetos
+            # destruídos; a identidade (categoria, nome) fica, e o
+            # destaque é reaplicado no fim — se o elemento ainda existir.
+            self._itens_selecionados = []
             orientacao = self.orientacao
 
             posicoes_cruas = calcular_posicoes(self.rede, orientacao=orientacao)
             posicoes, escala = self._transformar_posicoes(posicoes_cruas)
+            # A posição salva no projeto vence a automática. O cálculo
+            # acima continua sendo feito por inteiro: ele define a escala
+            # do desenho e a posição das barras que o usuário nunca
+            # moveu — só o que tem posição própria é sobrescrito.
+            posicoes = self._aplicar_posicoes_salvas(posicoes)
             self._posicoes = dict(posicoes)
             self._escala = escala
 
@@ -2499,6 +4671,7 @@ class EditorRede(QWidget):
             # redesenho. A cena foi descartada logo acima, então manter
             # os valores antigos guardaria referências a itens mortos.
             self._dependencias_por_barra = {}
+            self._offsets_rotulos_barras = {}
             self._ligacoes_derivacoes = {}
             self._rotulos_derivacoes = {}
             self._rotulos_ramos = []
@@ -2512,7 +4685,12 @@ class EditorRede(QWidget):
                     continue
 
                 cor = CORES.get(ramo.tipo, "black")
-                linha = QGraphicsLineItem(p1[0], p1[1], p2[0], p2[1])
+                # _LinhaRamoItem, e não QGraphicsLineItem: é o ramo que
+                # responde ao clique no painel de propriedades e que
+                # desenha o destaque de seleção.
+                linha = _LinhaRamoItem(
+                    QLineF(p1[0], p1[1], p2[0], p2[1]),
+                    nome_ramo=ramo.nome, editor=self)
                 caneta = QPen(_qcolor(cor), espessura_linha)
                 # Chave (Switch) sai tracejada, Linha sai contínua. É a
                 # única pista visual de que aquele trecho pode ser aberto.
@@ -2524,9 +4702,11 @@ class EditorRede(QWidget):
 
                 mx, my = _ponto_medio_deslocado(linha, DESLOCAMENTO_ROTULO_RAMO)
                 rotulo_ramo = None
-                if self.mostrar_rotulos:
+                if ramo.rotulo_visivel:
                     rotulo_ramo = self._desenhar_rotulo(
-                        mx, my, f"{ramo.tipo}\n{ramo.nome}", cor)
+                        mx, my, f"{ramo.tipo}\n{ramo.nome}", cor,
+                        alvo=ramo.nome, tipo_alvo="ramo",
+                        desvio=ramo.rotulo_posicao)
                     self._rotulos_ramos.append(rotulo_ramo)
 
                 # O ramo entra no índice das DUAS barras que ele liga,
@@ -2574,7 +4754,13 @@ class EditorRede(QWidget):
                     # Posição imposta pelo usuário manda sobre o ângulo
                     # calculado. Quem tirou a caixa do emaranhado não quer
                     # vê-la de volta ao leque no redesenho seguinte.
+                    #
+                    # A ordem de precedência é a mesma da barra: o ajuste
+                    # desta sessão vem primeiro, depois a posição salva no
+                    # projeto, e por último o ângulo do leque.
                     override = self._posicoes_derivacoes.get(der.nome)
+                    if override is None:
+                        override = _ponto_salvo_valido(der.posicao)
                     if override is not None:
                         ex, ey = override
                     self._posicoes[der.nome] = (ex, ey)
@@ -2603,10 +4789,12 @@ class EditorRede(QWidget):
                     # preenchimento da caixa, e sem retângulo de fundo
                     # (fundo=None). Antes era branco fixo, que sobre os
                     # preenchimentos claros ficava ilegível.
-                    if self.mostrar_rotulos:
+                    if der.rotulo_visivel:
                         self._rotulos_derivacoes[der.nome] = self._desenhar_rotulo(
                             ex, ey, texto_der, _cor_texto_sobre(cor),
-                            tamanho_fonte=7, fundo=None)
+                            tamanho_fonte=7, fundo=None,
+                            alvo=der.nome, tipo_alvo="derivacao",
+                            desvio=der.rotulo_posicao)
 
             # O mapa de rótulos de elemento é refeito a partir do que foi
             # desenhado nesta passagem. Quem ficou de fora não entra, e é
@@ -2624,9 +4812,26 @@ class EditorRede(QWidget):
                 item_barra = _BarraItem(nome, raio_barra, self)
                 item_barra.setPos(x, y)
                 self.cena.addItem(item_barra)
-                # O nome da barra não passa pelo checkbox "Mostrar
-                # rótulos": sem ele não há como se localizar no diagrama.
-                self._desenhar_rotulo(x, y - 18, f"{nome}\n{barra.kv_base} kV", "black")
+                rotulo_barra = None
+                if barra.rotulo_visivel:
+                    rotulo_barra = self._desenhar_rotulo(
+                        x, y - DESLOCAMENTO_ROTULO_BARRA,
+                        f"{nome}\n{barra.kv_base} kV", "black",
+                        alvo=nome, tipo_alvo="barra",
+                        desvio=barra.rotulo_posicao)
+                    # O rótulo entra nas dependências da PRÓPRIA barra, na
+                    # forma (item, mover_fim=False, rotulo). Sem esse
+                    # registro ele ficaria no ponto de origem enquanto a
+                    # elipse anda — foi exatamente a queixa de que o
+                    # "Barra / Tensão" não acompanhava o arraste. O
+                    # deslocamento é medido no redesenho e reaproveitado no
+                    # arraste, para que a distância relativa não dependa do
+                    # tamanho do texto. Ele já embute o desvio do usuário,
+                    # porque a posição de origem nasce da soma dos dois.
+                    self._dependencias_por_barra.setdefault(nome, []).append(
+                        (None, False, rotulo_barra))
+                    self._offsets_rotulos_barras[nome] = (
+                        rotulo_barra.x() - x, rotulo_barra.y() - y)
 
             largura_canvas = max(self.view.viewport().width(), 300)
             altura_canvas = max(self.view.viewport().height(), 300)
@@ -2635,6 +4840,30 @@ class EditorRede(QWidget):
             self._atualizar_lista_elementos()
         finally:
             self._redesenhando = False
+        # O espelho global de rótulos acompanha o que ficou de fato
+        # desenhado: um "mostrar todos" seguido de ocultar um texto só
+        # deixaria o atributo mentindo sobre o estado da cena.
+        self.mostrar_rotulos = any(
+            b.rotulo_visivel for b in self.rede.barras.values())
+        # O cartão é reaberto fora da trava de reentrância: montá-lo lá
+        # dentro dispararia addItem e itemChange enquanto a cena ainda
+        # está sendo montada, e o cartão apareceria deslocado.
+        if cartao_aberto is not None and cartao_aberto in self.rede.barras:
+            self.abrir_cartao_barra(cartao_aberto)
+        # A seleção do mapa sobrevive ao redesenho quando o elemento
+        # continua existindo — o destaque é reaplicado aos itens novos, e
+        # o painel confirma se o alvo ainda está no modelo (a exclusão
+        # chama este caminho e não pode deixar o cartão preso no que
+        # sumiu).
+        if self._selecao_mapa is not None:
+            self._marcar_itens_da_selecao()
+            if self._descricao_selecao(self._selecao_mapa) is None:
+                self._selecao_mapa = None
+        self.atualizar_card_propriedades()
+        # O rodapé conta o que acabou de ser desenhado. Fica fora do
+        # try/finally da reconstrução para não ser chamado com a cena
+        # pela metade.
+        self._atualizar_status()
 
     # ------------------------------------------------------------------ #
     # Persistência / exportação (projeto-aware)
