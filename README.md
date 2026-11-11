@@ -112,7 +112,7 @@ declarada por enrolamento; idealizar apenas a resistência declarada não corrig
 
 ### Resultado do estudo de referência
 
-No estudo de demonstração (rede de distribuição com 6 barras candidatas, 48 candidatos — 6 barras × 8 portes de catálogo —, faltas trifásica e monofásica em duas barras, tarifa verde A4, curvas de quinta-feira), o método compara todos os candidatos simulados e seleciona o BESS Comercial de 50 kW/100 kWh (R$ 300.000) na barra B4: melhoria da profundidade de afundamento nas 5 barras monitoradas, fator de potência de 0,972 conforme ao PRODIST Módulo 8, economia de R$ 66,48/dia (R$ 17.551,17/ano) e payback de 17,09 anos — a verificação conjunta confirma o benefício real da configuração, que substitui a estimativa da soma de benefícios individuais.
+No estudo de demonstração (rede de distribuição com 6 barras candidatas, 48 candidatos — 6 barras × 8 portes de catálogo —, faltas trifásica e monofásica em duas barras, tarifa verde A4, curvas padrão de cada dia da semana com a ponta restrita aos dias úteis), o método compara todos os candidatos simulados e seleciona o BESS Comercial de 50 kW/100 kWh (R$ 300.000) na barra B4: melhoria da profundidade de afundamento nas 5 barras monitoradas, fator de potência de 0,972 conforme ao PRODIST Módulo 8, economia de R$ 66,48/dia no dia representativo — R$ 231,31 na semana completa, R$ 12.027,89/ano — e payback de 24,94 anos — a verificação conjunta confirma o benefício real da configuração, que substitui a estimativa da soma de benefícios individuais.
 
 ### Estudo de demonstração em rede IEEE 13 nós
 
@@ -123,9 +123,10 @@ as cargas do circuito oficial preservadas sem diferença — 3.466 kW e 2.102 kv
 foi acrescentado um PVSystem de 1.000 kWp na barra 675, a maior carga trifásica, para que a
 análise tenha geração distribuída de verdade e não apenas a rede de origem.
 
-Os parâmetros repetem a configuração de referência: tarifa verde A4 com ponta das 18h às 21h,
-22 dias equivalentes por mês, faltas monofásica sólida e de alta impedância e peso de custo
-0,01. A varredura percorre as barras trifásicas 634, 671, 675, 692 e 670.
+A configuração repete do estudo de referência a tarifa e a janela de ponta (verde A4, ponta
+das 18h às 21h) e fixa os demais parâmetros: 22 dias equivalentes por mês na anualização do
+dia representativo, faltas monofásica sólida e de alta impedância e peso de custo 0,01. A
+varredura percorre as barras trifásicas 634, 671, 675, 692 e 670.
 
 O PLIM devolveu status "Optimal" e escolheu o BESS Utility de 1000 kW/2000 kWh, R$ 4.700.000, na
 barra 670. A economia apurada é de R$ 1.330,86 por dia — R$ 351.348,24 no ano —, com payback de

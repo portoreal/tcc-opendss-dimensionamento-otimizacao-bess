@@ -417,8 +417,8 @@ SISTEMAS_DISPONIVEIS = {
         # original de terceiros) apresenta o resultado BRUTO da
         # comparação, SEM tratamento de exceção documentada. O objetivo é
         # evidenciar a divergência real da barra 610 e contrastá-la com a
-        # entrada "(corrigido)", onde o tratamento é aplicado. Portanto
-        # 'excecoes_documentadas' é deliberadamente vazio aqui.
+        # entrada "(corrigido)", onde o tratamento é aplicado;
+        # 'excecoes_documentadas' fica deliberadamente vazio aqui.
         "excecoes_documentadas": {},
         "nota_sistema": (
             "APRESENTAÇÃO SEM TRATAMENTO (decisão deliberada de "

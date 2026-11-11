@@ -291,6 +291,35 @@ def serie_carga_b4_por_dia(dump):
     return series
 
 
+def serie_fv_por_dia(dump):
+    """Geracao fotovoltaica horaria (kWh por intervalo de 1 h) por dia.
+
+    Serie lida diretamente de fv_kw no dump -- sem escala a partir do dia
+    representativo: cada dia tem a sua propria curva.
+    """
+    perfis = {
+        registro["dia"].strip(): registro
+        for registro in dump["semanal_vencedor"]["perfis_por_dia"]
+    }
+    series = {}
+    for rotulo, chave in DIAS_SEMANA:
+        if rotulo not in perfis:
+            raise KeyError(
+                f"dia {rotulo!r} ausente em semanal_vencedor.perfis_por_dia")
+        registros = perfis[rotulo]["perfil_bess"]
+        if len(registros) != 24:
+            raise ValueError(
+                f"{rotulo}: esperadas 24 horas, obtidas {len(registros)}")
+        fv = [round(float(registro["fv_kw"]), 1) for registro in registros]
+        series[chave] = {
+            "rotulo": rotulo,
+            "fv_kwh": fv,
+            "coordenadas": serie_pgfplots_carga(list(zip(range(24), fv))),
+        }
+    return series
+
+
+
 def main():
     if not os.path.isfile(MASTER):
         raise SystemExit(f"Master.dss nao encontrado: {MASTER}")
@@ -348,6 +377,9 @@ def main():
     # Carga da barra B4 por dia -- painel (b) da Fig. de curvas da semana.
     carga_b4 = serie_carga_b4_por_dia(dump)
 
+    # Geracao FV por dia -- painel (a) da Fig. de curvas da semana.
+    fv_por_dia = serie_fv_por_dia(dump)
+
     dados = {
         "meta": {
             "gerado_por": "doc/gerar_figura_soc_falta.py",
@@ -403,6 +435,7 @@ def main():
             "eixo_x_tensao": ["{}={}".format(b, px[b]) for b in BARRAS_MONITORADAS],
         },
         "carga_b4_por_dia": carga_b4,
+        "fv_por_dia": fv_por_dia,
     }
 
     with open(SAIDA, "w", encoding="utf-8", newline="\n") as fh:
@@ -435,6 +468,8 @@ def main():
         "OK (desvio max {:.2e} pu)".format(max(desvios.values()))))
     print("carga_b4_por_dia: {} dias, {} valores cada".format(
         len(carga_b4), len(carga_b4[DIAS_SEMANA[0][1]]["carga_b4_kwh"])))
+    print("fv_por_dia: {} dias, {} valores cada".format(
+        len(fv_por_dia), len(fv_por_dia[DIAS_SEMANA[0][1]]["fv_kwh"])))
     print("JSON escrito em {}".format(SAIDA))
     return 0
 

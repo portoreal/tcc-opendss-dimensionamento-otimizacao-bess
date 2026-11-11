@@ -178,10 +178,33 @@ def checar_coordenadas_no_tex(texto, dados):
         else:
             falha("coordenadas '{}' ausentes do tex".format(chave))
     checar_carga_b4_no_tex(texto, dados)
+    checar_fv_no_tex(texto, dados)
 
 
 DIAS_CARGA_B4 = ["Segunda", "Terca", "Quarta", "Quinta", "Sexta", "Sabado",
                  "Domingo"]
+
+
+def checar_fv_no_tex(texto, dados):
+    """Painel (a) da Fig. de curvas da semana: as 7 series de geracao
+    fotovoltaica precisam vir do JSON (fv_kw do dump), com 24 pontos cada."""
+    series = dados.get("fv_por_dia") or {}
+    faltando = [dia for dia in DIAS_CARGA_B4 if dia not in series]
+    if faltando:
+        falha("fv_por_dia sem os dias: " + ", ".join(faltando))
+        return
+    for dia in DIAS_CARGA_B4:
+        chave = "coordenadas_fv_" + dia
+        coordenadas = series[dia]["coordenadas"]
+        pontos = len(series[dia]["fv_kwh"])
+        if pontos != 24:
+            falha("fv_por_dia[{}] com {} pontos (esperados 24)".format(
+                dia, pontos))
+        if coordenadas in texto:
+            print("      {} presentes no tex ({} pontos)".format(
+                chave, coordenadas.count("(")))
+        else:
+            falha("coordenadas '{}' ausentes do tex".format(chave))
 
 
 def normalizar(texto):

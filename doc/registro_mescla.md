@@ -47,3 +47,7 @@
 ## Validação
 
 Executado `python doc/verificar_artigo.py` após a aplicação dos 8 blocos: **RESULTADO: APROVADO**.
+
+## Histórico
+
+- 2026-11-11 (tarde): estado final reaplicado ao arquivo após reversão acidental pelo git restore de um ator concorrente; verificar_artigo.py APROVADO novamente.
