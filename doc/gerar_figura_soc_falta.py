@@ -63,6 +63,19 @@ LIMITE_SUPERIOR = 0.9
 BESS_SELECIONADO = {"bus": BUS_FALTA, "kw": 50, "kwh": 100}
 BESS_MAIOR = {"bus": BUS_FALTA, "kw": 1000, "kwh": 2000}
 
+# Ordem do painel (b) da Fig. de curvas da semana. A chave JSON nao leva
+# acento (seguranca de identificador); o rotulo do grafico leva, e fica no
+# .tex.
+DIAS_SEMANA = [
+    ("Segunda", "Segunda"),
+    ("Terça", "Terca"),
+    ("Quarta", "Quarta"),
+    ("Quinta", "Quinta"),
+    ("Sexta", "Sexta"),
+    ("Sábado", "Sabado"),
+    ("Domingo", "Domingo"),
+]
+
 
 def carregar_dump(caminho):
     with open(caminho, "r", encoding="utf-8") as fh:
@@ -236,6 +249,48 @@ def _fmt_x(x):
     return str(x)
 
 
+def serie_pgfplots_carga(pontos):
+    """Coordenadas pgfplots da carga com 1 casa decimal:
+    '(0,18.6) (1,18.0) ...'."""
+    return " ".join(
+        "({},{:.1f})".format(_fmt_x(x), y) for x, y in pontos
+    )
+
+
+def serie_carga_b4_por_dia(dump):
+    """Carga horaria da barra B4 (kWh por intervalo de 1 h) por dia.
+
+    O dump traz carga_kw como a carga AGREGADA do alimentador; a barra B4
+    responde por metade dela (B4 e B5 compartilham a mesma curva padrao de
+    carga), de modo que a serie da barra e carga_kw/2 -- arredondada a 1 casa
+    decimal, a mesma resolucao da coluna 'Carga' da tabela do dia
+    representativo.
+    """
+    perfis = {
+        registro["dia"].strip(): registro
+        for registro in dump["semanal_vencedor"]["perfis_por_dia"]
+    }
+    series = {}
+    for rotulo, chave in DIAS_SEMANA:
+        if rotulo not in perfis:
+            raise KeyError(
+                f"dia {rotulo!r} ausente em semanal_vencedor.perfis_por_dia")
+        registros = perfis[rotulo]["perfil_bess"]
+        if len(registros) != 24:
+            raise ValueError(
+                f"{rotulo}: esperadas 24 horas, obtidas {len(registros)}")
+        carga = [round(float(registro["carga_kw"]) / 2.0, 1)
+                 for registro in registros]
+        series[chave] = {
+            "rotulo": rotulo,
+            "carga_kw_dump": [round(float(r["carga_kw"]), 4)
+                              for r in registros],
+            "carga_b4_kwh": carga,
+            "coordenadas": serie_pgfplots_carga(list(zip(range(24), carga))),
+        }
+    return series
+
+
 def main():
     if not os.path.isfile(MASTER):
         raise SystemExit(f"Master.dss nao encontrado: {MASTER}")
@@ -289,6 +344,9 @@ def main():
     coords_base = serie_pgfplots([(px[b], min_base[b]) for b in BARRAS_MONITORADAS])
     coords_sel = serie_pgfplots([(px[b], min_sel_fig[b]) for b in BARRAS_MONITORADAS])
     coords_maior = serie_pgfplots([(px[b], min_maior[b]) for b in BARRAS_MONITORADAS])
+
+    # Carga da barra B4 por dia -- painel (b) da Fig. de curvas da semana.
+    carga_b4 = serie_carga_b4_por_dia(dump)
 
     dados = {
         "meta": {
@@ -344,6 +402,7 @@ def main():
             "tensao_maior_porte": coords_maior,
             "eixo_x_tensao": ["{}={}".format(b, px[b]) for b in BARRAS_MONITORADAS],
         },
+        "carga_b4_por_dia": carga_b4,
     }
 
     with open(SAIDA, "w", encoding="utf-8", newline="\n") as fh:
@@ -374,6 +433,8 @@ def main():
         dados["soc"]["janela_ponta"][0], dados["soc"]["janela_ponta"][1]))
     print("Invariancia de %stored: {}".format(
         "OK (desvio max {:.2e} pu)".format(max(desvios.values()))))
+    print("carga_b4_por_dia: {} dias, {} valores cada".format(
+        len(carga_b4), len(carga_b4[DIAS_SEMANA[0][1]]["carga_b4_kwh"])))
     print("JSON escrito em {}".format(SAIDA))
     return 0
 
