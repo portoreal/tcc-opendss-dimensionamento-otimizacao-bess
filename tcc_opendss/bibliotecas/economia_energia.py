@@ -266,13 +266,19 @@ def _simular_dia(motor: MotorReutilizavel, caminho_master: str,
                   bess_list: List[Dict[str, Any]], controlar: bool,
                   horario_ponta_inicio: int, horario_ponta_fim: int,
                   soc_min: float, soc_max: float,
-                  soc_inicial: float) -> List[Dict[str, Any]]:
+                  soc_inicial: float,
+                  eh_dia_util: bool = True) -> List[Dict[str, Any]]:
     """Simula as 24 horas do dia representativo e devolve o perfil horário.
 
     Cada hora traz a potência BRUTA da fonte — sinal cru, ainda sem
     interpretação —, além do estado comandado e do SoC de cada BESS. A
     mesma função serve ao caso base e ao caso com BESS; 'controlar' é o que
     separa os dois.
+
+    O parâmetro eh_dia_util desliga a janela de ponta em dias sem posto de
+    ponta na tarifa (sábado e domingo na A4 verde): a ponta só existe em
+    dia útil, e o dia representativo (quinta) é dia útil, o que mantém o
+    comportamento anterior quando o default True vale.
     """
     motor.recompilar(caminho_master)
 
@@ -289,7 +295,8 @@ def _simular_dia(motor: MotorReutilizavel, caminho_master: str,
 
     perfil = []
     for hora in range(24):
-        ponta = _eh_hora_ponta(hora, horario_ponta_inicio, horario_ponta_fim)
+        ponta = eh_dia_util and _eh_hora_ponta(hora, horario_ponta_inicio,
+                                               horario_ponta_fim)
 
         estados_aplicados = {}
         if controlar and nomes_bess:
@@ -315,10 +322,24 @@ def _simular_dia(motor: MotorReutilizavel, caminho_master: str,
             nome: _ler_soc(motor, nome) for nome in nomes_bess
         } if nomes_bess else {}
 
+        # Leituras por elemento no MESMO passo: a potência da fonte é o
+        # balanço líquido e não distingue quem consumiu ou gerou; carga e
+        # FV horárias servem aos gráficos de balanço e aos perfis semanais.
+        carga_kw = 0.0
+        for ld in motor.dssCircuit.Loads.AllNames:
+            motor.dssCircuit.SetActiveElement("Load." + ld)
+            carga_kw += abs(motor.dssCircuit.ActiveElement.TotalPowers[0])
+        fv_kw = 0.0
+        for pv in motor.dssCircuit.PVSystems.AllNames:
+            motor.dssCircuit.PVSystems.Name = pv
+            fv_kw += float(motor.dssCircuit.PVSystems.kW)
+
         perfil.append({
             "hora": hora,
             "ponta": ponta,
             "kw_fonte_bruto": _ler_potencia_bruta_fonte_kw(motor),
+            "carga_kw": carga_kw,
+            "fv_kw": fv_kw,
             "estados_aplicados": estados_aplicados,
             "soc_depois": soc_depois,
         })
