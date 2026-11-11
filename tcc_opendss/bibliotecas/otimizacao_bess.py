@@ -152,7 +152,37 @@ def executar_estudo_completo(caminho_master, barras_candidatas, barras_falta,
     # A escala de economia exige tarifa. Sem ela o MILP cai no fallback por
     # máximo observado, que é caminho de exceção (ver otimizacao_milp.py).
     escala_economia = None
-    if tarifa is not None:
+    # Base SEMANAL (método aprovado em 11/11/2026): a economia do estudo
+    # considera os sete dias com as curvas padrão de cada dia, ponta 18-21 h
+    # só em dias úteis (A4 verde) e anualização pela semana inteira
+    # (economia semanal × 52). A escala segue a mesma base:
+    # spread × D_max × 15 h de ponta na semana × 52 semanas
+    # (era 3 h × 22 dias × 12 = 792 h/ano com o dia representativo).
+    escala_economia = None
+    demanda_max_base = 0.0
+    semana_base = None
+    if tarifa is not None and rede is not None:
+        _status("Calculando o potencial teórico de arbitragem (caso base semanal)...")
+        semana_base = economia_energia.analisar_economia_semanal(
+            rede=rede, pasta_curvas=pasta_curvas, dia_padrao=None,
+            bess_list=[], tarifa=tarifa,
+            horario_ponta_inicio=horario_ponta_inicio,
+            horario_ponta_fim=horario_ponta_fim,
+            dias_equivalentes_mes=dias_equivalentes_mes,
+            callback_status=None, incluir_perfis=True)
+        # D_max: maior importação do caso base nas HORAS DE PONTA da semana.
+        demanda_max_base = max(
+            (float(p["kw_comprada"])
+             for d in semana_base.get("perfis_por_dia", [])
+             if d["dia_util"] and d["perfil_base"]
+             for p in d["perfil_base"] if p["ponta"]),
+            default=0.0)
+        spread = float(tarifa.tarifa_ponta_kwh) - float(tarifa.tarifa_fora_ponta_kwh)
+        if demanda_max_base > 0 and spread > 0:
+            escala_economia = float(spread * demanda_max_base * 15.0 * 52.0)
+    elif tarifa is not None:
+        # Caminho de exceção: sem a rede em memória não há reexportação por
+        # dia — recua para o dia representativo no caminho_master.
         _status("Calculando o potencial teórico de arbitragem (caso base)...")
         economia_base = economia_energia.analisar_economia_energia(
             caminho_master=caminho_master,
@@ -167,9 +197,6 @@ def executar_estudo_completo(caminho_master, barras_candidatas, barras_falta,
             (float(p.get("kw_comprada", 0.0) or 0.0)
              for p in economia_base.get("perfil_base", [])),
             default=0.0)
-        # Potencial teórico da arbitragem: todo o excedente de custo da ponta
-        # sobre a fora ponta, sobre a demanda máxima do caso base, pelo
-        # número de horas de ponta e pela extrapolação anual.
         spread = float(tarifa.tarifa_ponta_kwh) - float(tarifa.tarifa_fora_ponta_kwh)
         duracao_ponta = max(horario_ponta_fim - horario_ponta_inicio, 0)
         if demanda_max_base > 0 and spread > 0 and duracao_ponta > 0:
@@ -220,30 +247,80 @@ def executar_estudo_completo(caminho_master, barras_candidatas, barras_falta,
             if tarifa is not None:
                 _status(f"Estimando economia do BESS '{modelo['nome']}' "
                         f"na barra '{bus}'...")
-                resultado_econ = economia_energia.analisar_economia_energia(
-                    caminho_master=caminho_master,
-                    bess_list=[{"bus": bus, "kw": modelo["kw"], "kwh": modelo["kwh"]}],
-                    tarifa=tarifa,
-                    horario_ponta_inicio=horario_ponta_inicio,
-                    horario_ponta_fim=horario_ponta_fim,
-                    dias_equivalentes_mes=dias_equivalentes_mes,
-                    custo_bess_brl=modelo["custo_brl"],
-                    callback_status=None)
-                economia_candidato = {
-                    # float() explícito: os valores vêm do numpy (o motor
-                    # OpenDSS devolve np.float64); sem o cast eles vazam
-                    # para a UI e para o registro de auditoria.
-                    "economia_diaria": float(resultado_econ["economia_diaria"]),
-                    "economia_anual": float(resultado_econ["economia_anual"]),
-                    "economia_demanda_mensal_estimada":
-                        float(resultado_econ["economia_demanda_mensal_estimada"]),
-                    "payback_anos": (
-                        None if resultado_econ["payback_anos"] is None
-                        else float(resultado_econ["payback_anos"])),
-                    "alerta_superdimensionamento":
-                        resultado_econ["alerta_superdimensionamento"],
-                }
-                beneficio_econ_anual = float(resultado_econ["economia_anual"])
+                if rede is not None and semana_base is not None:
+                    # Método semanal: a economia do candidato soma os sete
+                    # dias (cada um com as curvas padrão do próprio dia e
+                    # ponta só em dia útil) e anualiza por 52 semanas. O
+                    # caso base da semana já foi calculado uma única vez.
+                    semana_cand = economia_energia.analisar_economia_semanal(
+                        rede=rede, pasta_curvas=pasta_curvas, dia_padrao=None,
+                        bess_list=[{"bus": bus, "kw": modelo["kw"],
+                                    "kwh": modelo["kwh"]}],
+                        tarifa=tarifa,
+                        horario_ponta_inicio=horario_ponta_inicio,
+                        horario_ponta_fim=horario_ponta_fim,
+                        dias_equivalentes_mes=dias_equivalentes_mes,
+                        callback_status=None,
+                        pular_base=True,
+                        custo_base_diario_brl=semana_base["custo_base_diario_brl"])
+                    economia_semanal_cand = float(semana_cand["economia_semanal_brl"])
+                    economia_anual_cand = economia_semanal_cand * 52.0
+                    # Compatibilidade: 'economia_diaria' continua sendo a do
+                    # dia representativo (quinta-feira), agora medida dentro
+                    # da semana completa.
+                    economia_diaria_cand = float(
+                        semana_cand["economia_diaria_brl"][
+                            list(semana_cand["dias"]).index("Quinta")])
+                    resultado_econ = {
+                        "economia_diaria": economia_diaria_cand,
+                        "economia_anual": economia_anual_cand,
+                        "economia_demanda_mensal_estimada": 0.0,
+                        "payback_anos": (
+                            None if economia_anual_cand <= 0
+                            else modelo["custo_brl"] / economia_anual_cand),
+                        "alerta_superdimensionamento": False,  # checado no vencedor (4b/4c)
+                    }
+                    economia_candidato = {
+                        # float() explícito: os valores vêm do numpy (o motor
+                        # OpenDSS devolve np.float64); sem o cast eles vazam
+                        # para a UI e para o registro de auditoria.
+                        "economia_diaria": float(economia_diaria_cand),
+                        "economia_anual": float(economia_anual_cand),
+                        "economia_semanal": float(economia_semanal_cand),
+                        "economia_por_dia": [float(x) for x in
+                                             semana_cand["economia_diaria_brl"]],
+                        "economia_demanda_mensal_estimada":
+                            float(resultado_econ["economia_demanda_mensal_estimada"]),
+                        "payback_anos": (
+                            None if resultado_econ["payback_anos"] is None
+                            else float(resultado_econ["payback_anos"])),
+                        "alerta_superdimensionamento":
+                            resultado_econ["alerta_superdimensionamento"],
+                    }
+                else:
+                    # Caminho de exceção: sem a rede em memória não há
+                    # reexportação por dia — recua para o dia representativo.
+                    resultado_econ = economia_energia.analisar_economia_energia(
+                        caminho_master=caminho_master,
+                        bess_list=[{"bus": bus, "kw": modelo["kw"], "kwh": modelo["kwh"]}],
+                        tarifa=tarifa,
+                        horario_ponta_inicio=horario_ponta_inicio,
+                        horario_ponta_fim=horario_ponta_fim,
+                        dias_equivalentes_mes=dias_equivalentes_mes,
+                        custo_bess_brl=modelo["custo_brl"],
+                        callback_status=None)
+                    economia_candidato = {
+                        "economia_diaria": float(resultado_econ["economia_diaria"]),
+                        "economia_anual": float(resultado_econ["economia_anual"]),
+                        "economia_demanda_mensal_estimada":
+                            float(resultado_econ["economia_demanda_mensal_estimada"]),
+                        "payback_anos": (
+                            None if resultado_econ["payback_anos"] is None
+                            else float(resultado_econ["payback_anos"])),
+                        "alerta_superdimensionamento":
+                            resultado_econ["alerta_superdimensionamento"],
+                    }
+                beneficio_econ_anual = float(economia_candidato["economia_anual"])
 
             candidatos.append({
                 "bus": bus,
@@ -325,7 +402,7 @@ def executar_estudo_completo(caminho_master, barras_candidatas, barras_falta,
     # há como reexportar cada dia, então o passo se autodesliga em vez de
     # falhar. Derrubar o estudo inteiro por causa de um gráfico seria pior
     # que devolver a semana ausente com o motivo registrado em avisos.
-    if (rede is not None and pasta_curvas and tarifa is not None
+    if (rede is not None and tarifa is not None
             and resultado_economia is not None):
         _status("Executando análise de economia semanal (sete dias)...")
         try:
@@ -338,7 +415,8 @@ def executar_estudo_completo(caminho_master, barras_candidatas, barras_falta,
                 horario_ponta_inicio=horario_ponta_inicio,
                 horario_ponta_fim=horario_ponta_fim,
                 dias_equivalentes_mes=dias_equivalentes_mes,
-                callback_status=callback_status)
+                callback_status=callback_status,
+                incluir_perfis=True)
         except Exception as e:
             economia_semanal = None
             avisos_semanais = [str(e)]
@@ -381,6 +459,8 @@ def executar_estudo_completo(caminho_master, barras_candidatas, barras_falta,
         "resultado_economia": resultado_economia,
         "memorial_economia": memorial_economia_texto,
         "economia_semanal": economia_semanal,
+        "semana_base": semana_base,
+        "demanda_max_base": demanda_max_base,
     }
 
     if avisos_semanais:

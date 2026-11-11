@@ -13,3 +13,5 @@ exe_empacotado/dist/*.zip
 # --- Saidas do PyInstaller (spec rodado da raiz) ---
 build/
 dist/
+conference_101719.tex
+referencias.bib

@@ -652,6 +652,9 @@ def analisar_economia_semanal(
     horario_ponta_fim: int = 21,
     dias_equivalentes_mes: float = 22,
     callback_status: Optional[Callable[[str], None]] = None,
+    incluir_perfis: bool = False,
+    pular_base: bool = False,
+    custo_base_diario_brl: Optional[List[float]] = None,
 ) -> Dict[str, Any]:
     """Repete a análise de economia para os sete dias da semana.
 
@@ -669,6 +672,13 @@ def analisar_economia_semanal(
     mensagem vai para 'avisos'. Uma semana parcial sinalizada é mais útil que
     nenhum resultado.
 
+    A janela de ponta vale só em dias úteis (sábado e domingo são
+    integralmente fora de ponta na A4 verde). Com pular_base=True e
+    custo_base_diario_brl fornecido, o caso base do dia não é simulado
+    (o custo base vem da lista, indexada por _DIAS_SEMANA) — caminho para
+    quem já tem o caso base da semana e avalia muitos candidatos.
+    Com incluir_perfis=True, o retorno traz 'perfis_por_dia' com o perfil
+    horário processado de cada dia.
     Parameters
     ----------
     rede : RedeEletrica
@@ -691,11 +701,12 @@ def analisar_economia_semanal(
 
     avisos: List[str] = []
     economia_diaria_brl: List[float] = []
-    custo_base_diario_brl: List[float] = []
+    custos_base_brl: List[float] = []
     custo_sistema_diario_brl: List[float] = []
     energia_rede_kwh: List[float] = []
     energia_fv_kwh: List[float] = []
     energia_bess_kwh: List[float] = []
+    perfis_por_dia: List[Dict[str, Any]] = []
 
     # O sinal de importação é propriedade da INSTÂNCIA do motor, não do
     # circuito, mas calibrá-lo uma vez por dia custa um micro-Solve e elimina
@@ -704,6 +715,10 @@ def analisar_economia_semanal(
     try:
         for dia in _DIAS_SEMANA:
             _status(f"Economia semanal: simulando {dia}...")
+            # Na A4 verde o posto de ponta só existe em dia útil; sábado e
+            # domingo são fora de ponta no dia inteiro.
+            dia_util = dia not in ("Sábado", "Domingo")
+            indice_dia = len(economia_diaria_brl)
             try:
                 rede_dia = copy.deepcopy(rede)
                 avisos.extend(_rebindar_curvas_do_dia(rede_dia, pasta_curvas, dia))
@@ -714,29 +729,39 @@ def analisar_economia_semanal(
                         rede_dia, pasta_temp, pasta_curvas=pasta_curvas,
                         dia_curvas_padrao=dia)
 
-                    perfil_base = _simular_dia(
-                        motor, caminho_master, bess_list, controlar=False,
-                        horario_ponta_inicio=horario_ponta_inicio,
-                        horario_ponta_fim=horario_ponta_fim,
-                        soc_min=0.2, soc_max=0.95, soc_inicial=0.5)
+                    if pular_base and custo_base_diario_brl is not None:
+                        custo_base = float(custo_base_diario_brl[indice_dia])
+                        perfil_base = None
+                    else:
+                        perfil_base = _simular_dia(
+                            motor, caminho_master, bess_list, controlar=False,
+                            horario_ponta_inicio=horario_ponta_inicio,
+                            horario_ponta_fim=horario_ponta_fim,
+                            soc_min=0.2, soc_max=0.95, soc_inicial=0.5,
+                            eh_dia_util=dia_util)
+
                     perfil_bess = _simular_dia(
                         motor, caminho_master, bess_list, controlar=True,
                         horario_ponta_inicio=horario_ponta_inicio,
                         horario_ponta_fim=horario_ponta_fim,
-                        soc_min=0.2, soc_max=0.95, soc_inicial=0.5)
+                        soc_min=0.2, soc_max=0.95, soc_inicial=0.5,
+                        eh_dia_util=dia_util)
 
                     sinal_importacao = _calibrar_sinal_importacao()
-                    perfil_base = _processar_perfil(perfil_base, sinal_importacao)
+                    if perfil_base is not None:
+                        perfil_base = _processar_perfil(perfil_base, sinal_importacao)
                     perfil_bess = _processar_perfil(perfil_bess, sinal_importacao)
 
-                    (energia_ponta_base, energia_fora_base,
-                     _exp_ponta_base, _exp_fora_base) = _integrar_energia(perfil_base)
+                    if perfil_base is not None:
+                        (energia_ponta_base, energia_fora_base,
+                         _exp_ponta_base, _exp_fora_base) = _integrar_energia(perfil_base)
                     (energia_ponta_bess, energia_fora_bess,
                      _exp_ponta_bess, exp_fora_bess) = _integrar_energia(perfil_bess)
 
-                    custo_base = (
-                        energia_ponta_base * tarifa.tarifa_ponta_kwh
-                        + energia_fora_base * tarifa.tarifa_fora_ponta_kwh)
+                    if perfil_base is not None:
+                        custo_base = (
+                            energia_ponta_base * tarifa.tarifa_ponta_kwh
+                            + energia_fora_base * tarifa.tarifa_fora_ponta_kwh)
                     custo_sistema = (
                         energia_ponta_bess * tarifa.tarifa_ponta_kwh
                         + energia_fora_bess * tarifa.tarifa_fora_ponta_kwh)
@@ -751,17 +776,26 @@ def analisar_economia_semanal(
 
                     fv_dia_kwh, bess_dia_kwh = _fontes_do_dia(
                         motor, caminho_master, bess_list,
-                        horario_ponta_inicio, horario_ponta_fim)
+                        horario_ponta_inicio, horario_ponta_fim,
+                        eh_dia_util=dia_util)
 
                     # O FV que sai pela fonte não é consumido no local. Descontar
                     # a exportação do dia evita creditar ao FV energia que a rede
                     # recebeu; o resíduo positivo é o que a carga de fato usou.
                     fv_consumida_kwh = max(fv_dia_kwh - exportada_dia_kwh, 0.0)
+
+                    if incluir_perfis:
+                        perfis_por_dia.append({
+                            "dia": dia,
+                            "dia_util": dia_util,
+                            "perfil_base": perfil_base,
+                            "perfil_bess": perfil_bess,
+                        })
                 finally:
                     shutil.rmtree(pasta_temp, ignore_errors=True)
 
                 economia_diaria_brl.append(float(custo_base - custo_sistema))
-                custo_base_diario_brl.append(float(custo_base))
+                custos_base_brl.append(float(custo_base))
                 custo_sistema_diario_brl.append(float(custo_sistema))
                 energia_rede_kwh.append(float(rede_dia_kwh))
                 energia_fv_kwh.append(float(fv_consumida_kwh))
@@ -771,7 +805,7 @@ def analisar_economia_semanal(
                 avisos.append(f"{dia}: falha na simulação ({erro}). "
                               "Dia contabilizado com zeros.")
                 economia_diaria_brl.append(0.0)
-                custo_base_diario_brl.append(0.0)
+                custos_base_brl.append(0.0)
                 custo_sistema_diario_brl.append(0.0)
                 energia_rede_kwh.append(0.0)
                 energia_fv_kwh.append(0.0)
@@ -782,19 +816,21 @@ def analisar_economia_semanal(
     return {
         "dias": list(_DIAS_SEMANA),
         "economia_diaria_brl": economia_diaria_brl,
-        "custo_base_diario_brl": custo_base_diario_brl,
+        "custo_base_diario_brl": custos_base_brl,
         "custo_sistema_diario_brl": custo_sistema_diario_brl,
         "energia_rede_kwh": energia_rede_kwh,
         "energia_fv_kwh": energia_fv_kwh,
         "energia_bess_kwh": energia_bess_kwh,
         "economia_semanal_brl": float(sum(economia_diaria_brl)),
+        "perfis_por_dia": perfis_por_dia,
         "avisos": avisos,
     }
 
 
 def _fontes_do_dia(motor: MotorReutilizavel, caminho_master: str,
                     bess_list: List[Dict[str, Any]],
-                    horario_ponta_inicio: int, horario_ponta_fim: int):
+                    horario_ponta_inicio: int, horario_ponta_fim: int,
+                    eh_dia_util: bool = True):
     """Energia de FV e de descarga do BESS ao longo do dia, em kWh.
 
     Roda o despacho uma terceira vez porque a integração precisa da leitura
@@ -825,7 +861,8 @@ def _fontes_do_dia(motor: MotorReutilizavel, caminho_master: str,
     fv_kwh = 0.0
     bess_kwh = 0.0
     for hora in range(24):
-        ponta = _eh_hora_ponta(hora, horario_ponta_inicio, horario_ponta_fim)
+        ponta = eh_dia_util and _eh_hora_ponta(hora, horario_ponta_inicio,
+                                               horario_ponta_fim)
 
         if nomes_bess:
             for nome in nomes_bess:

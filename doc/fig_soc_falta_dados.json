@@ -1,0 +1,179 @@
+{
+  "meta": {
+    "gerado_por": "doc/gerar_figura_soc_falta.py",
+    "fonte_soc": "tcc_opendss/projetos/teste/dump_estudo_otimizacao.json",
+    "fonte_tensoes": "OpenDSS (estudo_afundamento)",
+    "master": "C:\\git\\tcc-opendss-dimensionamento-otimizacao-bess\\tcc_opendss\\projetos\\teste\\rede\\Master.dss",
+    "bus_falta": "B4",
+    "tipo_falta": "trifasica",
+    "r_falta_ohm": 0.05,
+    "vminpu_storage": 0.05,
+    "dia_representativo": "Quinta",
+    "hora_falta": 18,
+    "limite_inferior_pu": 0.1,
+    "limite_superior_pu": 0.9,
+    "convencao": "barra faltosa excluida da classificacao de sag"
+  },
+  "soc": {
+    "horas": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23
+    ],
+    "soc_pct": [
+      94.55,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      43.8889,
+      20.0,
+      20.0,
+      64.55,
+      100.0,
+      100.0
+    ],
+    "ponta": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ],
+    "hora_falta": 18,
+    "soc_falta_pct": 43.8889,
+    "janela_ponta": [
+      18,
+      20
+    ],
+    "piso_operacao_pct": 20.0
+  },
+  "tensao": {
+    "barras": [
+      "b1",
+      "b2",
+      "b3",
+      "b4",
+      "b5",
+      "b6"
+    ],
+    "pu_minimo": {
+      "base": {
+        "b1": 0.9993095010015955,
+        "b2": 0.999309629090084,
+        "b3": 0.9972076275708595,
+        "b4": 0.8722824202397146,
+        "b5": 0.8483816228977099,
+        "b6": 0.9337366344107569
+      },
+      "selecionado_50kw": {
+        "b1": 0.9993290332028357,
+        "b2": 0.9993291612938282,
+        "b3": 0.9972794352810066,
+        "b4": 0.8757575610461257,
+        "b5": 0.851749845985595,
+        "b6": 0.9370887708991633
+      },
+      "maior_porte_1000kw": {
+        "b1": 0.9996414940226669,
+        "b2": 0.9996416221537089,
+        "b3": 0.9984632141345223,
+        "b4": 0.9311845959154732,
+        "b5": 0.9054715877050967,
+        "b6": 0.990530651564606
+      }
+    },
+    "classificacao_sag": {
+      "base": [
+        "b5"
+      ],
+      "selecionado_50kw": [
+        "b5"
+      ],
+      "maior_porte_1000kw": []
+    },
+    "excluida_da_classificacao": "b4"
+  },
+  "validacao": {
+    "teste": "invariancia de %stored (%stored do ponto de otimizacao vs %stored=50 de rodar_estudo)",
+    "stored_ponto_otimizacao_pct": 43.8889,
+    "stored_rodar_estudo_pct": 50,
+    "tolerancia_pu": 1e-06,
+    "desvio_absoluto_por_barra": {
+      "b1": 0.0,
+      "b2": 0.0,
+      "b3": 0.0,
+      "b4": 0.0,
+      "b5": 0.0,
+      "b6": 0.0
+    },
+    "aprovado": true
+  },
+  "pgfplots": {
+    "soc": "(0,94.5500) (1,100.0000) (2,100.0000) (3,100.0000) (4,100.0000) (5,100.0000) (6,100.0000) (7,100.0000) (8,100.0000) (9,100.0000) (10,100.0000) (11,100.0000) (12,100.0000) (13,100.0000) (14,100.0000) (15,100.0000) (16,100.0000) (17,100.0000) (18,43.8889) (19,20.0000) (20,20.0000) (21,64.5500) (22,100.0000) (23,100.0000)",
+    "tensao_base": "(1,0.9993) (2,0.9993) (3,0.9972) (4,0.8723) (5,0.8484) (6,0.9337)",
+    "tensao_selecionado": "(1,0.9993) (2,0.9993) (3,0.9973) (4,0.8758) (5,0.8517) (6,0.9371)",
+    "tensao_maior_porte": "(1,0.9996) (2,0.9996) (3,0.9985) (4,0.9312) (5,0.9055) (6,0.9905)",
+    "eixo_x_tensao": [
+      "b1=1",
+      "b2=2",
+      "b3=3",
+      "b4=4",
+      "b5=5",
+      "b6=6"
+    ]
+  }
+}
