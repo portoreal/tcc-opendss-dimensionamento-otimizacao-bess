@@ -1601,6 +1601,18 @@ class ExportarGraficosDialog(QDialog):
 
         caixa_estilo = QGroupBox("Estilo e formato")
         grade_estilo = QVBoxLayout(caixa_estilo)
+        linha_estilo = QHBoxLayout()
+        linha_estilo.addWidget(QLabel("Estilo:"))
+        self.combo_estilo = QComboBox()
+        self.combo_estilo.addItem("Padrão da ferramenta", "padrao")
+        self.combo_estilo.addItem(
+            "Artigo (Okabe-Ito) — paleta e marcadores do TCC", "artigo")
+        self.combo_estilo.setToolTip(
+            "O estilo 'Artigo' reproduz as figuras do TCC: uma cor e um "
+            "marcador por dia da semana, marcas a cada 2 h e curvas "
+            "semanais só de pontos.")
+        linha_estilo.addWidget(self.combo_estilo, 1)
+        grade_estilo.addLayout(linha_estilo)
         linha_linha = QHBoxLayout()
         linha_linha.addWidget(QLabel("Espessura das linhas:"))
         self.spin_espessura = QDoubleSpinBox()
@@ -1696,6 +1708,7 @@ class ExportarGraficosDialog(QDialog):
             "fundo": self.combo_fundo.currentData(),
             "formato": self.combo_formato.currentData(),
             "por_dia": self.chk_por_dia.isChecked(),
+            "estilo": self.combo_estilo.currentData(),
             "pasta": pasta,
             "prefixo": self.edit_prefixo.text().strip() or "ao_vivo",
         }

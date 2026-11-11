@@ -29,6 +29,10 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 
+from .estilo_artigo import (
+    CADA_N_HORAS, CORES, DIAS_NOMES, TAM_MARCADOR, marcador_do_dia,
+    serie_artigo)
+
 CHAVES_GRAFICOS = {
     "cargas_barras": "Curvas de carga — por barra (kW)",
     "geracao_pv": "Geração PV — por unidade (kW)",
@@ -47,6 +51,11 @@ ROTULOS_ESTADO = ["Repouso", "Carregando", "Descarregando"]
 CORES_EVENTO = {"afundamento": "#c62828", "nuvem": "#00838f",
                 "virada_dia": "#666666", "tarifa": "#7b1fa2"}
 COR_TEXTO_ESCURO = "#dddddd"
+
+# Modos de estilo aceitos em ``config['estilo']``.
+# 'padrao'  — comportamento histórico da ferramenta (inalterado).
+# 'artigo'  — paleta Okabe-Ito + um marcador por dia, como no TCC.
+ESTILOS_VALIDOS = ("padrao", "artigo")
 
 
 def _nova_figura(fundo: str) -> Tuple[Figure, Any]:
@@ -139,7 +148,34 @@ def _filtrar_ledger(snapshot, dias):
     return [p for p in snapshot["ledger"] if p["dia"] in dias]
 
 
-def _graf_cargas_barras(fig, snapshot, dias, espessura, fundo, por_dia):
+def _nome_dia(dia) -> str:
+    """Nome do dia da semana para rótulos de legenda ('Dia 3' se fora)."""
+    nome = DIAS_NOMES[dia % 7] if isinstance(dia, int) else None
+    return nome or f"Dia {int(dia) + 1}"
+
+
+def _agrupar_por_dia(ledger, xs, ys):
+    """Decompõe uma série em (dia, xs_do_dia, ys_do_dia), na ordem original.
+
+    Mantém o pareamento índice a índice (xs/ys vêm do mesmo ledger) e
+    ignora pontos sem y (ex.: perdas não medidas ainda).
+    """
+    grupos: Dict[int, Tuple[List[float], List[float]]] = {}
+    ordem: List[int] = []
+    for passo, x, y in zip(ledger, xs, ys):
+        if y is None:
+            continue
+        dia = passo["dia"]
+        if dia not in grupos:
+            grupos[dia] = ([], [])
+            ordem.append(dia)
+        grupos[dia][0].append(x)
+        grupos[dia][1].append(y)
+    return [(dia, grupos[dia][0], grupos[dia][1]) for dia in ordem]
+
+
+def _graf_cargas_barras(fig, snapshot, dias, espessura, fundo, por_dia,
+                        estilo="padrao"):
     ax = fig.add_subplot(1, 1, 1)
     dias_sel = ([dias] if dias is not None
                 else sorted({p["dia"] for p in snapshot["ledger"]}))
@@ -148,8 +184,18 @@ def _graf_cargas_barras(fig, snapshot, dias, espessura, fundo, por_dia):
         xs = list(range(24)) if por_dia else [
             p["passo"] for p in snapshot["ledger"] if p["dia"] == dia_c]
         for nome_barra in sorted(cargas):
-            ax.plot(xs if por_dia else xs[:len(cargas[nome_barra])],
-                    cargas[nome_barra], linewidth=espessura, label=nome_barra)
+            xs_barra = xs if por_dia else xs[:len(cargas[nome_barra])]
+            if estilo == "artigo":
+                # Uma série por dia (cor+marcador do dia). Com uma única
+                # barra o rótulo é só o dia; com várias, "dia — barra".
+                rotulo = (f"{_nome_dia(dia_c)} — {nome_barra}"
+                          if len(cargas) > 1 else _nome_dia(dia_c))
+                serie_artigo(ax, dia_c, xs_barra, cargas[nome_barra],
+                             espessura=espessura, somente_marcas=True,
+                             label=rotulo)
+            else:
+                ax.plot(xs_barra, cargas[nome_barra],
+                        linewidth=espessura, label=nome_barra)
     ax.set_title("Curvas de carga por barra (kW)", fontsize=10)
     ax.set_xlabel("Hora do dia (h)" if por_dia else "Tempo (h simuladas)")
     ax.set_ylabel("kW")
@@ -165,7 +211,8 @@ def _graf_cargas_barras(fig, snapshot, dias, espessura, fundo, por_dia):
     return ax
 
 
-def _graf_geracao_pv(fig, snapshot, dias, espessura, fundo, por_dia):
+def _graf_geracao_pv(fig, snapshot, dias, espessura, fundo, por_dia,
+                     estilo="padrao"):
     ax = fig.add_subplot(1, 1, 1)
     pmpp = snapshot.get("pv_kw_nominal") or (
         snapshot.get("meta", {}).get("pv_kw_nominal") or {})
@@ -175,14 +222,24 @@ def _graf_geracao_pv(fig, snapshot, dias, espessura, fundo, por_dia):
     for nome in nomes:
         ys = [p["pv_mult_por_unidade"].get(nome, 1.0) * pmpp.get(nome, 0.0)
               for p in ledger]
-        ax.plot(xs, ys, linewidth=espessura, label=nome,
-                marker="o", markersize=2.5)
+        if estilo == "artigo":
+            # Uma série por dia: é o que torna os dias reconhecíveis
+            # (a referência do artigo usa pontos coloridos por dia).
+            for dia_g, xs_g, ys_g in _agrupar_por_dia(ledger, xs, ys):
+                rotulo = (_nome_dia(dia_g) if len(nomes) == 1
+                          else f"{_nome_dia(dia_g)} — {nome}")
+                serie_artigo(ax, dia_g, xs_g, ys_g, espessura=espessura,
+                             somente_marcas=True, label=rotulo)
+        else:
+            ax.plot(xs, ys, linewidth=espessura, label=nome,
+                    marker="o", markersize=2.5)
     ax.set_title("Geração fotovoltaica (kW)", fontsize=10)
     ax.set_xlabel("Hora do dia (h)" if por_dia else "Tempo (h simuladas)")
     ax.set_ylabel("kW")
-    ax.axhline(0, color="#333333", linewidth=0.7)
+    ax.axhline(0, color=(CORES["texto"] if estilo == "artigo" else "#333333"),
+               linewidth=0.7)
     if nomes:
-        ax.legend(fontsize=6)
+        ax.legend(fontsize=6, ncol=2 if estilo == "artigo" else 1)
     _marcas = _marcas_de_dia(ledger, xs, por_dia)
     if not por_dia:
         _desenhar_separadores(ax, _marcas, False)
@@ -190,21 +247,30 @@ def _graf_geracao_pv(fig, snapshot, dias, espessura, fundo, por_dia):
     return ax
 
 
-def _graf_bess_soc(fig, snapshot, dias, espessura, fundo, por_dia):
+def _graf_bess_soc(fig, snapshot, dias, espessura, fundo, por_dia,
+                   estilo="padrao"):
     ax = fig.add_subplot(1, 1, 1)
     ledger = _filtrar_ledger(snapshot, dias)
     xs = [(p["hora"] if por_dia else p["passo"]) for p in ledger]
     nomes = sorted({n for p in ledger for n in p["soc_por_bess"]})
     for nome in nomes:
         ys = [p["soc_por_bess"].get(nome) * 100.0 for p in ledger]
-        ax.plot(xs, ys, linewidth=espessura, label=nome,
-                marker="o", markersize=2.5)
+        if estilo == "artigo":
+            for dia_g, xs_g, ys_g in _agrupar_por_dia(ledger, xs, ys):
+                rotulo = (_nome_dia(dia_g) if len(nomes) == 1
+                          else f"{_nome_dia(dia_g)} — {nome}")
+                serie_artigo(ax, dia_g, xs_g, ys_g, espessura=espessura,
+                             somente_marcas=False, label=rotulo)
+        else:
+            ax.plot(xs, ys, linewidth=espessura, label=nome,
+                    marker="o", markersize=2.5)
     ax.set_title("BESS — nível de carga (SoC %)", fontsize=10)
     ax.set_xlabel("Hora do dia (h)" if por_dia else "Tempo (h simuladas)")
     ax.set_ylabel("SoC (%)")
     ax.set_ylim(-5, 105)
-    ax.axhline(20, color="#666666", linestyle=":", linewidth=0.8, alpha=0.7)
-    ax.axhline(95, color="#666666", linestyle=":", linewidth=0.8, alpha=0.7)
+    cor_ref = CORES["referencia"] if estilo == "artigo" else "#666666"
+    ax.axhline(20, color=cor_ref, linestyle=":", linewidth=0.8, alpha=0.7)
+    ax.axhline(95, color=cor_ref, linestyle=":", linewidth=0.8, alpha=0.7)
     if nomes:
         ax.legend(fontsize=6)
     if not por_dia:
@@ -212,19 +278,28 @@ def _graf_bess_soc(fig, snapshot, dias, espessura, fundo, por_dia):
     return ax
 
 
-def _graf_bess_potencia(fig, snapshot, dias, espessura, fundo, por_dia):
+def _graf_bess_potencia(fig, snapshot, dias, espessura, fundo, por_dia,
+                        estilo="padrao"):
     ax = fig.add_subplot(1, 1, 1)
     ledger = _filtrar_ledger(snapshot, dias)
     xs = [(p["hora"] if por_dia else p["passo"]) for p in ledger]
     nomes = sorted({n for p in ledger for n in p["kw_por_bess"]})
     for nome in nomes:
         ys = [p["kw_por_bess"].get(nome, 0.0) for p in ledger]
-        ax.plot(xs, ys, linewidth=espessura, label=nome,
-                marker="o", markersize=2.5)
+        if estilo == "artigo":
+            for dia_g, xs_g, ys_g in _agrupar_por_dia(ledger, xs, ys):
+                rotulo = (_nome_dia(dia_g) if len(nomes) == 1
+                          else f"{_nome_dia(dia_g)} — {nome}")
+                serie_artigo(ax, dia_g, xs_g, ys_g, espessura=espessura,
+                             somente_marcas=False, label=rotulo)
+        else:
+            ax.plot(xs, ys, linewidth=espessura, label=nome,
+                    marker="o", markersize=2.5)
     ax.set_title("BESS — potência despachada (+descarga / −carga)", fontsize=10)
     ax.set_xlabel("Hora do dia (h)" if por_dia else "Tempo (h simuladas)")
     ax.set_ylabel("kW")
-    ax.axhline(0, color="#333333", linewidth=0.8)
+    ax.axhline(0, color=(CORES["texto"] if estilo == "artigo" else "#333333"),
+               linewidth=0.8)
     if nomes:
         ax.legend(fontsize=6)
     if not por_dia:
@@ -233,7 +308,8 @@ def _graf_bess_potencia(fig, snapshot, dias, espessura, fundo, por_dia):
     return ax
 
 
-def _graf_bess_controlador(fig, snapshot, dias, espessura, fundo, por_dia):
+def _graf_bess_controlador(fig, snapshot, dias, espessura, fundo, por_dia,
+                           estilo="padrao"):
     ax = fig.add_subplot(1, 1, 1)
     ledger = _filtrar_ledger(snapshot, dias)
     xs = [(p["hora"] if por_dia else p["passo"]) for p in ledger]
@@ -257,57 +333,98 @@ def _graf_bess_controlador(fig, snapshot, dias, espessura, fundo, por_dia):
     return ax
 
 
-def _graf_economia(fig, snapshot, dias, espessura, fundo, por_dia):
+def _graf_economia(fig, snapshot, dias, espessura, fundo, por_dia,
+                   estilo="padrao"):
     ax = fig.add_subplot(1, 1, 1)
     ledger = _filtrar_ledger(snapshot, dias)
     xs = [(p["hora"] if por_dia else p["passo"]) for p in ledger]
     ys = [p["economia_total"] for p in ledger]
-    ax.plot(xs, ys, linewidth=espessura, color="#1b8f3a")
-    ax.fill_between(xs, ys, alpha=0.25, color="#1b8f3a")
+    cor_eco = CORES["desc_bess"] if estilo == "artigo" else "#1b8f3a"
+    ax.plot(xs, ys, linewidth=espessura, color=cor_eco)
+    ax.fill_between(xs, ys, alpha=0.25, color=cor_eco)
     total = ys[-1] if ys else 0.0
     ax.set_title(f"Economia acumulada (arbitragem) — total R$ {total:,.2f}",
                  fontsize=10)
     ax.set_xlabel("Hora do dia (h)" if por_dia else "Tempo (h simuladas)")
     ax.set_ylabel("R$")
-    ax.axhline(0, color="#333333", linewidth=0.8)
+    ax.axhline(0, color=(CORES["texto"] if estilo == "artigo" else "#333333"),
+               linewidth=0.8)
     if not por_dia:
         _desenhar_separadores(ax, _marcas_de_dia(ledger, xs, por_dia), False)
     return ax
 
 
-def _graf_tensao(fig, snapshot, dias, espessura, fundo, por_dia):
+def _graf_tensao(fig, snapshot, dias, espessura, fundo, por_dia,
+                 estilo="padrao"):
     ax = fig.add_subplot(1, 1, 1)
     ledger = _filtrar_ledger(snapshot, dias)
     xs = [(p["hora"] if por_dia else p["passo"]) for p in ledger]
+    if estilo == "artigo":
+        # Cores do artigo; marcador do dia quando a barra mostra um dia só
+        # (em multi-dia as duas séries são contínuas para não poluir).
+        cor_vmax = CORES["import"]
+        cor_vmin = CORES["carga_bess"]
+        dia_atual = dias if isinstance(dias, int) else None
+        marcas = ({"marker": marcador_do_dia(dia_atual),
+                   "markersize": TAM_MARCADOR, "markevery": CADA_N_HORAS}
+                  if dia_atual is not None else {})
+    else:
+        cor_vmax = "#004587"
+        cor_vmin = "#c62828"
+        marcas = {}
     ax.plot(xs, [p["vmax"] for p in ledger], linewidth=espessura,
-            color="#004587", label="Vmax")
+            color=cor_vmax, label="Vmax", **marcas)
     ax.plot(xs, [p["vmin"] for p in ledger], linewidth=espessura,
-            color="#c62828", label="Vmin")
+            color=cor_vmin, label="Vmin", **marcas)
     ax.set_title("Tensão — Vmin/Vmax (pu)", fontsize=10)
     ax.set_xlabel("Hora do dia (h)" if por_dia else "Tempo (h simuladas)")
     ax.set_ylabel("pu")
-    ax.axhline(0.90, color="#c62828", linestyle="--", linewidth=0.8, alpha=0.7)
-    ax.axhline(1.05, color="#666666", linestyle="--", linewidth=0.8, alpha=0.7)
+    if estilo == "artigo":
+        cor_lim = CORES["referencia"]
+        ax.axhline(0.90, color=cor_lim, linestyle="--", linewidth=0.8,
+                   alpha=0.7)
+        ax.axhline(1.05, color=cor_lim, linestyle="--", linewidth=0.8,
+                   alpha=0.7)
+    else:
+        ax.axhline(0.90, color="#c62828", linestyle="--", linewidth=0.8,
+                   alpha=0.7)
+        ax.axhline(1.05, color="#666666", linestyle="--", linewidth=0.8,
+                   alpha=0.7)
     ax.legend(fontsize=6, loc="lower right")
     if not por_dia:
         _desenhar_separadores(ax, _marcas_de_dia(ledger, xs, por_dia), False)
     return ax
 
 
-def _graf_fonte_perdas(fig, snapshot, dias, espessura, fundo, por_dia):
+def _graf_fonte_perdas(fig, snapshot, dias, espessura, fundo, por_dia,
+                       estilo="padrao"):
     ax = fig.add_subplot(1, 1, 1)
     ledger = _filtrar_ledger(snapshot, dias)
     xs = [(p["hora"] if por_dia else p["passo"]) for p in ledger]
+    cor_fonte = CORES["import"] if estilo == "artigo" else "#004587"
+    cor_perdas = CORES["carga_bess"] if estilo == "artigo" else "#b35c00"
     ax.plot(xs, [p["kw_fonte_bruto"] for p in ledger], linewidth=espessura,
-            color="#004587", label="Fonte (bruto)")
+            color=cor_fonte, label="Fonte (bruto)")
     ax.set_xlabel("Hora do dia (h)" if por_dia else "Tempo (h simuladas)")
     ax.set_ylabel("kW (fonte)")
     ax2 = ax.twinx()
-    ax2.plot(xs, [p["perdas_kw"] for p in ledger if p["perdas_kw"] is not None],
-             linewidth=espessura * 0.8, color="#b35c00", label="Perdas")
-    ax2.set_ylabel("kW (perdas)", color="#b35c00")
+    if estilo == "artigo":
+        # Séries por dia exigem parear x com y (perdas pode ser None).
+        for dia_g, xs_g, ys_g in _agrupar_por_dia(
+                ledger, xs, [p["perdas_kw"] for p in ledger]):
+            serie_artigo(ax2, dia_g, xs_g, ys_g, espessura=espessura * 0.8,
+                         somente_marcas=False, label=f"Perdas — {_nome_dia(dia_g)}")
+    else:
+        # Pareia x com y: perdas pode ser None nos primeiros passos, e
+        # filtrar só o y desalinhava a série (ValueError: shapes 168 vs 167).
+        pares = [(x, p["perdas_kw"]) for x, p in zip(xs, ledger)
+                 if p["perdas_kw"] is not None]
+        ax2.plot([x for x, _ in pares], [y for _, y in pares],
+                 linewidth=espessura * 0.8, color=cor_perdas, label="Perdas")
+    ax2.set_ylabel("kW (perdas)", color=cor_perdas)
     ax.set_title("Fonte e perdas (kW)", fontsize=10)
-    ax.axhline(0, color="#333333", linewidth=0.8)
+    ax.axhline(0, color=(CORES["texto"] if estilo == "artigo" else "#333333"),
+               linewidth=0.8)
     if not por_dia:
         _desenhar_separadores(ax, _marcas_de_dia(ledger, xs, por_dia), False)
     return [ax, ax2]
@@ -331,7 +448,9 @@ def exportar_graficos(snapshot: Dict[str, Any], config: Dict[str, Any]) -> Tuple
     Parâmetros de config: 'graficos' (chaves de CHAVES_GRAFICOS),
     'dias' (ints 0-based), 'espessura' (float), 'fundo'
     ('branco'|'transparente'|'escuro'), 'formato' ('png'|'jpeg'|'svg'),
-    'por_dia' (bool), 'pasta' (str), 'prefixo' (str).
+    'por_dia' (bool), 'pasta' (str), 'prefixo' (str) e 'estilo'
+    ('padrao'|'artigo'). 'artigo' reproduz a paleta Okabe-Ito e um
+    marcador por dia da semana das figuras do TCC (ver estilo_artigo).
     Devolve (caminhos gravados, avisos).
     """
     chaves = list(config.get("graficos") or [])
@@ -352,6 +471,9 @@ def exportar_graficos(snapshot: Dict[str, Any], config: Dict[str, Any]) -> Tuple
     por_dia = bool(config.get("por_dia", False))
     pasta = str(config.get("pasta") or ".")
     prefixo = str(config.get("prefixo") or "ao_vivo")
+    estilo = str(config.get("estilo", "padrao") or "padrao").lower()
+    if estilo not in ESTILOS_VALIDOS:
+        raise ValueError(f"Estilo não suportado: {estilo!r}")
     os.makedirs(pasta, exist_ok=True)
 
     caminhos: List[str] = []
@@ -364,7 +486,8 @@ def exportar_graficos(snapshot: Dict[str, Any], config: Dict[str, Any]) -> Tuple
             FigureCanvasAgg(fig)
             if fundo == "escuro":
                 fig.patch.set_facecolor("#1e1e1e")
-            retorno = construtor(fig, snapshot, dia, espessura, fundo, por_dia)
+            retorno = construtor(fig, snapshot, dia, espessura, fundo,
+                                 por_dia, estilo)
             eixos = retorno if isinstance(retorno, list) else [retorno]
             _finalizar(fig, eixos, fundo)
             sufixo = (f"_Dia{dia + 1}" if por_dia and dia is not None else "")
