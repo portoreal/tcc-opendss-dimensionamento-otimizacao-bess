@@ -702,6 +702,39 @@
       "posicao": null,
       "rotulo_visivel": true,
       "rotulo_posicao": null
+    },
+    "BESS_646": {
+      "tipo": "Storage",
+      "nome": "BESS_646",
+      "bus1": "646",
+      "parametros": {
+        "phases": 3,
+        "kv": 4.16,
+        "kwrated": 5,
+        "kwhrated": 10,
+        "pctstored": 50,
+        "dispmode": "default",
+        "state": "idling"
+      },
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
+    },
+    "Reator_Otim": {
+      "tipo": "Reactor",
+      "nome": "Reator_Otim",
+      "bus1": "646",
+      "parametros": {
+        "phases": 3,
+        "kv": 13.8,
+        "kvar": 650,
+        "conn": "wye"
+      },
+      "grupo": null,
+      "posicao": null,
+      "rotulo_visivel": true,
+      "rotulo_posicao": null
     }
   },
   "curvas_xy": {}

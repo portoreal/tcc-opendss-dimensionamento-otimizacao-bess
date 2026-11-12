@@ -1,0 +1,15 @@
+New Load.CARGA_671 bus1=671 phases=3 kv=4.16 kw=1155.0 kvar=660.0 model=1 conn=delta
+New Load.CARGA_634a bus1=634 phases=1 kv=0.277 kw=160.0 kvar=110.0 model=1 conn=wye
+New Load.CARGA_634b bus1=634 phases=1 kv=0.277 kw=120.0 kvar=90.0 model=1 conn=wye
+New Load.CARGA_634c bus1=634 phases=1 kv=0.277 kw=120.0 kvar=90.0 model=1 conn=wye
+New Load.CARGA_645 bus1=645 phases=1 kv=2.4 kw=170.0 kvar=125.0 model=1 conn=wye
+New Load.CARGA_646 bus1=646 phases=1 kv=4.16 kw=230.0 kvar=132.0 model=1 conn=delta
+New Load.CARGA_692 bus1=692 phases=1 kv=4.16 kw=170.0 kvar=151.0 model=1 conn=delta
+New Load.CARGA_675a bus1=675 phases=1 kv=2.4 kw=485.0 kvar=190.0 model=1 conn=wye
+New Load.CARGA_675b bus1=675 phases=1 kv=2.4 kw=68.0 kvar=60.0 model=1 conn=wye
+New Load.CARGA_675c bus1=675 phases=1 kv=2.4 kw=290.0 kvar=212.0 model=1 conn=wye
+New Load.CARGA_611 bus1=611 phases=1 kv=2.4 kw=170.0 kvar=80.0 model=1 conn=wye
+New Load.CARGA_652 bus1=652 phases=1 kv=2.4 kw=128.0 kvar=86.0 model=1 conn=wye
+New Load.CARGA_670a bus1=670 phases=1 kv=2.4 kw=17.0 kvar=10.0 model=1 conn=wye
+New Load.CARGA_670b bus1=670 phases=1 kv=2.4 kw=66.0 kvar=38.0 model=1 conn=wye
+New Load.CARGA_670c bus1=670 phases=1 kv=2.4 kw=117.0 kvar=68.0 model=1 conn=wye

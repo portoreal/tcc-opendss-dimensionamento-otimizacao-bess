@@ -1,0 +1,12 @@
+New Line.L_650632 bus1=rg60 bus2=632 phases=3 length=0.6096 units=km r1=0.1156 x1=0.3708 r0=0.3468 x0=1.1124
+New Line.L_632670 bus1=632 bus2=670 phases=3 length=0.2033016 units=km r1=0.1156 x1=0.3708 r0=0.3468 x0=1.1124
+New Line.L_670671 bus1=670 bus2=671 phases=3 length=0.4062984 units=km r1=0.1156 x1=0.3708 r0=0.3468 x0=1.1124
+New Line.L_671680 bus1=671 bus2=680 phases=3 length=0.3048 units=km r1=0.1156 x1=0.3708 r0=0.3468 x0=1.1124
+New Line.L_632633 bus1=632 bus2=633 phases=3 length=0.1524 units=km r1=0.3679 x1=0.4724 r0=1.1037 x0=1.4172
+New Line.L_632645 bus1=632 bus2=645 phases=2 length=0.1524 units=km r1=0.6959 x1=0.5548 r0=2.0877 x0=1.6644
+New Line.L_645646 bus1=645 bus2=646 phases=2 length=0.09144 units=km r1=0.6959 x1=0.5548 r0=2.0877 x0=1.6644
+New Line.L_692675 bus1=692 bus2=675 phases=3 length=0.1524 units=km r1=0.2992 x1=0.2561 r0=0.8976 x0=0.7683
+New Line.L_671684 bus1=671 bus2=684 phases=2 length=0.09144 units=km r1=0.6959 x1=0.5548 r0=2.0877 x0=1.6644
+New Line.L_684611 bus1=684 bus2=611 phases=1 length=0.09144 units=km r1=0.8259 x1=0.8373 r0=2.4777 x0=2.5119
+New Line.L_684652 bus1=684 bus2=652 phases=1 length=0.24384 units=km r1=0.8342 x1=0.3184 r0=2.5026 x0=0.9552
+New Line.L_671692 bus1=671 bus2=692 phases=3 length=0.001 units=km r1=0.0001 x1=0 r0=0.0003 x0=0

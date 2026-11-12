@@ -1,0 +1,19 @@
+Clear
+
+! Fonte / Subestação
+New Circuit.MeuCircuito basekv=115.0 pu=1.0001 phases=3 bus1=sourcebus MVAsc3=2000 MVAsc1=2100
+
+Redirect linhas.dss
+Redirect transformadores.dss
+Redirect cargas.dss
+Redirect capacitores.dss
+Redirect pvsystems.dss
+Redirect storage.dss
+Redirect reatores.dss
+
+Buscoords buscoords.dss
+
+Set VoltageBases = (115.0, 4.16, 0.48)
+CalcVoltageBases
+
+Solve
