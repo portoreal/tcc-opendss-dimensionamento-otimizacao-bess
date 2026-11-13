@@ -132,6 +132,103 @@ def _definir_estado_storage(motor: MotorReutilizavel, nome: str, estado: str):
     motor.dssText.Command = f"Edit Storage.{nome} State={estado_texto}"
 
 
+def _ler_parametros_despacho(motor: MotorReutilizavel,
+                             nome: str,
+                             kwrated: float) -> Dict[str, float]:
+    """Lê do motor os parâmetros que o próprio motor usa para aplicar o bloco.
+
+    O bloco comandado por '%charge'/'%discharge' NÃO é a energia líquida que
+    entra ou sai do banco: o motor desconta/repõe as perdas e o consumo em
+    repouso. Para dimensionar o bloco de modo que o SoC chegue EXATAMENTE ao
+    piso/teto, é preciso inverter a MESMA conta que o motor faz, e para isso
+    os parâmetros precisam ser os da instância, não suposições do módulo.
+
+    Leitura por comando de texto ('? Storage.<nome>.<propriedade>'),
+    devolvendo o valor em motor.dssText.Result. O nome da propriedade só
+    funciona com o sinal '%' na frente: '? Storage.X.effcharge' devolve a
+    string 'Property Unknown' (medido neste binding, dss-python 0.15.7),
+    enquanto '? Storage.X.%effcharge' devolve o número. Uma leitura que não
+    converta em float cai no default documentado do Storage (90% de
+    eficiência, 1% de consumo em repouso) em vez de derrubar o despacho.
+    """
+    valores = {}
+    for propriedade, padrao in (("%effcharge", 90.0),
+                                ("%effdischarge", 90.0),
+                                ("%idlingkW", 1.0)):
+        try:
+            motor.dssText.Command = f"? Storage.{nome}.{propriedade}"
+            valores[propriedade] = float(motor.dssText.Result)
+        except (TypeError, ValueError):
+            valores[propriedade] = padrao
+
+    return {
+        "eta_c": valores["%effcharge"] / 100.0,
+        "eta_d": valores["%effdischarge"] / 100.0,
+        "idle_kw": valores["%idlingkW"] / 100.0 * kwrated,
+    }
+
+
+def _decidir_estado_e_bloco(soc_atual: float, ponta: bool,
+                            soc_min: float, soc_max: float,
+                            kwrated: float, kwhrated: float,
+                            params: Dict[str, float]):
+    """Decide o estado e o percentual do bloco de despacho da hora.
+
+    POR QUE O BLOCO PRECISA SER DIMENSIONADO: o motor aplica o bloco INTEIRO
+    durante o passo de 1 h e só depois CLAMPA o SoC reportado no teto/piso.
+    Com blocos sempre cheios isso gera dois artefatos medidos no estudo:
+      - na carga, o SoC bate no teto e o excedente é simplesmente descartado
+        (a rede compra e o banco não armazena);
+      - na descarga, o SoC bate no piso e o motor entrega o bloco cheio assim
+        mesmo (energia criada no registro).
+    Dimensionar o bloco pela energia disponível é o que mantém o balanço de
+    energia coerente: não se compra além da folga na carga e não se entrega
+    além do armazenado na descarga.
+
+    As equações são a INVERSÃO DAS DUAS CONTAS DO MOTOR, onde delta_stored é a
+    variação do armazenado em kWh:
+      carga:     delta_stored = (bloco - idle_kw) * eta_c
+                 => bloco = folga / eta_c + idle_kw
+      descarga:  delta_stored = (bloco + idle_kw) / eta_d
+                 => bloco = disponivel * eta_d - idle_kw
+    eta_c = %effcharge/100, eta_d = %effdischarge/100,
+    idle_kw = %idlingkW/100 * kwrated.
+
+    O disparo é o mesmo de antes (ponta e SoC acima do mínimo descarrega;
+    fora da ponta e abaixo do máximo carrega). O que muda é apenas a
+    magnitude: bloco nulo ou negativo não tem sentido físico e vira repouso.
+    """
+    if ponta and soc_atual > soc_min:
+        disponivel = (soc_atual - soc_min) * kwhrated
+        bloco = min(kwrated,
+                    max(0.0, disponivel * params["eta_d"] - params["idle_kw"]))
+        if bloco <= 0:
+            return "idling", 0.0
+        return "discharging", 100.0 * bloco / kwrated
+
+    if (not ponta) and soc_atual < soc_max:
+        folga = (1.0 - soc_atual) * kwhrated
+        bloco = min(kwrated, folga / params["eta_c"] + params["idle_kw"])
+        if bloco <= 0:
+            return "idling", 0.0
+        return "charging", 100.0 * bloco / kwrated
+
+    return "idling", 0.0
+
+
+def _aplicar_bloco(motor: MotorReutilizavel, nome: str, estado: str,
+                   pct_bloco: float):
+    """Emite o '%charge'/'%discharge' da hora, conforme o estado decidido.
+
+    No repouso não há comando: o estado IDLING ignora o percentual, e emitir
+    um Edit sem efeito só polui o histórico do motor.
+    """
+    if estado == "charging":
+        motor.dssText.Command = f"Edit Storage.{nome} %charge={pct_bloco:.6f}"
+    elif estado == "discharging":
+        motor.dssText.Command = f"Edit Storage.{nome} %discharge={pct_bloco:.6f}"
+
+
 def _normalizar_soc(valor: float) -> float:
     """Traz o SoC lido para a faixa 0-1.
 
@@ -287,6 +384,13 @@ def _simular_dia(motor: MotorReutilizavel, caminho_master: str,
         nomes_bess = _inserir_bess_idling(motor, bess_list, soc_inicial)
         motor.dssSolution.Solve()
 
+    # Parâmetros de bloco lidos UMA vez por dia simulado, logo após a
+    # inserção: são propriedades do elemento e não mudam durante o despacho.
+    params_despacho = {}
+    for i, nome in enumerate(nomes_bess):
+        params_despacho[nome] = _ler_parametros_despacho(
+            motor, nome, float(bess_list[i]["kw"]))
+
     motor.dssText.Command = "Set Mode=Daily"
     # Passo de 1 h e um único dia: o resultado é o dia representativo, não
     # uma série multidiária.
@@ -303,16 +407,17 @@ def _simular_dia(motor: MotorReutilizavel, caminho_master: str,
             for i, nome in enumerate(nomes_bess):
                 soc_atual = _ler_soc(motor, nome)
 
-                # Regra de despacho: descarrega na ponta enquanto houver
-                # energia acima do mínimo; carrega fora da ponta enquanto
-                # houver espaço abaixo do máximo. Nos demais casos, repousa.
-                if ponta and soc_atual > soc_min:
-                    novo_estado = "discharging"
-                elif (not ponta) and soc_atual < soc_max:
-                    novo_estado = "charging"
-                else:
-                    novo_estado = "idling"
+                # O disparo (ponta/mínimo/máximo) é o mesmo de antes; o que
+                # muda é o bloco, dimensionado pela energia disponível para
+                # que o motor não compre além da folga nem entregue além do
+                # armazenado (ver _decidir_estado_e_bloco).
+                novo_estado, pct_bloco = _decidir_estado_e_bloco(
+                    soc_atual, ponta, soc_min, soc_max,
+                    kwrated=float(bess_list[i]["kw"]),
+                    kwhrated=float(bess_list[i]["kwh"]),
+                    params=params_despacho[nome])
 
+                _aplicar_bloco(motor, nome, novo_estado, pct_bloco)
                 _definir_estado_storage(motor, nome, novo_estado)
                 estados_aplicados[nome] = {"estado": novo_estado, "soc_antes": soc_atual}
 
@@ -396,7 +501,7 @@ def analisar_economia_energia(
     horario_ponta_fim: int = 21,
     soc_min: float = 0.2,
     soc_max: float = 0.95,
-    soc_inicial: float = 0.5,
+    soc_inicial: float = 1.0,
     dias_equivalentes_mes: float = 22,
     custo_bess_brl: Optional[float] = None,
     callback_status: Optional[Callable[[str], None]] = None,
@@ -408,6 +513,12 @@ def analisar_economia_energia(
     de custo entre os dois é a economia diária, que se extrapola para mês e
     ano por dias_equivalentes_mes. BESS vazio equivale ao caso base, útil
     para medir o potencial teórico.
+
+    soc_inicial (default 1.0 = bateria cheia) É o regime permanente: com o
+    despacho limitado pela energia disponível, o dia termina em 100% de SoC e
+    o dia seguinte recomeça cheio. Partir com meio tanque geraria uma recarga
+    de comissionamento que não existe em operação — custo único de
+    implantação, contado no dia representativo por engano.
     """
 
     def _status(msg):
@@ -737,14 +848,14 @@ def analisar_economia_semanal(
                             motor, caminho_master, bess_list, controlar=False,
                             horario_ponta_inicio=horario_ponta_inicio,
                             horario_ponta_fim=horario_ponta_fim,
-                            soc_min=0.2, soc_max=0.95, soc_inicial=0.5,
+                            soc_min=0.2, soc_max=0.95, soc_inicial=1.0,
                             eh_dia_util=dia_util)
 
                     perfil_bess = _simular_dia(
                         motor, caminho_master, bess_list, controlar=True,
                         horario_ponta_inicio=horario_ponta_inicio,
                         horario_ponta_fim=horario_ponta_fim,
-                        soc_min=0.2, soc_max=0.95, soc_inicial=0.5,
+                        soc_min=0.2, soc_max=0.95, soc_inicial=1.0,
                         eh_dia_util=dia_util)
 
                     sinal_importacao = _calibrar_sinal_importacao()
@@ -851,8 +962,19 @@ def _fontes_do_dia(motor: MotorReutilizavel, caminho_master: str,
 
     nomes_bess: List[str] = []
     if bess_list:
-        nomes_bess = _inserir_bess_idling(motor, bess_list, 0.5)
+        # Regime permanente: o dia representativo parte com a bateria cheia.
+        # A recarga de comissionamento (de meio tanque ao topo, nas primeiras
+        # horas) é custo único de implantação e não se repete na operação.
+        # Com o despacho limitado pela energia disponível, o dia termina em
+        # 100% de SoC e o dia seguinte recomeça cheio — logo, partir cheio É
+        # o regime permanente, não uma condição particular.
+        nomes_bess = _inserir_bess_idling(motor, bess_list, 1.0)
         motor.dssSolution.Solve()
+
+    params_despacho = {}
+    for i, nome in enumerate(nomes_bess):
+        params_despacho[nome] = _ler_parametros_despacho(
+            motor, nome, float(bess_list[i]["kw"]))
 
     motor.dssText.Command = "Set Mode=Daily"
     motor.dssText.Command = "Set Stepsize=1h"
@@ -865,14 +987,18 @@ def _fontes_do_dia(motor: MotorReutilizavel, caminho_master: str,
                                                horario_ponta_fim)
 
         if nomes_bess:
-            for nome in nomes_bess:
+            for i, nome in enumerate(nomes_bess):
                 soc_atual = _ler_soc(motor, nome)
-                if ponta and soc_atual > 0.2:
-                    novo_estado = "discharging"
-                elif (not ponta) and soc_atual < 0.95:
-                    novo_estado = "charging"
-                else:
-                    novo_estado = "idling"
+                # Mesmo disparo e mesmo dimensionamento de bloco de
+                # _simular_dia: esta terceira passagem precisa reproduzir o
+                # despacho real, senão a participação das fontes no balanço
+                # não fecha com a energia que a rede de fato vendeu.
+                novo_estado, pct_bloco = _decidir_estado_e_bloco(
+                    soc_atual, ponta, 0.2, 0.95,
+                    kwrated=float(bess_list[i]["kw"]),
+                    kwhrated=float(bess_list[i]["kwh"]),
+                    params=params_despacho[nome])
+                _aplicar_bloco(motor, nome, novo_estado, pct_bloco)
                 _definir_estado_storage(motor, nome, novo_estado)
 
         motor.dssSolution.Solve()

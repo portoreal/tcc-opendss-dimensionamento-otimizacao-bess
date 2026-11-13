@@ -105,7 +105,7 @@
  "demanda_max_base": 58.3069482830843,
  "demanda_max_base_ponta": 58.3069482830843,
  "vencedor": {
-  "bus": "B4",
+  "bus": "B5",
   "modelo": {
    "nome": "BESS Comercial 50kW/100kWh",
    "kw": 50,
@@ -113,41 +113,41 @@
    "custo_brl": 300000
   },
   "beneficio": 0,
-  "beneficio_severidade": 0.004975973707450176,
-  "beneficio_econ_anual": 12027.891617025398,
+  "beneficio_severidade": 0.04730106637499773,
+  "beneficio_econ_anual": 18175.33971511537,
   "economia_candidato": {
-   "economia_diaria": 66.48169830289845,
-   "economia_anual": 12027.891617025398,
-   "economia_semanal": 231.3056080197192,
+   "economia_diaria": 70.26903418697532,
+   "economia_anual": 18175.33971511537,
+   "economia_semanal": 349.52576375221867,
    "economia_por_dia": [
-    68.22452137140203,
-    67.73146818590072,
-    68.22630052306152,
-    66.48169830289845,
-    68.20148542531928,
-    -53.90575609722973,
-    -53.654109691633096
+    72.09634316429458,
+    71.57153464676458,
+    72.10149941486151,
+    70.26903418697532,
+    71.95486766678897,
+    -4.373618245682366,
+    -4.093897081783922
    ],
    "economia_demanda_mensal_estimada": 0.0,
-   "payback_anos": 24.942027210766685,
+   "payback_anos": 16.505881304133617,
    "alerta_superdimensionamento": false
   },
   "barras_resolvidas": []
  },
  "fracoes_vencedor": {
-  "S_i_sobre_escala_qualidade": 0.001243993426862544,
-  "E_i_sobre_escala_economia": 0.2174765554839789,
+  "S_i_sobre_escala_qualidade": 0.011825266593749433,
+  "E_i_sobre_escala_economia": 0.3286286908671025,
   "C_i_sobre_custo_max_catalogo": 0.06382978723404255,
   "custo_max_catalogo": 4700000.0,
-  "pontuacao_liquida": 0.21233757018743718,
-  "termo_qualidade": 0.001243993426862544,
-  "termo_economia": 0.2174765554839789,
+  "pontuacao_liquida": 0.3340709787374477,
+  "termo_qualidade": 0.011825266593749433,
+  "termo_economia": 0.3286286908671025,
   "termo_custo": -0.06382978723404255
  },
  "selecao": {
   "selecionados": [
    {
-    "bus": "B4",
+    "bus": "B5",
     "nome": "BESS Comercial 50kW/100kWh",
     "kw": 50,
     "kwh": 100,
@@ -209,50 +209,37 @@
    }
   ],
   "profundidade_apos": {
-   "b1": 0.06543245353412033,
-   "b3": 0.06541317096370652,
-   "b4": 0.13123485752691333,
-   "b5": 0.10076989934710187,
-   "b6": 0.03495512722971586,
+   "b1": 0.06543303159479719,
+   "b3": 0.06541628606003452,
+   "b4": 0.13160279967172922,
+   "b5": 0.05788287400982059,
+   "b6": 0.035145424597628844,
    "b2": 0.0
   },
   "profundidade_disponivel": true
  },
  "reativo": {
-  "kw_fonte": 82.93,
-  "kvar_fonte": -20.23,
-  "fator_potencia": 0.9715,
+  "kw_fonte": 83.32,
+  "kvar_fonte": -19.46,
+  "fator_potencia": 0.9738,
   "fp_minimo_referencia": 0.92,
   "conforme": true,
   "recomendacao": null
  },
  "economia_vencedor": {
   "escalares": {
-   "horario_ponta_inicio": 18.0,
-   "horario_ponta_fim": 21.0,
+   "horario_ponta_inicio": 18,
+   "horario_ponta_fim": 21,
    "dias_equivalentes_mes": 22.0,
    "energia_ponta_kwh_base": 169.4637966423319,
    "energia_fora_ponta_kwh_base": 453.8743164641299,
-   "energia_ponta_kwh_bess": 69.78899496966153,
-   "energia_fora_ponta_kwh_bess": 662.9517097677248,
+   "energia_ponta_kwh_bess": 97.88494812842329,
+   "energia_fora_ponta_kwh_bess": 558.9881998868253,
    "exportada_ponta_kwh_bess": 0.0,
    "exportada_fora_ponta_kwh_bess": 0.0,
    "total_exportado_kwh_bess": 0.0,
    "alerta_superdimensionamento": false,
-   "horas_importacao_base": 24.0,
-   "horas_exportacao_base": 0.0,
-   "alerta_caso_base_exportacao": false,
-   "custo_diario_base": 517.9188916645767,
-   "custo_diario_bess": 451.4371933616782,
-   "economia_diaria": 66.48169830289845,
-   "economia_mensal": 1462.597362663766,
-   "economia_anual": 17551.168351965192,
-   "custo_bess_brl": 300000.0,
-   "payback_anos": 17.09287917384766,
-   "demanda_ponta_kw_base": 58.3069482830843,
-   "demanda_ponta_kw_bess": 53.89561068201465,
-   "reducao_demanda_ponta_kw": 4.411337601069654,
-   "economia_demanda_mensal_estimada": 0.0
+   "horas_importacao_base": 24.0
   },
   "perfil_base": [
    {
@@ -524,44 +511,44 @@
    {
     "hora": 0,
     "ponta": false,
-    "kw_fonte_bruto": -68.79051477373407,
-    "carga_kw": 18.599975054362705,
+    "kw_fonte_bruto": -19.17825522115984,
+    "carga_kw": 18.599918368730165,
     "fv_kw": 0.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
-      "estado": "charging",
-      "soc_antes": 0.5
+      "estado": "idling",
+      "soc_antes": 1.0
      }
     },
     "soc_depois": {
-     "BESS_ECON_0": 0.9454999042401687
+     "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 68.79051477373407,
+    "kw_comprada": 19.17825522115984,
     "kw_exportada": 0.0
    },
    {
     "hora": 1,
     "ponta": false,
-    "kw_fonte_bruto": -68.18450191389452,
-    "carga_kw": 18.000038161366007,
+    "kw_fonte_bruto": -18.573765361903124,
+    "carga_kw": 18.000041469229544,
     "fv_kw": 0.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
-      "estado": "charging",
-      "soc_antes": 0.9454999042401687
+      "estado": "idling",
+      "soc_antes": 1.0
      }
     },
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 68.18450191389452,
+    "kw_comprada": 18.573765361903124,
     "kw_exportada": 0.0
    },
    {
     "hora": 2,
     "ponta": false,
-    "kw_fonte_bruto": -18.56760931611665,
-    "carga_kw": 18.000215003036764,
+    "kw_fonte_bruto": -18.573664916574685,
+    "carga_kw": 18.000000013213246,
     "fv_kw": 0.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -572,14 +559,14 @@
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 18.56760931611665,
+    "kw_comprada": 18.573664916574685,
     "kw_exportada": 0.0
    },
    {
     "hora": 3,
     "ponta": false,
-    "kw_fonte_bruto": -19.77618323863096,
-    "carga_kw": 19.19991579063521,
+    "kw_fonte_bruto": -19.78316590759751,
+    "carga_kw": 19.19990617167467,
     "fv_kw": 0.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -590,14 +577,14 @@
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 19.77618323863096,
+    "kw_comprada": 19.78316590759751,
     "kw_exportada": 0.0
    },
    {
     "hora": 4,
     "ponta": false,
-    "kw_fonte_bruto": -23.407080759984623,
-    "carga_kw": 22.7996398900646,
+    "kw_fonte_bruto": -23.415322932171474,
+    "carga_kw": 22.79960565160311,
     "fv_kw": 0.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -608,14 +595,14 @@
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 23.407080759984623,
+    "kw_comprada": 23.415322932171474,
     "kw_exportada": 0.0
    },
    {
     "hora": 5,
     "ponta": false,
-    "kw_fonte_bruto": -30.684795534367613,
-    "carga_kw": 29.99872351093431,
+    "kw_fonte_bruto": -30.69877583516986,
+    "carga_kw": 29.999959581172302,
     "fv_kw": 0.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -626,14 +613,14 @@
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 30.684795534367613,
+    "kw_comprada": 30.69877583516986,
     "kw_exportada": 0.0
    },
    {
     "hora": 6,
     "ponta": false,
-    "kw_fonte_bruto": -33.22260601433462,
-    "carga_kw": 38.399910809355,
+    "kw_fonte_bruto": -33.23680786412147,
+    "carga_kw": 38.39990251688363,
     "fv_kw": 6.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -644,14 +631,14 @@
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 33.22260601433462,
+    "kw_comprada": 33.23680786412147,
     "kw_exportada": 0.0
    },
    {
     "hora": 7,
     "ponta": false,
-    "kw_fonte_bruto": -32.03167690719113,
-    "carga_kw": 44.99988328538316,
+    "kw_fonte_bruto": -32.048446209030665,
+    "carga_kw": 44.99987418052105,
     "fv_kw": 14.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -662,14 +649,14 @@
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 32.03167690719113,
+    "kw_comprada": 32.048446209030665,
     "kw_exportada": 0.0
    },
    {
     "hora": 8,
     "ponta": false,
-    "kw_fonte_bruto": -26.19425761234722,
-    "carga_kw": 49.79988045339273,
+    "kw_fonte_bruto": -26.212924639197492,
+    "carga_kw": 49.79987222224369,
     "fv_kw": 25.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -680,14 +667,14 @@
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 26.19425761234722,
+    "kw_comprada": 26.212924639197492,
     "kw_exportada": 0.0
    },
    {
     "hora": 9,
     "ponta": false,
-    "kw_fonte_bruto": -17.729032974056086,
-    "carga_kw": 52.799898554936135,
+    "kw_fonte_bruto": -17.748900999733745,
+    "carga_kw": 52.7998924310222,
     "fv_kw": 37.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -698,14 +685,14 @@
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 17.729032974056086,
+    "kw_comprada": 17.748900999733745,
     "kw_exportada": 0.0
    },
    {
     "hora": 10,
     "ponta": false,
-    "kw_fonte_bruto": -10.713040283248382,
-    "carga_kw": 55.19989131423073,
+    "kw_fonte_bruto": -10.7338768893818,
+    "carga_kw": 55.199885554468146,
     "fv_kw": 47.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -716,14 +703,14 @@
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 10.713040283248382,
+    "kw_comprada": 10.7338768893818,
     "kw_exportada": 0.0
    },
    {
     "hora": 11,
     "ponta": false,
-    "kw_fonte_bruto": -7.8656805011620605,
-    "carga_kw": 56.999911559963586,
+    "kw_fonte_bruto": -7.887253372383522,
+    "carga_kw": 56.99990691866408,
     "fv_kw": 52.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -734,14 +721,14 @@
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 7.8656805011620605,
+    "kw_comprada": 7.887253372383522,
     "kw_exportada": 0.0
    },
    {
     "hora": 12,
     "ponta": false,
-    "kw_fonte_bruto": -2.018225146809463,
-    "carga_kw": 54.002228172480734,
+    "kw_fonte_bruto": -2.038778493041528,
+    "carga_kw": 54.0023103926165,
     "fv_kw": 55.00000000000001,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -752,14 +739,14 @@
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 2.018225146809463,
+    "kw_comprada": 2.038778493041528,
     "kw_exportada": 0.0
    },
    {
     "hora": 13,
     "ponta": false,
-    "kw_fonte_bruto": -2.6391400035541173,
-    "carga_kw": 52.80059622789682,
+    "kw_fonte_bruto": -2.6590703283846904,
+    "carga_kw": 52.80061932586908,
     "fv_kw": 53.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -770,14 +757,14 @@
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 2.6391400035541173,
+    "kw_comprada": 2.6590703283846904,
     "kw_exportada": 0.0
    },
    {
     "hora": 14,
     "ponta": false,
-    "kw_fonte_bruto": -9.489218287258188,
-    "carga_kw": 53.99997050790235,
+    "kw_fonte_bruto": -9.509574013719043,
+    "carga_kw": 53.99996807201754,
     "fv_kw": 47.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -788,14 +775,14 @@
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 9.489218287258188,
+    "kw_comprada": 9.509574013719043,
     "kw_exportada": 0.0
    },
    {
     "hora": 15,
     "ponta": false,
-    "kw_fonte_bruto": -18.684463304201685,
-    "carga_kw": 52.800042032913055,
+    "kw_fonte_bruto": -18.70435240973017,
+    "carga_kw": 52.80004442559503,
     "fv_kw": 36.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -806,14 +793,14 @@
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 18.684463304201685,
+    "kw_comprada": 18.70435240973017,
     "kw_exportada": 0.0
    },
    {
     "hora": 16,
     "ponta": false,
-    "kw_fonte_bruto": -31.197562867310634,
-    "carga_kw": 52.799991295568816,
+    "kw_fonte_bruto": -31.217459014057216,
+    "carga_kw": 52.79999044631471,
     "fv_kw": 23.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -824,14 +811,14 @@
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 31.197562867310634,
+    "kw_comprada": 31.217459014057216,
     "kw_exportada": 0.0
    },
    {
     "hora": 17,
     "ponta": false,
-    "kw_fonte_bruto": -47.24523070059506,
-    "carga_kw": 56.99980878430927,
+    "kw_fonte_bruto": -47.266832775003714,
+    "carga_kw": 56.999796639502804,
     "fv_kw": 11.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -842,14 +829,14 @@
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 47.24523070059506,
+    "kw_comprada": 47.266832775003714,
     "kw_exportada": 0.0
    },
    {
     "hora": 18,
     "ponta": true,
-    "kw_fonte_bruto": -7.674484387362101,
-    "carga_kw": 59.99985167920281,
+    "kw_fonte_bruto": -7.287060888705914,
+    "carga_kw": 60.00019704254639,
     "fv_kw": 3.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -858,34 +845,34 @@
      }
     },
     "soc_depois": {
-     "BESS_ECON_0": 0.4388888459391714
+     "BESS_ECON_0": 0.4388820218353105
     },
-    "kw_comprada": 7.674484387362101,
+    "kw_comprada": 7.287060888705914,
     "kw_exportada": 0.0
    },
    {
     "hora": 19,
     "ponta": true,
-    "kw_fonte_bruto": -8.218899900284777,
-    "carga_kw": 57.601649894450404,
+    "kw_fonte_bruto": -36.68666884173488,
+    "carga_kw": 57.601655703947515,
     "fv_kw": 0.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
       "estado": "discharging",
-      "soc_antes": 0.4388888459391714
+      "soc_antes": 0.4388820218353105
      }
     },
     "soc_depois": {
      "BESS_ECON_0": 0.2
     },
-    "kw_comprada": 8.218899900284777,
+    "kw_comprada": 36.68666884173488,
     "kw_exportada": 0.0
    },
    {
     "hora": 20,
     "ponta": true,
-    "kw_fonte_bruto": -53.89561068201465,
-    "carga_kw": 52.80084305966686,
+    "kw_fonte_bruto": -53.911218397982495,
+    "carga_kw": 52.79905432039183,
     "fv_kw": 0.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -896,14 +883,14 @@
     "soc_depois": {
      "BESS_ECON_0": 0.2
     },
-    "kw_comprada": 53.89561068201465,
+    "kw_comprada": 53.911218397982495,
     "kw_exportada": 0.0
    },
    {
     "hora": 21,
     "ponta": false,
-    "kw_fonte_bruto": -93.7817283806761,
-    "carga_kw": 43.200105481377506,
+    "kw_fonte_bruto": -96.70915144590134,
+    "carga_kw": 42.47048209131954,
     "fv_kw": 0.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -912,34 +899,34 @@
      }
     },
     "soc_depois": {
-     "BESS_ECON_0": 0.6455001392010955
+     "BESS_ECON_0": 0.6454793956272052
     },
-    "kw_comprada": 93.7817283806761,
+    "kw_comprada": 96.70915144590134,
     "kw_exportada": 0.0
    },
    {
     "hora": 22,
     "ponta": false,
-    "kw_fonte_bruto": -81.55745281290855,
-    "carga_kw": 31.200073792671,
+    "kw_fonte_bruto": -73.6130589486749,
+    "carga_kw": 31.201353036082427,
     "fv_kw": 0.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
       "estado": "charging",
-      "soc_antes": 0.6455001392010955
+      "soc_antes": 0.6454793956272052
      }
     },
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 81.55745281290855,
+    "kw_comprada": 73.6130589486749,
     "kw_exportada": 0.0
    },
    {
     "hora": 23,
     "ponta": false,
-    "kw_fonte_bruto": -19.171708435342946,
-    "carga_kw": 18.600018534188234,
+    "kw_fonte_bruto": -19.178762309887453,
+    "carga_kw": 18.600127326213688,
     "fv_kw": 0.0,
     "estados_aplicados": {
      "BESS_ECON_0": {
@@ -950,7 +937,7 @@
     "soc_depois": {
      "BESS_ECON_0": 1.0
     },
-    "kw_comprada": 19.171708435342946,
+    "kw_comprada": 19.178762309887453,
     "kw_exportada": 0.0
    }
   ]
@@ -966,13 +953,13 @@
    "Domingo"
   ],
   "economia_diaria_brl": [
-   68.22452137140203,
-   67.73146818590072,
-   68.22630052306152,
-   66.48169830289845,
-   68.20148542531928,
-   -53.90575609722973,
-   -53.654109691633096
+   72.09634316429458,
+   71.57153464676458,
+   72.10149941486151,
+   70.26903418697532,
+   71.95486766678897,
+   -4.373618245682366,
+   -4.093897081783922
   ],
   "custo_base_diario_brl": [
    446.43512052091796,
@@ -984,42 +971,42 @@
    199.51968865200234
   ],
   "custo_sistema_diario_brl": [
-   378.21059914951593,
-   402.2930930693571,
-   381.544381760086,
-   451.4371933616782,
-   385.03792711378514,
-   307.13642989724127,
-   253.17379834363544
+   374.3387773566234,
+   398.45302660849325,
+   377.66918286828604,
+   447.64985747760136,
+   381.28454487231545,
+   257.6042920456939,
+   203.61358573378627
   ],
   "energia_rede_kwh": [
-   595.6743828565657,
-   636.9272496895882,
-   599.3603352829017,
-   732.7407047373863,
-   604.8592179991019,
-   613.9413314754858,
-   506.0743165563305
+   519.620696486007,
+   560.9526382085025,
+   523.3161716875737,
+   656.8731480152486,
+   528.9440382888265,
+   514.9305216097185,
+   407.00738747833424
   ],
   "energia_fv_kwh": [
-   744.8159301696473,
-   582.933979712225,
-   744.8263483255383,
+   744.8160703385408,
+   582.9340827745506,
+   744.8264928256601,
    409.0,
-   744.8116714903169,
-   692.8425837817543,
-   614.765454575336
+   744.8118101830564,
+   692.8427195039569,
+   614.7655522823216
   ],
   "energia_bess_kwh": [
-   50.000093915525916,
-   50.000021306264294,
-   50.000044650248995,
-   50.000003865474575,
-   50.00009102435507,
+   50.00061823668631,
+   50.000614582202836,
+   50.00061176677237,
+   50.000618034822054,
+   50.000677093609866,
    0.0,
    0.0
   ],
-  "economia_semanal_brl": 231.3056080197192,
+  "economia_semanal_brl": 349.52576375221867,
   "perfis_por_dia": [
    {
     "dia": "Segunda",
@@ -1294,44 +1281,44 @@
      {
       "hora": 0,
       "ponta": false,
-      "kw_fonte_bruto": -69.39688019109957,
-      "carga_kw": 19.199971805829584,
+      "kw_fonte_bruto": -19.78317969725295,
+      "carga_kw": 19.199911545527762,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
-        "estado": "charging",
-        "soc_antes": 0.5
+        "estado": "idling",
+        "soc_antes": 1.0
        }
       },
       "soc_depois": {
-       "BESS_ECON_0": 0.9454998962067188
+       "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 69.39688019109957,
+      "kw_comprada": 19.78317969725295,
       "kw_exportada": 0.0
      },
      {
       "hora": 1,
       "ponta": false,
-      "kw_fonte_bruto": -68.184628626629,
-      "carga_kw": 18.000076461677946,
+      "kw_fonte_bruto": -18.57386619020675,
+      "carga_kw": 18.000083097040267,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
-        "estado": "charging",
-        "soc_antes": 0.9454998962067188
+        "estado": "idling",
+        "soc_antes": 1.0
        }
       },
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 68.184628626629,
+      "kw_comprada": 18.57386619020675,
       "kw_exportada": 0.0
      },
      {
       "hora": 2,
       "ponta": false,
-      "kw_fonte_bruto": -18.56760934149642,
-      "carga_kw": 18.000215013717536,
+      "kw_fonte_bruto": -18.573664948821445,
+      "carga_kw": 18.00000002647058,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1342,14 +1329,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 18.56760934149642,
+      "kw_comprada": 18.573664948821445,
       "kw_exportada": 0.0
      },
      {
       "hora": 3,
       "ponta": false,
-      "kw_fonte_bruto": -20.380937443605706,
-      "carga_kw": 19.799865490227802,
+      "kw_fonte_bruto": -20.38812612892576,
+      "carga_kw": 19.799850631004695,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1360,14 +1347,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 20.380937443605706,
+      "kw_comprada": 20.38812612892576,
       "kw_exportada": 0.0
      },
      {
       "hora": 4,
       "ponta": false,
-      "kw_fonte_bruto": -24.618580168228814,
-      "carga_kw": 23.999532648391266,
+      "kw_fonte_bruto": -24.62724606600519,
+      "carga_kw": 23.999490511861836,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1378,14 +1365,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 24.618580168228814,
+      "kw_comprada": 24.62724606600519,
       "kw_exportada": 0.0
      },
      {
       "hora": 5,
       "ponta": false,
-      "kw_fonte_bruto": -29.89952301037566,
-      "carga_kw": 31.198635659115965,
+      "kw_fonte_bruto": -29.914121950325303,
+      "carga_kw": 31.199955193286787,
       "fv_kw": 2.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1396,14 +1383,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 29.89952301037566,
+      "kw_comprada": 29.914121950325303,
       "kw_exportada": 0.0
      },
      {
       "hora": 6,
       "ponta": false,
-      "kw_fonte_bruto": -28.038750220139118,
-      "carga_kw": 37.19840527640538,
+      "kw_fonte_bruto": -28.052300780753992,
+      "carga_kw": 37.19832737686458,
       "fv_kw": 10.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1414,14 +1401,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 28.038750220139118,
+      "kw_comprada": 28.052300780753992,
       "kw_exportada": 0.0
      },
      {
       "hora": 7,
       "ponta": false,
-      "kw_fonte_bruto": -19.470416330000468,
-      "carga_kw": 43.199905602305236,
+      "kw_fonte_bruto": -19.48646718917927,
+      "carga_kw": 43.19989793145592,
       "fv_kw": 25.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1432,14 +1419,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 19.470416330000468,
+      "kw_comprada": 19.48646718917927,
       "kw_exportada": 0.0
      },
      {
       "hora": 8,
       "ponta": false,
-      "kw_fonte_bruto": -5.250361173324663,
-      "carga_kw": 47.99985391259119,
+      "kw_fonte_bruto": -5.26829111678022,
+      "carga_kw": 47.99984516661859,
       "fv_kw": 45.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1450,14 +1437,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 5.250361173324663,
+      "kw_comprada": 5.26829111678022,
       "kw_exportada": 0.0
      },
      {
       "hora": 9,
       "ponta": false,
-      "kw_fonte_bruto": 12.44660906844874,
-      "carga_kw": 51.599724400229704,
+      "kw_fonte_bruto": 12.427243039484589,
+      "carga_kw": 51.59971486992778,
       "fv_kw": 68.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1469,13 +1456,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 12.44660906844874
+      "kw_exportada": 12.427243039484589
      },
      {
       "hora": 10,
       "ponta": false,
-      "kw_fonte_bruto": 26.284024699002877,
-      "carga_kw": 53.999685710784,
+      "kw_fonte_bruto": 26.26367542780022,
+      "carga_kw": 53.99967776901287,
       "fv_kw": 86.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1487,13 +1474,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 26.284024699002877
+      "kw_exportada": 26.26367542780022
      },
      {
       "hora": 11,
       "ponta": false,
-      "kw_fonte_bruto": 31.839923623934357,
-      "carga_kw": 56.39977366633881,
+      "kw_fonte_bruto": 31.818585814760823,
+      "carga_kw": 56.399766423298104,
       "fv_kw": 95.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1505,13 +1492,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 31.839923623934357
+      "kw_exportada": 31.818585814760823
      },
      {
       "hora": 12,
       "ponta": false,
-      "kw_fonte_bruto": 39.91706433167406,
-      "carga_kw": 52.80003943008328,
+      "kw_fonte_bruto": 39.897151526699716,
+      "carga_kw": 52.80004614102138,
       "fv_kw": 100.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1523,13 +1510,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 39.91706433167406
+      "kw_exportada": 39.897151526699716
      },
      {
       "hora": 13,
       "ponta": false,
-      "kw_fonte_bruto": 38.5062359394229,
-      "carga_kw": 51.60003106768175,
+      "kw_fonte_bruto": 38.48678492805964,
+      "carga_kw": 51.600050431838014,
       "fv_kw": 97.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1541,13 +1528,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 38.5062359394229
+      "kw_exportada": 38.48678492805964
      },
      {
       "hora": 14,
       "ponta": false,
-      "kw_fonte_bruto": 26.610410703438216,
-      "carga_kw": 52.80007865147146,
+      "kw_fonte_bruto": 26.590533604448634,
+      "carga_kw": 52.800077764860816,
       "fv_kw": 85.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1559,13 +1546,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 26.610410703438216
+      "kw_exportada": 26.590533604448634
      },
      {
       "hora": 15,
       "ponta": false,
-      "kw_fonte_bruto": 8.465561986741559,
-      "carga_kw": 52.80009800607283,
+      "kw_fonte_bruto": 8.44568711793588,
+      "carga_kw": 52.80009974400136,
       "fv_kw": 65.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1577,13 +1564,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 8.465561986741559
+      "kw_exportada": 8.44568711793588
      },
      {
       "hora": 16,
       "ponta": false,
-      "kw_fonte_bruto": -14.208201479891217,
-      "carga_kw": 53.99998169445163,
+      "kw_fonte_bruto": -14.228559688926993,
+      "carga_kw": 53.9999793350776,
       "fv_kw": 42.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1594,14 +1581,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 14.208201479891217,
+      "kw_comprada": 14.228559688926993,
       "kw_exportada": 0.0
      },
      {
       "hora": 17,
       "ponta": false,
-      "kw_fonte_bruto": -39.027212478423884,
-      "carga_kw": 57.59982431514243,
+      "kw_fonte_bruto": -39.04904674025749,
+      "carga_kw": 57.59981306912177,
       "fv_kw": 20.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1612,14 +1599,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 39.027212478423884,
+      "kw_comprada": 39.04904674025749,
       "kw_exportada": 0.0
      },
      {
       "hora": 18,
       "ponta": true,
-      "kw_fonte_bruto": -5.6846849805215305,
-      "carga_kw": 60.000074469166876,
+      "kw_fonte_bruto": -5.2973715449251575,
+      "carga_kw": 60.00019685477291,
       "fv_kw": 5.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1628,34 +1615,34 @@
        }
       },
       "soc_depois": {
-       "BESS_ECON_0": 0.4388878453830454
+       "BESS_ECON_0": 0.43888201959237433
       },
-      "kw_comprada": 5.6846849805215305,
+      "kw_comprada": 5.2973715449251575,
       "kw_exportada": 0.0
      },
      {
       "hora": 19,
       "ponta": true,
-      "kw_fonte_bruto": -7.606213496154495,
-      "carga_kw": 57.00196351514704,
+      "kw_fonte_bruto": -36.08199929172635,
+      "carga_kw": 57.00167281961265,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
         "estado": "discharging",
-        "soc_antes": 0.4388878453830454
+        "soc_antes": 0.43888201959237433
        }
       },
       "soc_depois": {
        "BESS_ECON_0": 0.2
       },
-      "kw_comprada": 7.606213496154495,
+      "kw_comprada": 36.08199929172635,
       "kw_exportada": 0.0
      },
      {
       "hora": 20,
       "ponta": true,
-      "kw_fonte_bruto": -52.66905122882178,
-      "carga_kw": 51.60115997440815,
+      "kw_fonte_bruto": -52.683627918009904,
+      "carga_kw": 51.59913936595099,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1666,14 +1653,14 @@
       "soc_depois": {
        "BESS_ECON_0": 0.2
       },
-      "kw_comprada": 52.66905122882178,
+      "kw_comprada": 52.683627918009904,
       "kw_exportada": 0.0
      },
      {
       "hora": 21,
       "ponta": false,
-      "kw_fonte_bruto": -92.556341062203,
-      "carga_kw": 42.000096137524196,
+      "kw_fonte_bruto": -95.4870234572508,
+      "carga_kw": 41.3221716139839,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1682,34 +1669,34 @@
        }
       },
       "soc_depois": {
-       "BESS_ECON_0": 0.6455001300738356
+       "BESS_ECON_0": 0.6454795675890854
       },
-      "kw_comprada": 92.556341062203,
+      "kw_comprada": 95.4870234572508,
       "kw_exportada": 0.0
      },
      {
       "hora": 22,
       "ponta": false,
-      "kw_fonte_bruto": -80.33856265941156,
-      "carga_kw": 30.000065122702765,
+      "kw_fonte_bruto": -72.34207981945367,
+      "carga_kw": 30.000129447235388,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
         "estado": "charging",
-        "soc_antes": 0.6455001300738356
+        "soc_antes": 0.6454795675890854
        }
       },
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 80.33856265941156,
+      "kw_comprada": 72.34207981945367,
       "kw_exportada": 0.0
      },
      {
       "hora": 23,
       "ponta": false,
-      "kw_fonte_bruto": -19.77642896623871,
-      "carga_kw": 19.200018067042294,
+      "kw_fonte_bruto": -19.783723957205723,
+      "carga_kw": 19.200135953710017,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -1720,7 +1707,7 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 19.77642896623871,
+      "kw_comprada": 19.783723957205723,
       "kw_exportada": 0.0
      }
     ]
@@ -1998,44 +1985,44 @@
      {
       "hora": 0,
       "ponta": false,
-      "kw_fonte_bruto": -69.39688019109957,
-      "carga_kw": 19.199971805829584,
+      "kw_fonte_bruto": -19.78317969725295,
+      "carga_kw": 19.199911545527762,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
-        "estado": "charging",
-        "soc_antes": 0.5
+        "estado": "idling",
+        "soc_antes": 1.0
        }
       },
       "soc_depois": {
-       "BESS_ECON_0": 0.9454998962067188
+       "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 69.39688019109957,
+      "kw_comprada": 19.78317969725295,
       "kw_exportada": 0.0
      },
      {
       "hora": 1,
       "ponta": false,
-      "kw_fonte_bruto": -68.184628626629,
-      "carga_kw": 18.000076461677946,
+      "kw_fonte_bruto": -18.57386619020675,
+      "carga_kw": 18.000083097040267,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
-        "estado": "charging",
-        "soc_antes": 0.9454998962067188
+        "estado": "idling",
+        "soc_antes": 1.0
        }
       },
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 68.184628626629,
+      "kw_comprada": 18.57386619020675,
       "kw_exportada": 0.0
      },
      {
       "hora": 2,
       "ponta": false,
-      "kw_fonte_bruto": -18.56760934149642,
-      "carga_kw": 18.000215013717536,
+      "kw_fonte_bruto": -18.573664948821445,
+      "carga_kw": 18.00000002647058,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2046,14 +2033,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 18.56760934149642,
+      "kw_comprada": 18.573664948821445,
       "kw_exportada": 0.0
      },
      {
       "hora": 3,
       "ponta": false,
-      "kw_fonte_bruto": -19.77618323863096,
-      "carga_kw": 19.199915790638467,
+      "kw_fonte_bruto": -19.78316590759751,
+      "carga_kw": 19.199906171679466,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2064,14 +2051,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 19.77618323863096,
+      "kw_comprada": 19.78316590759751,
       "kw_exportada": 0.0
      },
      {
       "hora": 4,
       "ponta": false,
-      "kw_fonte_bruto": -23.407080759984623,
-      "carga_kw": 22.799639890064604,
+      "kw_fonte_bruto": -23.415322932171474,
+      "carga_kw": 22.799605651603112,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2082,14 +2069,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 23.407080759984623,
+      "kw_comprada": 23.415322932171474,
       "kw_exportada": 0.0
      },
      {
       "hora": 5,
       "ponta": false,
-      "kw_fonte_bruto": -28.684398364416047,
-      "carga_kw": 29.998745597795214,
+      "kw_fonte_bruto": -28.695187973624957,
+      "carga_kw": 29.998657613619788,
       "fv_kw": 2.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2100,14 +2087,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 28.684398364416047,
+      "kw_comprada": 28.695187973624957,
       "kw_exportada": 0.0
      },
      {
       "hora": 6,
       "ponta": false,
-      "kw_fonte_bruto": -31.84790000090486,
-      "carga_kw": 38.99989919926597,
+      "kw_fonte_bruto": -31.862328965754052,
+      "carga_kw": 38.9998898772141,
       "fv_kw": 8.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2118,14 +2105,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 31.84790000090486,
+      "kw_comprada": 31.862328965754052,
       "kw_exportada": 0.0
      },
      {
       "hora": 7,
       "ponta": false,
-      "kw_fonte_bruto": -26.15917359684563,
-      "carga_kw": 44.99989468165957,
+      "kw_fonte_bruto": -26.175937262089867,
+      "carga_kw": 44.999886494416415,
       "fv_kw": 20.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2136,14 +2123,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 26.15917359684563,
+      "kw_comprada": 26.175937262089867,
       "kw_exportada": 0.0
      },
      {
       "hora": 8,
       "ponta": false,
-      "kw_fonte_bruto": -15.964086247174095,
-      "carga_kw": 49.19988899146709,
+      "kw_fonte_bruto": -15.982504998514946,
+      "carga_kw": 49.19988162454061,
       "fv_kw": 35.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2154,14 +2141,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 15.964086247174095,
+      "kw_comprada": 15.982504998514946,
       "kw_exportada": 0.0
      },
      {
       "hora": 9,
       "ponta": false,
-      "kw_fonte_bruto": -2.6400656620525966,
-      "carga_kw": 52.799825122496486,
+      "kw_fonte_bruto": -2.6599190414414116,
+      "carga_kw": 52.799816682118845,
       "fv_kw": 53.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2172,14 +2159,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 2.6400656620525966,
+      "kw_comprada": 2.6599190414414116,
       "kw_exportada": 0.0
      },
      {
       "hora": 10,
       "ponta": false,
-      "kw_fonte_bruto": 7.856797908539817,
-      "carga_kw": 55.1998136999868,
+      "kw_fonte_bruto": 7.835967391401685,
+      "carga_kw": 55.19980681859866,
       "fv_kw": 67.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2191,13 +2178,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 7.856797908539817
+      "kw_exportada": 7.835967391401685
      },
      {
       "hora": 11,
       "ponta": false,
-      "kw_fonte_bruto": 12.404479549527895,
-      "carga_kw": 56.9998648848075,
+      "kw_fonte_bruto": 12.382907461811854,
+      "carga_kw": 56.99985963636516,
       "fv_kw": 74.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2209,13 +2196,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 12.404479549527895
+      "kw_exportada": 12.382907461811854
      },
      {
       "hora": 12,
       "ponta": false,
-      "kw_fonte_bruto": 19.08955995291967,
-      "carga_kw": 54.00006394098655,
+      "kw_fonte_bruto": 19.069182113065324,
+      "carga_kw": 54.000070012372916,
       "fv_kw": 78.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2227,13 +2214,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 19.08955995291967
+      "kw_exportada": 19.069182113065324
      },
      {
       "hora": 13,
       "ponta": false,
-      "kw_fonte_bruto": 18.50881910121411,
-      "carga_kw": 52.8004501255769,
+      "kw_fonte_bruto": 18.488890561482965,
+      "carga_kw": 52.80047277182807,
       "fv_kw": 76.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2245,13 +2232,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 18.50881910121411
+      "kw_exportada": 18.488890561482965
      },
      {
       "hora": 14,
       "ponta": false,
-      "kw_fonte_bruto": 8.160631262862104,
-      "carga_kw": 54.00001561342491,
+      "kw_fonte_bruto": 8.140277921692192,
+      "carga_kw": 54.00001392108443,
       "fv_kw": 66.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2263,13 +2250,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 8.160631262862104
+      "kw_exportada": 8.140277921692192
      },
      {
       "hora": 15,
       "ponta": false,
-      "kw_fonte_bruto": -4.5133704945320465,
-      "carga_kw": 52.80007362269544,
+      "kw_fonte_bruto": -4.533251504264996,
+      "carga_kw": 52.8000768059059,
       "fv_kw": 51.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2280,14 +2267,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 4.5133704945320465,
+      "kw_comprada": 4.533251504264996,
       "kw_exportada": 0.0
      },
      {
       "hora": 16,
       "ponta": false,
-      "kw_fonte_bruto": -21.552906919639902,
-      "carga_kw": 52.80000103351853,
+      "kw_fonte_bruto": -21.572791810341865,
+      "carga_kw": 52.80000065141107,
       "fv_kw": 33.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2298,14 +2285,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 21.552906919639902,
+      "kw_comprada": 21.572791810341865,
       "kw_exportada": 0.0
      },
      {
       "hora": 17,
       "ponta": false,
-      "kw_fonte_bruto": -42.32459365287785,
-      "carga_kw": 56.99980672088866,
+      "kw_fonte_bruto": -42.3461854598629,
+      "carga_kw": 56.99979435471478,
       "fv_kw": 16.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2316,14 +2303,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 42.32459365287785,
+      "kw_comprada": 42.3461854598629,
       "kw_exportada": 0.0
      },
      {
       "hora": 18,
       "ponta": true,
-      "kw_fonte_bruto": -6.6783439062657095,
-      "carga_kw": 59.999692419712176,
+      "kw_fonte_bruto": -6.291508263122836,
+      "carga_kw": 60.000195808742006,
       "fv_kw": 4.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2332,34 +2319,34 @@
        }
       },
       "soc_depois": {
-       "BESS_ECON_0": 0.43888865215261896
+       "BESS_ECON_0": 0.4388820601977463
       },
-      "kw_comprada": 6.6783439062657095,
+      "kw_comprada": 6.291508263122836,
       "kw_exportada": 0.0
      },
      {
       "hora": 19,
       "ponta": true,
-      "kw_fonte_bruto": -8.218804282681074,
-      "carga_kw": 57.601603381765216,
+      "kw_fonte_bruto": -36.68666407940813,
+      "carga_kw": 57.601659072749264,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
         "estado": "discharging",
-        "soc_antes": 0.43888865215261896
+        "soc_antes": 0.4388820601977463
        }
       },
       "soc_depois": {
        "BESS_ECON_0": 0.2
       },
-      "kw_comprada": 8.218804282681074,
+      "kw_comprada": 36.68666407940813,
       "kw_exportada": 0.0
      },
      {
       "hora": 20,
       "ponta": true,
-      "kw_fonte_bruto": -53.895610401891695,
-      "carga_kw": 52.80084294167918,
+      "kw_fonte_bruto": -53.91121839814864,
+      "carga_kw": 52.79905432047194,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2370,14 +2357,14 @@
       "soc_depois": {
        "BESS_ECON_0": 0.2
       },
-      "kw_comprada": 53.895610401891695,
+      "kw_comprada": 53.91121839814864,
       "kw_exportada": 0.0
      },
      {
       "hora": 21,
       "ponta": false,
-      "kw_fonte_bruto": -93.7817283806761,
-      "carga_kw": 43.20010548136851,
+      "kw_fonte_bruto": -96.70915144590134,
+      "carga_kw": 42.47048209131954,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2386,34 +2373,34 @@
        }
       },
       "soc_depois": {
-       "BESS_ECON_0": 0.6455001392010827
+       "BESS_ECON_0": 0.6454793956272055
       },
-      "kw_comprada": 93.7817283806761,
+      "kw_comprada": 96.70915144590134,
       "kw_exportada": 0.0
      },
      {
       "hora": 22,
       "ponta": false,
-      "kw_fonte_bruto": -81.55745281290855,
-      "carga_kw": 31.20007379267099,
+      "kw_fonte_bruto": -73.6130589486749,
+      "carga_kw": 31.201353036082427,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
         "estado": "charging",
-        "soc_antes": 0.6455001392010827
+        "soc_antes": 0.6454793956272055
        }
       },
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 81.55745281290855,
+      "kw_comprada": 73.6130589486749,
       "kw_exportada": 0.0
      },
      {
       "hora": 23,
       "ponta": false,
-      "kw_fonte_bruto": -19.7764328088814,
-      "carga_kw": 19.200019666499195,
+      "kw_fonte_bruto": -19.78373038130153,
+      "carga_kw": 19.20013859063493,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2424,7 +2411,7 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 19.7764328088814,
+      "kw_comprada": 19.78373038130153,
       "kw_exportada": 0.0
      }
     ]
@@ -2702,44 +2689,44 @@
      {
       "hora": 0,
       "ponta": false,
-      "kw_fonte_bruto": -69.39688019109957,
-      "carga_kw": 19.199971805829584,
+      "kw_fonte_bruto": -19.78317969725295,
+      "carga_kw": 19.199911545527762,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
-        "estado": "charging",
-        "soc_antes": 0.5
+        "estado": "idling",
+        "soc_antes": 1.0
        }
       },
       "soc_depois": {
-       "BESS_ECON_0": 0.9454998962067188
+       "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 69.39688019109957,
+      "kw_comprada": 19.78317969725295,
       "kw_exportada": 0.0
      },
      {
       "hora": 1,
       "ponta": false,
-      "kw_fonte_bruto": -68.184628626629,
-      "carga_kw": 18.000076461677946,
+      "kw_fonte_bruto": -18.57386619020675,
+      "carga_kw": 18.000083097040267,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
-        "estado": "charging",
-        "soc_antes": 0.9454998962067188
+        "estado": "idling",
+        "soc_antes": 1.0
        }
       },
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 68.184628626629,
+      "kw_comprada": 18.57386619020675,
       "kw_exportada": 0.0
      },
      {
       "hora": 2,
       "ponta": false,
-      "kw_fonte_bruto": -18.56760934149642,
-      "carga_kw": 18.000215013717536,
+      "kw_fonte_bruto": -18.573664948821445,
+      "carga_kw": 18.00000002647058,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2750,14 +2737,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 18.56760934149642,
+      "kw_comprada": 18.573664948821445,
       "kw_exportada": 0.0
      },
      {
       "hora": 3,
       "ponta": false,
-      "kw_fonte_bruto": -19.77618323863096,
-      "carga_kw": 19.199915790638467,
+      "kw_fonte_bruto": -19.78316590759751,
+      "carga_kw": 19.199906171679466,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2768,14 +2755,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 19.77618323863096,
+      "kw_comprada": 19.78316590759751,
       "kw_exportada": 0.0
      },
      {
       "hora": 4,
       "ponta": false,
-      "kw_fonte_bruto": -23.407080759984623,
-      "carga_kw": 22.799639890064604,
+      "kw_fonte_bruto": -23.415322932171474,
+      "carga_kw": 22.799605651603112,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2786,14 +2773,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 23.407080759984623,
+      "kw_comprada": 23.415322932171474,
       "kw_exportada": 0.0
      },
      {
       "hora": 5,
       "ponta": false,
-      "kw_fonte_bruto": -28.684398364416047,
-      "carga_kw": 29.998745597795214,
+      "kw_fonte_bruto": -28.695187973624957,
+      "carga_kw": 29.998657613619788,
       "fv_kw": 2.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2804,14 +2791,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 28.684398364416047,
+      "kw_comprada": 28.695187973624957,
       "kw_exportada": 0.0
      },
      {
       "hora": 6,
       "ponta": false,
-      "kw_fonte_bruto": -29.259529739408286,
-      "carga_kw": 38.39991137004802,
+      "kw_fonte_bruto": -29.273726160593938,
+      "carga_kw": 38.39990306316466,
       "fv_kw": 10.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2822,14 +2809,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 29.259529739408286,
+      "kw_comprada": 29.273726160593938,
       "kw_exportada": 0.0
      },
      {
       "hora": 7,
       "ponta": false,
-      "kw_fonte_bruto": -21.91301325054981,
-      "carga_kw": 45.59986522145768,
+      "kw_fonte_bruto": -21.930002947486972,
+      "carga_kw": 45.599854896263366,
       "fv_kw": 25.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2840,14 +2827,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 21.91301325054981,
+      "kw_comprada": 21.930002947486972,
       "kw_exportada": 0.0
      },
      {
       "hora": 8,
       "ponta": false,
-      "kw_fonte_bruto": -7.084339138343704,
-      "carga_kw": 49.799854543751465,
+      "kw_fonte_bruto": -7.102989049841195,
+      "carga_kw": 49.79984628202642,
       "fv_kw": 45.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2858,14 +2845,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 7.084339138343704,
+      "kw_comprada": 7.102989049841195,
       "kw_exportada": 0.0
      },
      {
       "hora": 9,
       "ponta": false,
-      "kw_fonte_bruto": 11.223344231417144,
-      "carga_kw": 52.799731365999804,
+      "kw_fonte_bruto": 11.203491716772563,
+      "carga_kw": 52.79972271252991,
       "fv_kw": 68.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2877,13 +2864,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 11.223344231417144
+      "kw_exportada": 11.203491716772563
      },
      {
       "hora": 10,
       "ponta": false,
-      "kw_fonte_bruto": 24.448271864406482,
-      "carga_kw": 55.79964754795271,
+      "kw_fonte_bruto": 24.427193817056143,
+      "carga_kw": 55.799637785700014,
       "fv_kw": 86.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2895,13 +2882,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 24.448271864406482
+      "kw_exportada": 24.427193817056143
      },
      {
       "hora": 11,
       "ponta": false,
-      "kw_fonte_bruto": 30.61521407650472,
-      "carga_kw": 57.59978906325517,
+      "kw_fonte_bruto": 30.59338067556853,
+      "carga_kw": 57.599783034086485,
       "fv_kw": 95.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2913,13 +2900,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 30.61521407650472
+      "kw_exportada": 30.59338067556853
      },
      {
       "hora": 12,
       "ponta": false,
-      "kw_fonte_bruto": 38.06251107582278,
-      "carga_kw": 54.603357775952546,
+      "kw_fonte_bruto": 38.04168818540126,
+      "carga_kw": 54.60344688689736,
       "fv_kw": 100.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2931,13 +2918,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 38.06251107582278
+      "kw_exportada": 38.04168818540126
      },
      {
       "hora": 13,
       "ponta": false,
-      "kw_fonte_bruto": 36.67331903035128,
-      "carga_kw": 53.40006887405116,
+      "kw_fonte_bruto": 36.65313678530589,
+      "carga_kw": 53.400089560405675,
       "fv_kw": 97.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2949,13 +2936,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 36.67331903035128
+      "kw_exportada": 36.65313678530589
      },
      {
       "hora": 14,
       "ponta": false,
-      "kw_fonte_bruto": 24.775504188422367,
-      "carga_kw": 54.600077414589336,
+      "kw_fonte_bruto": 24.754897248710588,
+      "carga_kw": 54.60007636165015,
       "fv_kw": 85.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2967,13 +2954,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 24.775504188422367
+      "kw_exportada": 24.754897248710588
      },
      {
       "hora": 15,
       "ponta": false,
-      "kw_fonte_bruto": 7.853509994762746,
-      "carga_kw": 53.40013809143089,
+      "kw_fonte_bruto": 7.8333859111077215,
+      "carga_kw": 53.400142391250384,
       "fv_kw": 65.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -2985,13 +2972,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 7.853509994762746
+      "kw_exportada": 7.8333859111077215
      },
      {
       "hora": 16,
       "ponta": false,
-      "kw_fonte_bruto": -13.59553439720776,
-      "carga_kw": 53.40002252886965,
+      "kw_fonte_bruto": -13.615655760790903,
+      "carga_kw": 53.400022825993915,
       "fv_kw": 42.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3002,14 +2989,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 13.59553439720776,
+      "kw_comprada": 13.615655760790903,
       "kw_exportada": 0.0
      },
      {
       "hora": 17,
       "ponta": false,
-      "kw_fonte_bruto": -38.41278496074864,
-      "carga_kw": 56.9998305448611,
+      "kw_fonte_bruto": -38.43437318204044,
+      "carga_kw": 56.99981957324524,
       "fv_kw": 20.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3020,14 +3007,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 38.41278496074864,
+      "kw_comprada": 38.43437318204044,
       "kw_exportada": 0.0
      },
      {
       "hora": 18,
       "ponta": true,
-      "kw_fonte_bruto": -5.68364286093462,
-      "carga_kw": 59.999586704423976,
+      "kw_fonte_bruto": -5.297376702522017,
+      "carga_kw": 60.00019477550886,
       "fv_kw": 5.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3036,34 +3023,34 @@
        }
       },
       "soc_depois": {
-       "BESS_ECON_0": 0.4388883927750112
+       "BESS_ECON_0": 0.438882091480307
       },
-      "kw_comprada": 5.68364286093462,
+      "kw_comprada": 5.297376702522017,
       "kw_exportada": 0.0
      },
      {
       "hora": 19,
       "ponta": true,
-      "kw_fonte_bruto": -8.218710363693475,
-      "carga_kw": 57.60155765799051,
+      "kw_fonte_bruto": -36.68666033423067,
+      "carga_kw": 57.60166242774123,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
         "estado": "discharging",
-        "soc_antes": 0.4388883927750112
+        "soc_antes": 0.438882091480307
        }
       },
       "soc_depois": {
        "BESS_ECON_0": 0.2
       },
-      "kw_comprada": 8.218710363693475,
+      "kw_comprada": 36.68666033423067,
       "kw_exportada": 0.0
      },
      {
       "hora": 20,
       "ponta": true,
-      "kw_fonte_bruto": -53.28268955883085,
-      "carga_kw": 52.20118835406869,
+      "kw_fonte_bruto": -53.297360287554554,
+      "carga_kw": 52.19910608126541,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3074,14 +3061,14 @@
       "soc_depois": {
        "BESS_ECON_0": 0.2
       },
-      "kw_comprada": 53.28268955883085,
+      "kw_comprada": 53.297360287554554,
       "kw_exportada": 0.0
      },
      {
       "hora": 21,
       "ponta": false,
-      "kw_fonte_bruto": -93.16895186807237,
-      "carga_kw": 42.600100745493684,
+      "kw_fonte_bruto": -96.09823878643225,
+      "carga_kw": 41.896547814506505,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3090,34 +3077,34 @@
        }
       },
       "soc_depois": {
-       "BESS_ECON_0": 0.6455001346100248
+       "BESS_ECON_0": 0.6454794807083153
       },
-      "kw_comprada": 93.16895186807237,
+      "kw_comprada": 96.09823878643225,
       "kw_exportada": 0.0
      },
      {
       "hora": 22,
       "ponta": false,
-      "kw_fonte_bruto": -80.94792773815058,
-      "carga_kw": 30.600069361980783,
+      "kw_fonte_bruto": -72.97167370575012,
+      "carga_kw": 30.600133684194255,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
         "estado": "charging",
-        "soc_antes": 0.6455001346100248
+        "soc_antes": 0.6454794807083153
        }
       },
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 80.94792773815058,
+      "kw_comprada": 72.97167370575012,
       "kw_exportada": 0.0
      },
      {
       "hora": 23,
       "ponta": false,
-      "kw_fonte_bruto": -19.776430884705093,
-      "carga_kw": 19.200018865581196,
+      "kw_fonte_bruto": -19.78372712065564,
+      "carga_kw": 19.200137252293636,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3128,7 +3115,7 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 19.776430884705093,
+      "kw_comprada": 19.78372712065564,
       "kw_exportada": 0.0
      }
     ]
@@ -3406,44 +3393,44 @@
      {
       "hora": 0,
       "ponta": false,
-      "kw_fonte_bruto": -68.79051477373407,
-      "carga_kw": 18.599975054362705,
+      "kw_fonte_bruto": -19.17825522115984,
+      "carga_kw": 18.599918368730165,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
-        "estado": "charging",
-        "soc_antes": 0.5
+        "estado": "idling",
+        "soc_antes": 1.0
        }
       },
       "soc_depois": {
-       "BESS_ECON_0": 0.9454999042401687
+       "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 68.79051477373407,
+      "kw_comprada": 19.17825522115984,
       "kw_exportada": 0.0
      },
      {
       "hora": 1,
       "ponta": false,
-      "kw_fonte_bruto": -68.18450191389452,
-      "carga_kw": 18.000038161366007,
+      "kw_fonte_bruto": -18.573765361903124,
+      "carga_kw": 18.000041469229544,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
-        "estado": "charging",
-        "soc_antes": 0.9454999042401687
+        "estado": "idling",
+        "soc_antes": 1.0
        }
       },
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 68.18450191389452,
+      "kw_comprada": 18.573765361903124,
       "kw_exportada": 0.0
      },
      {
       "hora": 2,
       "ponta": false,
-      "kw_fonte_bruto": -18.56760931611665,
-      "carga_kw": 18.000215003036764,
+      "kw_fonte_bruto": -18.573664916574685,
+      "carga_kw": 18.000000013213246,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3454,14 +3441,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 18.56760931611665,
+      "kw_comprada": 18.573664916574685,
       "kw_exportada": 0.0
      },
      {
       "hora": 3,
       "ponta": false,
-      "kw_fonte_bruto": -19.77618323863096,
-      "carga_kw": 19.19991579063521,
+      "kw_fonte_bruto": -19.78316590759751,
+      "carga_kw": 19.19990617167467,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3472,14 +3459,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 19.77618323863096,
+      "kw_comprada": 19.78316590759751,
       "kw_exportada": 0.0
      },
      {
       "hora": 4,
       "ponta": false,
-      "kw_fonte_bruto": -23.407080759984623,
-      "carga_kw": 22.7996398900646,
+      "kw_fonte_bruto": -23.415322932171474,
+      "carga_kw": 22.79960565160311,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3490,14 +3477,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 23.407080759984623,
+      "kw_comprada": 23.415322932171474,
       "kw_exportada": 0.0
      },
      {
       "hora": 5,
       "ponta": false,
-      "kw_fonte_bruto": -30.684795534367613,
-      "carga_kw": 29.99872351093431,
+      "kw_fonte_bruto": -30.69877583516986,
+      "carga_kw": 29.999959581172302,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3508,14 +3495,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 30.684795534367613,
+      "kw_comprada": 30.69877583516986,
       "kw_exportada": 0.0
      },
      {
       "hora": 6,
       "ponta": false,
-      "kw_fonte_bruto": -33.22260601433462,
-      "carga_kw": 38.399910809355,
+      "kw_fonte_bruto": -33.23680786412147,
+      "carga_kw": 38.39990251688363,
       "fv_kw": 6.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3526,14 +3513,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 33.22260601433462,
+      "kw_comprada": 33.23680786412147,
       "kw_exportada": 0.0
      },
      {
       "hora": 7,
       "ponta": false,
-      "kw_fonte_bruto": -32.03167690719113,
-      "carga_kw": 44.99988328538316,
+      "kw_fonte_bruto": -32.048446209030665,
+      "carga_kw": 44.99987418052105,
       "fv_kw": 14.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3544,14 +3531,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 32.03167690719113,
+      "kw_comprada": 32.048446209030665,
       "kw_exportada": 0.0
      },
      {
       "hora": 8,
       "ponta": false,
-      "kw_fonte_bruto": -26.19425761234722,
-      "carga_kw": 49.79988045339273,
+      "kw_fonte_bruto": -26.212924639197492,
+      "carga_kw": 49.79987222224369,
       "fv_kw": 25.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3562,14 +3549,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 26.19425761234722,
+      "kw_comprada": 26.212924639197492,
       "kw_exportada": 0.0
      },
      {
       "hora": 9,
       "ponta": false,
-      "kw_fonte_bruto": -17.729032974056086,
-      "carga_kw": 52.799898554936135,
+      "kw_fonte_bruto": -17.748900999733745,
+      "carga_kw": 52.7998924310222,
       "fv_kw": 37.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3580,14 +3567,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 17.729032974056086,
+      "kw_comprada": 17.748900999733745,
       "kw_exportada": 0.0
      },
      {
       "hora": 10,
       "ponta": false,
-      "kw_fonte_bruto": -10.713040283248382,
-      "carga_kw": 55.19989131423073,
+      "kw_fonte_bruto": -10.7338768893818,
+      "carga_kw": 55.199885554468146,
       "fv_kw": 47.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3598,14 +3585,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 10.713040283248382,
+      "kw_comprada": 10.7338768893818,
       "kw_exportada": 0.0
      },
      {
       "hora": 11,
       "ponta": false,
-      "kw_fonte_bruto": -7.8656805011620605,
-      "carga_kw": 56.999911559963586,
+      "kw_fonte_bruto": -7.887253372383522,
+      "carga_kw": 56.99990691866408,
       "fv_kw": 52.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3616,14 +3603,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 7.8656805011620605,
+      "kw_comprada": 7.887253372383522,
       "kw_exportada": 0.0
      },
      {
       "hora": 12,
       "ponta": false,
-      "kw_fonte_bruto": -2.018225146809463,
-      "carga_kw": 54.002228172480734,
+      "kw_fonte_bruto": -2.038778493041528,
+      "carga_kw": 54.0023103926165,
       "fv_kw": 55.00000000000001,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3634,14 +3621,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 2.018225146809463,
+      "kw_comprada": 2.038778493041528,
       "kw_exportada": 0.0
      },
      {
       "hora": 13,
       "ponta": false,
-      "kw_fonte_bruto": -2.6391400035541173,
-      "carga_kw": 52.80059622789682,
+      "kw_fonte_bruto": -2.6590703283846904,
+      "carga_kw": 52.80061932586908,
       "fv_kw": 53.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3652,14 +3639,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 2.6391400035541173,
+      "kw_comprada": 2.6590703283846904,
       "kw_exportada": 0.0
      },
      {
       "hora": 14,
       "ponta": false,
-      "kw_fonte_bruto": -9.489218287258188,
-      "carga_kw": 53.99997050790235,
+      "kw_fonte_bruto": -9.509574013719043,
+      "carga_kw": 53.99996807201754,
       "fv_kw": 47.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3670,14 +3657,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 9.489218287258188,
+      "kw_comprada": 9.509574013719043,
       "kw_exportada": 0.0
      },
      {
       "hora": 15,
       "ponta": false,
-      "kw_fonte_bruto": -18.684463304201685,
-      "carga_kw": 52.800042032913055,
+      "kw_fonte_bruto": -18.70435240973017,
+      "carga_kw": 52.80004442559503,
       "fv_kw": 36.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3688,14 +3675,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 18.684463304201685,
+      "kw_comprada": 18.70435240973017,
       "kw_exportada": 0.0
      },
      {
       "hora": 16,
       "ponta": false,
-      "kw_fonte_bruto": -31.197562867310634,
-      "carga_kw": 52.799991295568816,
+      "kw_fonte_bruto": -31.217459014057216,
+      "carga_kw": 52.79999044631471,
       "fv_kw": 23.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3706,14 +3693,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 31.197562867310634,
+      "kw_comprada": 31.217459014057216,
       "kw_exportada": 0.0
      },
      {
       "hora": 17,
       "ponta": false,
-      "kw_fonte_bruto": -47.24523070059506,
-      "carga_kw": 56.99980878430927,
+      "kw_fonte_bruto": -47.266832775003714,
+      "carga_kw": 56.999796639502804,
       "fv_kw": 11.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3724,14 +3711,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 47.24523070059506,
+      "kw_comprada": 47.266832775003714,
       "kw_exportada": 0.0
      },
      {
       "hora": 18,
       "ponta": true,
-      "kw_fonte_bruto": -7.674484387362101,
-      "carga_kw": 59.99985167920281,
+      "kw_fonte_bruto": -7.287060888705914,
+      "carga_kw": 60.00019704254639,
       "fv_kw": 3.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3740,34 +3727,34 @@
        }
       },
       "soc_depois": {
-       "BESS_ECON_0": 0.4388888459391714
+       "BESS_ECON_0": 0.4388820218353105
       },
-      "kw_comprada": 7.674484387362101,
+      "kw_comprada": 7.287060888705914,
       "kw_exportada": 0.0
      },
      {
       "hora": 19,
       "ponta": true,
-      "kw_fonte_bruto": -8.218899900284777,
-      "carga_kw": 57.601649894450404,
+      "kw_fonte_bruto": -36.68666884173488,
+      "carga_kw": 57.601655703947515,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
         "estado": "discharging",
-        "soc_antes": 0.4388888459391714
+        "soc_antes": 0.4388820218353105
        }
       },
       "soc_depois": {
        "BESS_ECON_0": 0.2
       },
-      "kw_comprada": 8.218899900284777,
+      "kw_comprada": 36.68666884173488,
       "kw_exportada": 0.0
      },
      {
       "hora": 20,
       "ponta": true,
-      "kw_fonte_bruto": -53.89561068201465,
-      "carga_kw": 52.80084305966686,
+      "kw_fonte_bruto": -53.911218397982495,
+      "carga_kw": 52.79905432039183,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3778,14 +3765,14 @@
       "soc_depois": {
        "BESS_ECON_0": 0.2
       },
-      "kw_comprada": 53.89561068201465,
+      "kw_comprada": 53.911218397982495,
       "kw_exportada": 0.0
      },
      {
       "hora": 21,
       "ponta": false,
-      "kw_fonte_bruto": -93.7817283806761,
-      "carga_kw": 43.200105481377506,
+      "kw_fonte_bruto": -96.70915144590134,
+      "carga_kw": 42.47048209131954,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3794,34 +3781,34 @@
        }
       },
       "soc_depois": {
-       "BESS_ECON_0": 0.6455001392010955
+       "BESS_ECON_0": 0.6454793956272052
       },
-      "kw_comprada": 93.7817283806761,
+      "kw_comprada": 96.70915144590134,
       "kw_exportada": 0.0
      },
      {
       "hora": 22,
       "ponta": false,
-      "kw_fonte_bruto": -81.55745281290855,
-      "carga_kw": 31.200073792671,
+      "kw_fonte_bruto": -73.6130589486749,
+      "carga_kw": 31.201353036082427,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
         "estado": "charging",
-        "soc_antes": 0.6455001392010955
+        "soc_antes": 0.6454793956272052
        }
       },
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 81.55745281290855,
+      "kw_comprada": 73.6130589486749,
       "kw_exportada": 0.0
      },
      {
       "hora": 23,
       "ponta": false,
-      "kw_fonte_bruto": -19.171708435342946,
-      "carga_kw": 18.600018534188234,
+      "kw_fonte_bruto": -19.178762309887453,
+      "carga_kw": 18.600127326213688,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -3832,7 +3819,7 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 19.171708435342946,
+      "kw_comprada": 19.178762309887453,
       "kw_exportada": 0.0
      }
     ]
@@ -4110,44 +4097,44 @@
      {
       "hora": 0,
       "ponta": false,
-      "kw_fonte_bruto": -70.00339911995358,
-      "carga_kw": 19.799968243664424,
+      "kw_fonte_bruto": -20.388256893420053,
+      "carga_kw": 19.799904294937797,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
-        "estado": "charging",
-        "soc_antes": 0.5
+        "estado": "idling",
+        "soc_antes": 1.0
        }
       },
       "soc_depois": {
-       "BESS_ECON_0": 0.9454998876824985
+       "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 70.00339911995358,
+      "kw_comprada": 20.388256893420053,
       "kw_exportada": 0.0
      },
      {
       "hora": 1,
       "ponta": false,
-      "kw_fonte_bruto": -68.7908644264059,
-      "carga_kw": 18.600081826613962,
+      "kw_fonte_bruto": -19.17866691388355,
+      "carga_kw": 18.600088653037126,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
-        "estado": "charging",
-        "soc_antes": 0.9454998876824985
+        "estado": "idling",
+        "soc_antes": 1.0
        }
       },
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 68.7908644264059,
+      "kw_comprada": 19.17866691388355,
       "kw_exportada": 0.0
      },
      {
       "hora": 2,
       "ponta": false,
-      "kw_fonte_bruto": -18.567700070634608,
-      "carga_kw": 18.00025292292108,
+      "kw_fonte_bruto": -18.573765493895472,
+      "carga_kw": 18.0000415234613,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4158,14 +4145,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 18.567700070634608,
+      "kw_comprada": 18.573765493895472,
       "kw_exportada": 0.0
      },
      {
       "hora": 3,
       "ponta": false,
-      "kw_fonte_bruto": -19.77618326633051,
-      "carga_kw": 19.19991580218796,
+      "kw_fonte_bruto": -19.783165943678487,
+      "carga_kw": 19.199906186613305,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4176,14 +4163,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 19.77618326633051,
+      "kw_comprada": 19.783165943678487,
       "kw_exportada": 0.0
      },
      {
       "hora": 4,
       "ponta": false,
-      "kw_fonte_bruto": -23.407080759984623,
-      "carga_kw": 22.799639890069614,
+      "kw_fonte_bruto": -23.415322932171474,
+      "carga_kw": 22.799605651610616,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4194,14 +4181,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 23.407080759984623,
+      "kw_comprada": 23.415322932171474,
       "kw_exportada": 0.0
      },
      {
       "hora": 5,
       "ponta": false,
-      "kw_fonte_bruto": -27.47035095305143,
-      "carga_kw": 28.799041869303906,
+      "kw_fonte_bruto": -27.480735510481725,
+      "carga_kw": 28.79897209289533,
       "fv_kw": 2.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4212,14 +4199,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 27.47035095305143,
+      "kw_comprada": 27.480735510481725,
       "kw_exportada": 0.0
      },
      {
       "hora": 6,
       "ponta": false,
-      "kw_fonte_bruto": -28.04085054874948,
-      "carga_kw": 37.19992004385748,
+      "kw_fonte_bruto": -28.054584824836436,
+      "carga_kw": 37.199912275902676,
       "fv_kw": 10.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4230,14 +4217,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 28.04085054874948,
+      "kw_comprada": 28.054584824836436,
       "kw_exportada": 0.0
      },
      {
       "hora": 7,
       "ponta": false,
-      "kw_fonte_bruto": -20.691365248207482,
-      "carga_kw": 44.39987624390206,
+      "kw_fonte_bruto": -20.7078826829925,
+      "carga_kw": 44.39986646343115,
       "fv_kw": 25.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4248,14 +4235,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 20.691365248207482,
+      "kw_comprada": 20.7078826829925,
       "kw_exportada": 0.0
      },
      {
       "hora": 8,
       "ponta": false,
-      "kw_fonte_bruto": -6.472826077054304,
-      "carga_kw": 49.19984423538275,
+      "kw_fonte_bruto": -6.491233741327304,
+      "carga_kw": 49.19983508891279,
       "fv_kw": 45.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4266,14 +4253,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 6.472826077054304,
+      "kw_comprada": 6.491233741327304,
       "kw_exportada": 0.0
      },
      {
       "hora": 9,
       "ponta": false,
-      "kw_fonte_bruto": 11.835045319716132,
-      "carga_kw": 52.19973649124705,
+      "kw_fonte_bruto": 11.815434822662409,
+      "carga_kw": 52.19972798820136,
       "fv_kw": 68.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4285,13 +4272,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 11.835045319716132
+      "kw_exportada": 11.815434822662409
      },
      {
       "hora": 10,
       "ponta": false,
-      "kw_fonte_bruto": 26.283983399196874,
-      "carga_kw": 53.99970556809369,
+      "kw_fonte_bruto": 26.26363085828033,
+      "carga_kw": 53.999698929891714,
       "fv_kw": 86.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4303,13 +4290,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 26.283983399196874
+      "kw_exportada": 26.26363085828033
      },
      {
       "hora": 11,
       "ponta": false,
-      "kw_fonte_bruto": 32.45193710218549,
-      "carga_kw": 55.799800323827895,
+      "kw_fonte_bruto": 32.430840933167374,
+      "carga_kw": 55.79979462531122,
       "fv_kw": 95.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4321,13 +4308,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 32.45193710218549
+      "kw_exportada": 32.430840933167374
      },
      {
       "hora": 12,
       "ponta": false,
-      "kw_fonte_bruto": 39.89680057218926,
-      "carga_kw": 52.803168980405076,
+      "kw_fonte_bruto": 39.87671696770357,
+      "carga_kw": 52.803254801736024,
       "fv_kw": 100.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4339,13 +4326,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 39.89680057218926
+      "kw_exportada": 39.87671696770357
      },
      {
       "hora": 13,
       "ponta": false,
-      "kw_fonte_bruto": 39.11628430644543,
-      "carga_kw": 51.0003805768189,
+      "kw_fonte_bruto": 39.097044378759186,
+      "carga_kw": 51.00041384790469,
       "fv_kw": 97.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4357,13 +4344,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 39.11628430644543
+      "kw_exportada": 39.097044378759186
      },
      {
       "hora": 14,
       "ponta": false,
-      "kw_fonte_bruto": 27.83279357309144,
-      "carga_kw": 51.600096542475555,
+      "kw_fonte_bruto": 27.81339761165108,
+      "carga_kw": 51.600096952319504,
       "fv_kw": 85.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4375,13 +4362,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 27.83279357309144
+      "kw_exportada": 27.81339761165108
      },
      {
       "hora": 15,
       "ponta": false,
-      "kw_fonte_bruto": 10.911665410252875,
-      "carga_kw": 50.40012696079836,
+      "kw_fonte_bruto": 10.89275137132944,
+      "carga_kw": 50.400130964048,
       "fv_kw": 65.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4393,13 +4380,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 10.911665410252875
+      "kw_exportada": 10.89275137132944
      },
      {
       "hora": 16,
       "ponta": false,
-      "kw_fonte_bruto": -11.758199869210571,
-      "carga_kw": 51.59998778139397,
+      "kw_fonte_bruto": -11.77758821010119,
+      "carga_kw": 51.599985788823446,
       "fv_kw": 42.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4410,14 +4397,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 11.758199869210571,
+      "kw_comprada": 11.77758821010119,
       "kw_exportada": 0.0
      },
      {
       "hora": 17,
       "ponta": false,
-      "kw_fonte_bruto": -37.79842164585236,
-      "carga_kw": 56.39979011658303,
+      "kw_fonte_bruto": -37.81975712417139,
+      "carga_kw": 56.39977653967159,
       "fv_kw": 20.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4428,14 +4415,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 37.79842164585236,
+      "kw_comprada": 37.81975712417139,
       "kw_exportada": 0.0
      },
      {
       "hora": 18,
       "ponta": true,
-      "kw_fonte_bruto": -4.45709324550199,
-      "carga_kw": 58.80006854903843,
+      "kw_fonte_bruto": -4.113030525610926,
+      "carga_kw": 58.80021594364724,
       "fv_kw": 5.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4444,34 +4431,34 @@
        }
       },
       "soc_depois": {
-       "BESS_ECON_0": 0.4388878775071659
+       "BESS_ECON_0": 0.43888136562655705
       },
-      "kw_comprada": 4.45709324550199,
+      "kw_comprada": 4.113030525610926,
       "kw_exportada": 0.0
      },
      {
       "hora": 19,
       "ponta": true,
-      "kw_fonte_bruto": -8.216786621197423,
-      "carga_kw": 57.60066177437045,
+      "kw_fonte_bruto": -36.68671422206947,
+      "carga_kw": 57.60170001042073,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
         "estado": "discharging",
-        "soc_antes": 0.4388878775071659
+        "soc_antes": 0.43888136562655705
        }
       },
       "soc_depois": {
        "BESS_ECON_0": 0.2
       },
-      "kw_comprada": 8.216786621197423,
+      "kw_comprada": 36.68671422206947,
       "kw_exportada": 0.0
      },
      {
       "hora": 20,
       "ponta": true,
-      "kw_fonte_bruto": -55.12182940026859,
-      "carga_kw": 54.000096466928625,
+      "kw_fonte_bruto": -55.13942935070477,
+      "carga_kw": 53.998944092454636,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4482,14 +4469,14 @@
       "soc_depois": {
        "BESS_ECON_0": 0.2
       },
-      "kw_comprada": 55.12182940026859,
+      "kw_comprada": 55.13942935070477,
       "kw_exportada": 0.0
      },
      {
       "hora": 21,
       "ponta": false,
-      "kw_fonte_bruto": -97.46552335373408,
-      "carga_kw": 46.80173791098401,
+      "kw_fonte_bruto": -100.3681214146156,
+      "carga_kw": 45.90487391951549,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4498,34 +4485,34 @@
        }
       },
       "soc_depois": {
-       "BESS_ECON_0": 0.6454996870101859
+       "BESS_ECON_0": 0.6454782358391029
       },
-      "kw_comprada": 97.46552335373408,
+      "kw_comprada": 100.3681214146156,
       "kw_exportada": 0.0
      },
      {
       "hora": 22,
       "ponta": false,
-      "kw_fonte_bruto": -86.43941578517838,
-      "carga_kw": 36.00010484110052,
+      "kw_fonte_bruto": -78.57691800002469,
+      "carga_kw": 35.9301668930284,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
         "estado": "charging",
-        "soc_antes": 0.6454996870101859
+        "soc_antes": 0.6454782358391029
        }
       },
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 86.43941578517838,
+      "kw_comprada": 78.57691800002469,
       "kw_exportada": 0.0
      },
      {
       "hora": 23,
       "ponta": false,
-      "kw_fonte_bruto": -20.381327607786545,
-      "carga_kw": 19.800027904629697,
+      "kw_fonte_bruto": -20.388864504841408,
+      "carga_kw": 19.800154897188058,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4536,7 +4523,7 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 20.381327607786545,
+      "kw_comprada": 20.388864504841408,
       "kw_exportada": 0.0
      }
     ]
@@ -4814,44 +4801,44 @@
      {
       "hora": 0,
       "ponta": false,
-      "kw_fonte_bruto": -71.21689834151383,
-      "carga_kw": 20.99996009628819,
+      "kw_fonte_bruto": -21.598870283785104,
+      "carga_kw": 20.999888428245683,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
-        "estado": "charging",
-        "soc_antes": 0.5
+        "estado": "idling",
+        "soc_antes": 1.0
        }
       },
       "soc_depois": {
-       "BESS_ECON_0": 0.9454998690924592
+       "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 71.21689834151383,
+      "kw_comprada": 21.598870283785104,
       "kw_exportada": 0.0
      },
      {
       "hora": 1,
       "ponta": false,
-      "kw_fonte_bruto": -70.00380006843822,
-      "carga_kw": 19.800093149619734,
+      "kw_fonte_bruto": -20.388730461726386,
+      "carga_kw": 19.80010035170931,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
-        "estado": "charging",
-        "soc_antes": 0.9454998690924592
+        "estado": "idling",
+        "soc_antes": 1.0
        }
       },
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 70.00380006843822,
+      "kw_comprada": 20.388730461726386,
       "kw_exportada": 0.0
      },
      {
       "hora": 2,
       "ponta": false,
-      "kw_fonte_bruto": -19.77707638314748,
-      "carga_kw": 19.200289163691075,
+      "kw_fonte_bruto": -19.783507321400293,
+      "carga_kw": 19.200047180104765,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4862,14 +4849,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 19.77707638314748,
+      "kw_comprada": 19.783507321400293,
       "kw_exportada": 0.0
      },
      {
       "hora": 3,
       "ponta": false,
-      "kw_fonte_bruto": -19.77638576380083,
-      "carga_kw": 19.200000085148893,
+      "kw_fonte_bruto": -19.78339316693366,
+      "carga_kw": 19.20000001702121,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4880,14 +4867,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 19.77638576380083,
+      "kw_comprada": 19.78339316693366,
       "kw_exportada": 0.0
      },
      {
       "hora": 4,
       "ponta": false,
-      "kw_fonte_bruto": -21.591106229648872,
-      "carga_kw": 20.999847762321938,
+      "kw_fonte_bruto": -21.598732948800315,
+      "carga_kw": 20.999832031769508,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4898,14 +4885,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 21.591106229648872,
+      "kw_comprada": 21.598732948800315,
       "kw_exportada": 0.0
      },
      {
       "hora": 5,
       "ponta": false,
-      "kw_fonte_bruto": -23.830947495132666,
-      "carga_kw": 25.19949673907038,
+      "kw_fonte_bruto": -23.840058285978305,
+      "carga_kw": 25.199455098915916,
       "fv_kw": 2.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4916,14 +4903,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 23.830947495132666,
+      "kw_comprada": 23.840058285978305,
       "kw_exportada": 0.0
      },
      {
       "hora": 6,
       "ponta": false,
-      "kw_fonte_bruto": -21.729686832380626,
-      "carga_kw": 29.99919582025109,
+      "kw_fonte_bruto": -21.740568062535274,
+      "carga_kw": 29.999146296814004,
       "fv_kw": 9.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4934,14 +4921,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 21.729686832380626,
+      "kw_comprada": 21.740568062535274,
       "kw_exportada": 0.0
      },
      {
       "hora": 7,
       "ponta": false,
-      "kw_fonte_bruto": -12.879483112816619,
-      "carga_kw": 34.79996242891987,
+      "kw_fonte_bruto": -12.892291940119794,
+      "carga_kw": 34.79995849213202,
       "fv_kw": 23.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4952,14 +4939,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 12.879483112816619,
+      "kw_comprada": 12.892291940119794,
       "kw_exportada": 0.0
      },
      {
       "hora": 8,
       "ponta": false,
-      "kw_fonte_bruto": -0.7624217285619705,
-      "carga_kw": 40.79989560613336,
+      "kw_fonte_bruto": -0.777521809515534,
+      "carga_kw": 40.79988783992104,
       "fv_kw": 42.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4970,14 +4957,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 0.7624217285619705,
+      "kw_comprada": 0.777521809515534,
       "kw_exportada": 0.0
      },
      {
       "hora": 9,
       "ponta": false,
-      "kw_fonte_bruto": 13.962936996366658,
-      "carga_kw": 45.59979521506563,
+      "kw_fonte_bruto": 13.945963799172027,
+      "carga_kw": 45.59978606960084,
       "fv_kw": 63.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -4989,13 +4976,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 13.962936996366658
+      "kw_exportada": 13.945963799172027
      },
      {
       "hora": 10,
       "ponta": false,
-      "kw_fonte_bruto": 25.78620182446445,
-      "carga_kw": 49.19973838666988,
+      "kw_fonte_bruto": 25.76779246429319,
+      "carga_kw": 49.1997297394483,
       "fv_kw": 80.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5007,13 +4994,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 25.78620182446445
+      "kw_exportada": 25.76779246429319
      },
      {
       "hora": 11,
       "ponta": false,
-      "kw_fonte_bruto": 29.29253129153516,
-      "carga_kw": 52.79979109322025,
+      "kw_fonte_bruto": 29.272669502157413,
+      "carga_kw": 52.79978245435139,
       "fv_kw": 88.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5025,13 +5012,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 29.29253129153516
+      "kw_exportada": 29.272669502157413
      },
      {
       "hora": 12,
       "ponta": false,
-      "kw_fonte_bruto": 32.51635597535468,
-      "carga_kw": 53.99989305316197,
+      "kw_fonte_bruto": 32.495990115187254,
+      "carga_kw": 53.99988965059753,
       "fv_kw": 93.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5043,13 +5030,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 32.51635597535468
+      "kw_exportada": 32.495990115187254
      },
      {
       "hora": 13,
       "ponta": false,
-      "kw_fonte_bruto": 29.86193156546521,
-      "carga_kw": 53.999362588385424,
+      "kw_fonte_bruto": 29.84157891484383,
+      "carga_kw": 53.99935370985707,
       "fv_kw": 90.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5061,13 +5048,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 29.86193156546521
+      "kw_exportada": 29.84157891484383
      },
      {
       "hora": 14,
       "ponta": false,
-      "kw_fonte_bruto": 21.215119902857616,
-      "carga_kw": 52.800130372913685,
+      "kw_fonte_bruto": 21.19523463099187,
+      "carga_kw": 52.80013421795999,
       "fv_kw": 79.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5079,13 +5066,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 21.215119902857616
+      "kw_exportada": 21.19523463099187
      },
      {
       "hora": 15,
       "ponta": false,
-      "kw_fonte_bruto": 4.781140689646477,
-      "carga_kw": 52.80007487465063,
+      "kw_fonte_bruto": 4.761266616427469,
+      "carga_kw": 52.800076248028944,
       "fv_kw": 61.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5097,13 +5084,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 4.781140689646477
+      "kw_exportada": 4.761266616427469
      },
      {
       "hora": 16,
       "ponta": false,
-      "kw_fonte_bruto": -17.053661533122984,
-      "carga_kw": 53.99997294501141,
+      "kw_fonte_bruto": -17.074021512783286,
+      "carga_kw": 53.999970317681104,
       "fv_kw": 39.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5114,14 +5101,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 17.053661533122984,
+      "kw_comprada": 17.074021512783286,
       "kw_exportada": 0.0
      },
      {
       "hora": 17,
       "ponta": false,
-      "kw_fonte_bruto": -40.00316936268718,
-      "carga_kw": 57.59982487573939,
+      "kw_fonte_bruto": -40.02500556181641,
+      "carga_kw": 57.59981370239788,
       "fv_kw": 19.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5132,14 +5119,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 40.00316936268718,
+      "kw_comprada": 40.02500556181641,
       "kw_exportada": 0.0
      },
      {
       "hora": 18,
       "ponta": false,
-      "kw_fonte_bruto": -56.26623591525469,
-      "carga_kw": 59.99740034357636,
+      "kw_fonte_bruto": -56.28884739351046,
+      "carga_kw": 59.997288416579494,
       "fv_kw": 5.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5150,14 +5137,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 56.26623591525469,
+      "kw_comprada": 56.28884739351046,
       "kw_exportada": 0.0
      },
      {
       "hora": 19,
       "ponta": false,
-      "kw_fonte_bruto": -61.27104114543764,
-      "carga_kw": 59.99971144768682,
+      "kw_fonte_bruto": -61.29390122922078,
+      "carga_kw": 59.999693994458305,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5168,14 +5155,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 61.27104114543764,
+      "kw_comprada": 61.29390122922078,
       "kw_exportada": 0.0
      },
      {
       "hora": 20,
       "ponta": false,
-      "kw_fonte_bruto": -58.19974737606633,
-      "carga_kw": 57.002231647083676,
+      "kw_fonte_bruto": -58.22161223508038,
+      "carga_kw": 57.00230968306668,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5186,14 +5173,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 58.19974737606633,
+      "kw_comprada": 58.22161223508038,
       "kw_exportada": 0.0
      },
      {
       "hora": 21,
       "ponta": false,
-      "kw_fonte_bruto": -53.89385819545074,
-      "carga_kw": 52.80013671764568,
+      "kw_fonte_bruto": -53.91382267372577,
+      "carga_kw": 52.80014566290799,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5204,14 +5191,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 53.89385819545074,
+      "kw_comprada": 53.91382267372577,
       "kw_exportada": 0.0
      },
      {
       "hora": 22,
       "ponta": false,
-      "kw_fonte_bruto": -44.09424796923011,
-      "carga_kw": 43.20016270753882,
+      "kw_fonte_bruto": -44.110387739725304,
+      "carga_kw": 43.200175968706716,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5222,14 +5209,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 44.09424796923011,
+      "kw_comprada": 44.110387739725304,
       "kw_exportada": 0.0
      },
      {
       "hora": 23,
       "ponta": false,
-      "kw_fonte_bruto": -21.59156402279493,
-      "carga_kw": 21.000038446190562,
+      "kw_fonte_bruto": -21.599248983061432,
+      "carga_kw": 21.000045278820345,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5240,7 +5227,7 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 21.59156402279493,
+      "kw_comprada": 21.599248983061432,
       "kw_exportada": 0.0
      }
     ]
@@ -5518,44 +5505,44 @@
      {
       "hora": 0,
       "ponta": false,
-      "kw_fonte_bruto": -70.00339911995358,
-      "carga_kw": 19.799968243664424,
+      "kw_fonte_bruto": -20.388256893420053,
+      "carga_kw": 19.799904294937797,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
-        "estado": "charging",
-        "soc_antes": 0.5
+        "estado": "idling",
+        "soc_antes": 1.0
        }
       },
       "soc_depois": {
-       "BESS_ECON_0": 0.9454998876824985
+       "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 70.00339911995358,
+      "kw_comprada": 20.388256893420053,
       "kw_exportada": 0.0
      },
      {
       "hora": 1,
       "ponta": false,
-      "kw_fonte_bruto": -68.7908644264059,
-      "carga_kw": 18.600081826613962,
+      "kw_fonte_bruto": -19.17866691388355,
+      "carga_kw": 18.600088653037126,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
-        "estado": "charging",
-        "soc_antes": 0.9454998876824985
+        "estado": "idling",
+        "soc_antes": 1.0
        }
       },
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 68.7908644264059,
+      "kw_comprada": 19.17866691388355,
       "kw_exportada": 0.0
      },
      {
       "hora": 2,
       "ponta": false,
-      "kw_fonte_bruto": -18.567700070634608,
-      "carga_kw": 18.00025292292108,
+      "kw_fonte_bruto": -18.573765493895472,
+      "carga_kw": 18.0000415234613,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5566,14 +5553,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 18.567700070634608,
+      "kw_comprada": 18.573765493895472,
       "kw_exportada": 0.0
      },
      {
       "hora": 3,
       "ponta": false,
-      "kw_fonte_bruto": -19.171569146655223,
-      "carga_kw": 18.599960568243183,
+      "kw_fonte_bruto": -19.17834540086137,
+      "carga_kw": 18.599955887073257,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5584,14 +5571,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 19.171569146655223,
+      "kw_comprada": 19.17834540086137,
       "kw_exportada": 0.0
      },
      {
       "hora": 4,
       "ponta": false,
-      "kw_fonte_bruto": -20.381044687851137,
-      "carga_kw": 19.79991011344472,
+      "kw_fonte_bruto": -20.388246268931386,
+      "carga_kw": 19.799900241397204,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5602,14 +5589,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 20.381044687851137,
+      "kw_comprada": 20.388246268931386,
       "kw_exportada": 0.0
      },
      {
       "hora": 5,
       "ponta": false,
-      "kw_fonte_bruto": -20.196914220633126,
-      "carga_kw": 21.59984895834711,
+      "kw_fonte_bruto": -20.2047642713779,
+      "carga_kw": 21.599835075389564,
       "fv_kw": 2.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5620,14 +5607,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 20.196914220633126,
+      "kw_comprada": 20.2047642713779,
       "kw_exportada": 0.0
      },
      {
       "hora": 6,
       "ponta": false,
-      "kw_fonte_bruto": -15.443888796512566,
-      "carga_kw": 22.799901174547607,
+      "kw_fonte_bruto": -15.452200474072812,
+      "carga_kw": 22.79989715636662,
       "fv_kw": 8.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5638,14 +5625,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 15.443888796512566,
+      "kw_comprada": 15.452200474072812,
       "kw_exportada": 0.0
      },
      {
       "hora": 7,
       "ponta": false,
-      "kw_fonte_bruto": -3.9007279372945067,
-      "carga_kw": 23.999997086525532,
+      "kw_fonte_bruto": -3.9094849230424606,
+      "carga_kw": 23.999996558596635,
       "fv_kw": 21.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5656,14 +5643,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 3.9007279372945067,
+      "kw_comprada": 3.9094849230424606,
       "kw_exportada": 0.0
      },
      {
       "hora": 8,
       "ponta": false,
-      "kw_fonte_bruto": 8.462876748392143,
-      "carga_kw": 26.99998005766104,
+      "kw_fonte_bruto": 8.453017037324525,
+      "carga_kw": 26.999978041437963,
       "fv_kw": 37.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5675,13 +5662,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 8.462876748392143
+      "kw_exportada": 8.453017037324525
      },
      {
       "hora": 9,
       "ponta": false,
-      "kw_fonte_bruto": 22.083026537382125,
-      "carga_kw": 31.199925026393167,
+      "kw_fonte_bruto": 22.071600911002754,
+      "carga_kw": 31.199920882646097,
       "fv_kw": 56.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5693,13 +5680,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 22.083026537382125
+      "kw_exportada": 22.071600911002754
      },
      {
       "hora": 10,
       "ponta": false,
-      "kw_fonte_bruto": 31.024796149201432,
-      "carga_kw": 35.99987191418613,
+      "kw_fonte_bruto": 31.01154864735966,
+      "carga_kw": 35.99986606928833,
       "fv_kw": 71.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5711,13 +5698,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 31.024796149201432
+      "kw_exportada": 31.01154864735966
      },
      {
       "hora": 11,
       "ponta": false,
-      "kw_fonte_bruto": 33.41396115297979,
-      "carga_kw": 40.79987473901738,
+      "kw_fonte_bruto": 33.39886025621701,
+      "carga_kw": 40.79986812936387,
       "fv_kw": 79.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5729,13 +5716,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 33.41396115297979
+      "kw_exportada": 33.39886025621701
      },
      {
       "hora": 12,
       "ponta": false,
-      "kw_fonte_bruto": 39.74507134114888,
-      "carga_kw": 37.201435101786004,
+      "kw_fonte_bruto": 39.731209737709285,
+      "carga_kw": 37.20149922868961,
       "fv_kw": 82.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5747,13 +5734,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 39.74507134114888
+      "kw_exportada": 39.731209737709285
      },
      {
       "hora": 13,
       "ponta": false,
-      "kw_fonte_bruto": 42.21151786124756,
-      "carga_kw": 33.00076179790798,
+      "kw_fonte_bruto": 42.19928228839669,
+      "carga_kw": 33.00081783266968,
       "fv_kw": 80.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5765,13 +5752,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 42.21151786124756
+      "kw_exportada": 42.19928228839669
      },
      {
       "hora": 14,
       "ponta": false,
-      "kw_fonte_bruto": 36.173105386315335,
-      "carga_kw": 30.000054300906704,
+      "kw_fonte_bruto": 36.162114734759164,
+      "carga_kw": 30.00005698481381,
       "fv_kw": 70.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5783,13 +5770,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 36.173105386315335
+      "kw_exportada": 36.162114734759164
      },
      {
       "hora": 15,
       "ponta": false,
-      "kw_fonte_bruto": 21.4310694873634,
-      "carga_kw": 30.000030097642334,
+      "kw_fonte_bruto": 21.420084065631208,
+      "carga_kw": 30.000031040396735,
       "fv_kw": 54.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5801,13 +5788,13 @@
        "BESS_ECON_0": 1.0
       },
       "kw_comprada": 0.0,
-      "kw_exportada": 21.4310694873634
+      "kw_exportada": 21.420084065631208
      },
      {
       "hora": 16,
       "ponta": false,
-      "kw_fonte_bruto": -1.3329182870030882,
-      "carga_kw": 34.79996968771045,
+      "kw_fonte_bruto": -1.3457184126842632,
+      "carga_kw": 34.79996604274909,
       "fv_kw": 35.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5818,14 +5805,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 1.3329182870030882,
+      "kw_comprada": 1.3457184126842632,
       "kw_exportada": 0.0
      },
      {
       "hora": 17,
       "ponta": false,
-      "kw_fonte_bruto": -30.0688057231359,
-      "carga_kw": 44.99980373131213,
+      "kw_fonte_bruto": -30.085554552145137,
+      "carga_kw": 44.99978766583402,
       "fv_kw": 16.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5836,14 +5823,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 30.0688057231359,
+      "kw_comprada": 30.085554552145137,
       "kw_exportada": 0.0
      },
      {
       "hora": 18,
       "ponta": false,
-      "kw_fonte_bruto": -51.120129446907114,
-      "carga_kw": 53.999675405973704,
+      "kw_fonte_bruto": -51.14049441332191,
+      "carga_kw": 53.99965375311493,
       "fv_kw": 4.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5854,14 +5841,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 51.120129446907114,
+      "kw_comprada": 51.14049441332191,
       "kw_exportada": 0.0
      },
      {
       "hora": 19,
       "ponta": false,
-      "kw_fonte_bruto": -56.34780530632294,
-      "carga_kw": 55.19899348685874,
+      "kw_fonte_bruto": -56.36861797998854,
+      "carga_kw": 55.198951241213365,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5872,14 +5859,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 56.34780530632294,
+      "kw_comprada": 56.36861797998854,
       "kw_exportada": 0.0
      },
      {
       "hora": 20,
       "ponta": false,
-      "kw_fonte_bruto": -47.76417229864778,
-      "carga_kw": 46.800184623692104,
+      "kw_fonte_bruto": -47.78173770064465,
+      "carga_kw": 46.80019838081905,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5890,14 +5877,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 47.76417229864778,
+      "kw_comprada": 47.78173770064465,
       "kw_exportada": 0.0
      },
      {
       "hora": 21,
       "ponta": false,
-      "kw_fonte_bruto": -35.55399091374717,
-      "carga_kw": 34.80010120088423,
+      "kw_fonte_bruto": -35.566862871086485,
+      "carga_kw": 34.80011168067993,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5908,14 +5895,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 35.55399091374717,
+      "kw_comprada": 35.566862871086485,
       "kw_exportada": 0.0
      },
      {
       "hora": 22,
       "ponta": false,
-      "kw_fonte_bruto": -27.047913286970285,
-      "carga_kw": 26.40118596947242,
+      "kw_fonte_bruto": -27.054829814340795,
+      "carga_kw": 26.40003305533518,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5926,14 +5913,14 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 27.047913286970285,
+      "kw_comprada": 27.054829814340795,
       "kw_exportada": 0.0
      },
      {
       "hora": 23,
       "ponta": false,
-      "kw_fonte_bruto": -20.38247288765551,
-      "carga_kw": 19.80050603029466,
+      "kw_fonte_bruto": -20.389841094637436,
+      "carga_kw": 19.800560359536654,
       "fv_kw": 0.0,
       "estados_aplicados": {
        "BESS_ECON_0": {
@@ -5944,7 +5931,7 @@
       "soc_depois": {
        "BESS_ECON_0": 1.0
       },
-      "kw_comprada": 20.38247288765551,
+      "kw_comprada": 20.389841094637436,
       "kw_exportada": 0.0
      }
     ]
@@ -9782,8 +9769,8 @@
    "custo_brl": 35000,
    "beneficio": 0,
    "beneficio_severidade": 2.77064119716397e-06,
-   "beneficio_econ_anual": 1203.6741006534658,
-   "economia_diaria": 6.642638919173578,
+   "beneficio_econ_anual": 1843.8349637769898,
+   "economia_diaria": 7.123727128158578,
    "barras_resolvidas": []
   },
   {
@@ -9794,8 +9781,8 @@
    "custo_brl": 95000,
    "beneficio": 0,
    "beneficio_severidade": 8.311834682278585e-06,
-   "beneficio_econ_anual": 3611.7766062355513,
-   "economia_diaria": 19.936750382748755,
+   "beneficio_econ_anual": 5532.259195715551,
+   "economia_diaria": 21.380015009726208,
    "barras_resolvidas": []
   },
   {
@@ -9806,8 +9793,8 @@
    "custo_brl": 180000,
    "beneficio": 0,
    "beneficio_severidade": 1.66234024452927e-05,
-   "beneficio_econ_anual": 7223.930364795372,
-   "economia_diaria": 39.87791757451913,
+   "beneficio_econ_anual": 11064.895543573752,
+   "economia_diaria": 42.764446827474785,
    "barras_resolvidas": []
   },
   {
@@ -9818,8 +9805,8 @@
    "custo_brl": 300000,
    "beneficio": 0,
    "beneficio_severidade": 2.770507753882545e-05,
-   "beneficio_econ_anual": 12040.135376873355,
-   "economia_diaria": 66.46614049815719,
+   "beneficio_econ_anual": 18441.744006836503,
+   "economia_diaria": 71.27702258146962,
    "barras_resolvidas": []
   },
   {
@@ -9830,8 +9817,8 @@
    "custo_brl": 560000,
    "beneficio": 0,
    "beneficio_severidade": 5.5407189085615594e-05,
-   "beneficio_econ_anual": -14159.019022204027,
-   "economia_diaria": -11.102968759794862,
+   "beneficio_econ_anual": 17302.642869489497,
+   "economia_diaria": 70.070235432824,
    "barras_resolvidas": []
   },
   {
@@ -9842,8 +9829,8 @@
    "custo_brl": 1300000,
    "beneficio": 0,
    "beneficio_severidade": 0.00013849573014285133,
-   "beneficio_econ_anual": -111912.7918553203,
-   "economia_diaria": -326.5963935173186,
+   "beneficio_econ_anual": -15198.374733940607,
+   "economia_diaria": -53.6713105275129,
    "barras_resolvidas": []
   },
   {
@@ -9854,8 +9841,8 @@
    "custo_brl": 2500000,
    "beneficio": 0,
    "beneficio_severidade": 0.0002769173355349208,
-   "beneficio_econ_anual": -274835.7465892263,
-   "economia_diaria": -852.4187681308445,
+   "beneficio_econ_anual": -81406.91181231124,
+   "economia_diaria": -306.5686021294986,
    "barras_resolvidas": []
   },
   {
@@ -9866,8 +9853,8 @@
    "custo_brl": 4700000,
    "beneficio": 0,
    "beneficio_severidade": 0.000553538301722889,
-   "beneficio_econ_anual": -600978.7457638647,
-   "economia_diaria": -1904.0635174287236,
+   "beneficio_econ_anual": -214121.0730324435,
+   "economia_diaria": -812.3631703225872,
    "barras_resolvidas": []
   },
   {
@@ -9878,8 +9865,8 @@
    "custo_brl": 35000,
    "beneficio": 0,
    "beneficio_severidade": 6.727386291649484e-06,
-   "beneficio_econ_anual": 1203.6541848419592,
-   "economia_diaria": 6.642567574217708,
+   "beneficio_econ_anual": 1843.8252741279405,
+   "economia_diaria": 7.123689861557295,
    "barras_resolvidas": []
   },
   {
@@ -9890,8 +9877,8 @@
    "custo_brl": 95000,
    "beneficio": 0,
    "beneficio_severidade": 2.017964466172195e-05,
-   "beneficio_econ_anual": 3611.5973609243965,
-   "economia_diaria": 19.936108267223744,
+   "beneficio_econ_anual": 5532.171986428374,
+   "economia_diaria": 21.37967959772658,
    "barras_resolvidas": []
   },
   {
@@ -9902,8 +9889,8 @@
    "custo_brl": 180000,
    "beneficio": 0,
    "beneficio_severidade": 4.0351752062406376e-05,
-   "beneficio_econ_anual": 7223.213381341066,
-   "economia_diaria": 39.87534912483119,
+   "beneficio_econ_anual": 11064.54670143323,
+   "economia_diaria": 42.76310517853642,
    "barras_resolvidas": []
   },
   {
@@ -9914,8 +9901,8 @@
    "custo_brl": 300000,
    "beneficio": 0,
    "beneficio_severidade": 6.723618791071306e-05,
-   "beneficio_econ_anual": 12038.14375040091,
-   "economia_diaria": 66.45900596186709,
+   "beneficio_econ_anual": 18440.774983393614,
+   "economia_diaria": 71.273295768732,
    "barras_resolvidas": []
   },
   {
@@ -9926,8 +9913,8 @@
    "custo_brl": 560000,
    "beneficio": 0,
    "beneficio_severidade": 0.00013438888758562917,
-   "beneficio_econ_anual": -14162.299307080157,
-   "economia_diaria": -11.113483255685424,
+   "beneficio_econ_anual": 17301.109984721337,
+   "economia_diaria": 70.06434137131714,
    "barras_resolvidas": []
   },
   {
@@ -9938,8 +9925,8 @@
    "custo_brl": 1300000,
    "beneficio": 0,
    "beneficio_severidade": 0.00033534972951312914,
-   "beneficio_econ_anual": -111933.29761291067,
-   "economia_diaria": -326.66212186084533,
+   "beneficio_econ_anual": -15205.372271557353,
+   "economia_diaria": -53.69822082472763,
    "barras_resolvidas": []
   },
   {
@@ -9950,8 +9937,8 @@
    "custo_brl": 2500000,
    "beneficio": 0,
    "beneficio_severidade": 0.000668648566174157,
-   "beneficio_econ_anual": -274917.7961479916,
-   "economia_diaria": -852.681766537049,
+   "beneficio_econ_anual": -81434.90846820505,
+   "economia_diaria": -306.67627034212205,
    "barras_resolvidas": []
   },
   {
@@ -9962,8 +9949,8 @@
    "custo_brl": 4700000,
    "beneficio": 0,
    "beneficio_severidade": 0.0013292681825776698,
-   "beneficio_econ_anual": -601307.1647111232,
-   "economia_diaria": -1905.1161921999883,
+   "beneficio_econ_anual": -214233.12201300208,
+   "economia_diaria": -812.7940594845384,
    "barras_resolvidas": []
   },
   {
@@ -9974,8 +9961,8 @@
    "custo_brl": 35000,
    "beneficio": 0,
    "beneficio_severidade": 1.3247294551599342e-05,
-   "beneficio_econ_anual": 1203.8313837514706,
-   "economia_diaria": 6.6433180960913205,
+   "beneficio_econ_anual": 1843.9653083261837,
+   "economia_diaria": 7.124254391650311,
    "barras_resolvidas": []
   },
   {
@@ -9986,8 +9973,8 @@
    "custo_brl": 95000,
    "beneficio": 0,
    "beneficio_severidade": 3.974036196244257e-05,
-   "beneficio_econ_anual": 3612.1289427265324,
-   "economia_diaria": 19.93835975209072,
+   "beneficio_econ_anual": 5532.592081296586,
+   "economia_diaria": 21.381373134433602,
    "barras_resolvidas": []
   },
   {
@@ -9998,8 +9985,8 @@
    "custo_brl": 180000,
    "beneficio": 0,
    "beneficio_severidade": 7.947615901540694e-05,
-   "beneficio_econ_anual": 7224.840618795992,
-   "economia_diaria": 39.89070029418963,
+   "beneficio_econ_anual": 11065.951201437261,
+   "economia_diaria": 42.77734465725587,
    "barras_resolvidas": []
   },
   {
@@ -10010,8 +9997,8 @@
    "custo_brl": 300000,
    "beneficio": 0,
    "beneficio_severidade": 0.00013245012184828764,
-   "beneficio_econ_anual": 12040.474655923563,
-   "economia_diaria": 66.4772626889042,
+   "beneficio_econ_anual": 18442.73470794205,
+   "economia_diaria": 71.28969984611916,
    "barras_resolvidas": []
   },
   {
@@ -10022,8 +10009,8 @@
    "custo_brl": 560000,
    "beneficio": 0,
    "beneficio_severidade": 0.00026484953904018504,
-   "beneficio_econ_anual": -14164.146074592618,
-   "economia_diaria": -11.119674065053687,
+   "beneficio_econ_anual": 17301.286404105085,
+   "economia_diaria": 70.06510391109339,
    "barras_resolvidas": []
   },
   {
@@ -10034,8 +10021,8 @@
    "custo_brl": 1300000,
    "beneficio": 0,
    "beneficio_severidade": 0.0006617438046636615,
-   "beneficio_econ_anual": -111937.91586731757,
-   "economia_diaria": -326.6776032220466,
+   "beneficio_econ_anual": -15207.973725857115,
+   "economia_diaria": -53.70806446997062,
    "barras_resolvidas": []
   },
   {
@@ -10046,8 +10033,8 @@
    "custo_brl": 2500000,
    "beneficio": 0,
    "beneficio_severidade": 0.0013222224106795855,
-   "beneficio_econ_anual": -274926.983150316,
-   "economia_diaria": -852.7127437260492,
+   "beneficio_econ_anual": -81440.06102470872,
+   "economia_diaria": -306.6959682398069,
    "barras_resolvidas": []
   },
   {
@@ -10058,8 +10045,8 @@
    "custo_brl": 4700000,
    "beneficio": 0,
    "beneficio_severidade": 0.0026393960587950405,
-   "beneficio_econ_anual": -601326.3905227089,
-   "economia_diaria": -1905.1863464019239,
+   "beneficio_econ_anual": -214243.42224841192,
+   "economia_diaria": -812.8334777379987,
    "barras_resolvidas": []
   },
   {
@@ -10070,8 +10057,8 @@
    "custo_brl": 35000,
    "beneficio": 0,
    "beneficio_severidade": 0.0005089607064945323,
-   "beneficio_econ_anual": 1213.5160754398796,
-   "economia_diaria": 6.6878073940886225,
+   "beneficio_econ_anual": 1852.3049514672539,
+   "economia_diaria": 7.161119965345279,
    "barras_resolvidas": []
   },
   {
@@ -10082,8 +10069,8 @@
    "custo_brl": 95000,
    "beneficio": 0,
    "beneficio_severidade": 0.0015192702632916,
-   "beneficio_econ_anual": 3630.4977929348433,
-   "economia_diaria": 20.018891231694397,
+   "beneficio_econ_anual": 5551.022770493706,
+   "economia_diaria": 21.4586757105601,
    "barras_resolvidas": []
   },
   {
@@ -10094,8 +10081,8 @@
    "custo_brl": 180000,
    "beneficio": 0,
    "beneficio_severidade": 0.00301578351688625,
-   "beneficio_econ_anual": 7241.289415357757,
-   "economia_diaria": 39.97609389468846,
+   "beneficio_econ_anual": 11091.545883306962,
+   "economia_diaria": 42.87605219168023,
    "barras_resolvidas": []
   },
   {
@@ -10106,8 +10093,8 @@
    "custo_brl": 300000,
    "beneficio": 0,
    "beneficio_severidade": 0.004975973707450176,
-   "beneficio_econ_anual": 12027.891617025398,
-   "economia_diaria": 66.48169830289845,
+   "beneficio_econ_anual": 18463.26711125405,
+   "economia_diaria": 71.37003262726114,
    "barras_resolvidas": []
   },
   {
@@ -10118,8 +10105,8 @@
    "custo_brl": 560000,
    "beneficio": 0,
    "beneficio_severidade": 0.00970257615105713,
-   "beneficio_econ_anual": -14425.178751642661,
-   "economia_diaria": -11.969065106150197,
+   "beneficio_econ_anual": 17229.875873436453,
+   "economia_diaria": 69.79423050990295,
    "barras_resolvidas": []
   },
   {
@@ -10130,8 +10117,8 @@
    "custo_brl": 1300000,
    "beneficio": 0,
    "beneficio_severidade": 0.022429891394827206,
-   "beneficio_econ_anual": -113236.61979765557,
-   "economia_diaria": -330.8717134682022,
+   "beneficio_econ_anual": -15702.111814033055,
+   "economia_diaria": -55.59938808539505,
    "barras_resolvidas": []
   },
   {
@@ -10142,8 +10129,8 @@
    "custo_brl": 2500000,
    "beneficio": 0,
    "beneficio_severidade": 0.03895747540172487,
-   "beneficio_econ_anual": -279723.1360375516,
-   "economia_diaria": -868.1483546978634,
+   "beneficio_econ_anual": -83181.3851898124,
+   "economia_diaria": -313.3722139433095,
    "barras_resolvidas": []
   },
   {
@@ -10154,8 +10141,8 @@
    "custo_brl": 4700000,
    "beneficio": 0,
    "beneficio_severidade": 0.053465316450895195,
-   "beneficio_econ_anual": -620353.2933039989,
-   "economia_diaria": -1966.2714836490563,
+   "beneficio_econ_anual": -220871.78559132677,
+   "economia_diaria": -838.2874070519017,
    "barras_resolvidas": []
   },
   {
@@ -10166,8 +10153,8 @@
    "custo_brl": 35000,
    "beneficio": 0,
    "beneficio_severidade": 0.005575722717380077,
-   "beneficio_econ_anual": 1316.1897058948705,
-   "economia_diaria": 7.12303848064721,
+   "beneficio_econ_anual": 1941.489359597977,
+   "economia_diaria": 7.506423425647313,
    "barras_resolvidas": []
   },
   {
@@ -10178,8 +10165,8 @@
    "custo_brl": 95000,
    "beneficio": 0,
    "beneficio_severidade": 0.016105951321734285,
-   "beneficio_econ_anual": 3763.825655639265,
-   "economia_diaria": 20.701100712313178,
+   "beneficio_econ_anual": 5731.611641631987,
+   "economia_diaria": 22.159827731873634,
    "barras_resolvidas": []
   },
   {
@@ -10190,8 +10177,8 @@
    "custo_brl": 180000,
    "beneficio": 0,
    "beneficio_severidade": 0.03048210086328887,
-   "beneficio_econ_anual": 6977.860970061249,
-   "economia_diaria": 39.43776546373897,
+   "beneficio_econ_anual": 11192.935379218306,
+   "economia_diaria": 43.28107251603859,
    "barras_resolvidas": []
   },
   {
@@ -10202,8 +10189,8 @@
    "custo_brl": 300000,
    "beneficio": 0,
    "beneficio_severidade": 0.04730106637499773,
-   "beneficio_econ_anual": 10576.077862689996,
-   "economia_diaria": 61.98089231622396,
+   "beneficio_econ_anual": 18175.33971511537,
+   "economia_diaria": 70.26903418697532,
    "barras_resolvidas": []
   },
   {
@@ -10214,8 +10201,8 @@
    "custo_brl": 560000,
    "beneficio": 0,
    "beneficio_severidade": 0.065526814531286,
-   "beneficio_econ_anual": -20161.48341316209,
-   "economia_diaria": -30.443047985385647,
+   "beneficio_econ_anual": 15421.64336181344,
+   "economia_diaria": 62.81708970107417,
    "barras_resolvidas": []
   },
   {
@@ -10226,8 +10213,8 @@
    "custo_brl": 1300000,
    "beneficio": 0,
    "beneficio_severidade": -2.1243745980451267,
-   "beneficio_econ_anual": -52293.29196674156,
-   "economia_diaria": -295.5537757380148,
+   "beneficio_econ_anual": -48875.257160558715,
+   "economia_diaria": -313.3200689324907,
    "barras_resolvidas": []
   },
   {
@@ -10238,8 +10225,8 @@
    "custo_brl": 2500000,
    "beneficio": 0,
    "beneficio_severidade": -4.397218517690992,
-   "beneficio_econ_anual": 44551.12383352767,
-   "economia_diaria": 172.1875887959859,
+   "beneficio_econ_anual": 40050.61626301239,
+   "economia_diaria": 160.30083324910277,
    "barras_resolvidas": []
   },
   {
@@ -10250,8 +10237,8 @@
    "custo_brl": 4700000,
    "beneficio": 0,
    "beneficio_severidade": -4.397218517690992,
-   "beneficio_econ_anual": -310331.4144943533,
-   "economia_diaria": -1057.0148964762525,
+   "beneficio_econ_anual": -32613.691249622825,
+   "economia_diaria": 164.75516947569508,
    "barras_resolvidas": []
   },
   {
@@ -10262,8 +10249,8 @@
    "custo_brl": 35000,
    "beneficio": 0,
    "beneficio_severidade": 0.001147190249033203,
-   "beneficio_econ_anual": 1175.5295223591634,
-   "economia_diaria": 6.571480183759036,
+   "beneficio_econ_anual": 1827.8050466776076,
+   "economia_diaria": 7.089911242899348,
    "barras_resolvidas": []
   },
   {
@@ -10274,8 +10261,8 @@
    "custo_brl": 95000,
    "beneficio": 0,
    "beneficio_severidade": 0.0030598067599013345,
-   "beneficio_econ_anual": 3360.1485691186426,
-   "economia_diaria": 19.099165788026426,
+   "beneficio_econ_anual": 5403.415458317358,
+   "economia_diaria": 20.948303529585928,
    "barras_resolvidas": []
   },
   {
@@ -10286,8 +10273,8 @@
    "custo_brl": 180000,
    "beneficio": 0,
    "beneficio_severidade": 0.005014640149542143,
-   "beneficio_econ_anual": 6229.86783334358,
-   "economia_diaria": 36.471392971306784,
+   "beneficio_econ_anual": 10570.422435511418,
+   "economia_diaria": 40.994871349286825,
    "barras_resolvidas": []
   },
   {
@@ -10298,8 +10285,8 @@
    "custo_brl": 300000,
    "beneficio": 0,
    "beneficio_severidade": 0.0059753633396252,
-   "beneficio_econ_anual": 9286.524665547804,
-   "economia_diaria": 56.902513337347614,
+   "beneficio_econ_anual": 17097.137795461527,
+   "economia_diaria": 66.31383327686467,
    "barras_resolvidas": []
   },
   {
@@ -10310,8 +10297,8 @@
    "custo_brl": 560000,
    "beneficio": 0,
    "beneficio_severidade": -0.0013098800818442946,
-   "beneficio_econ_anual": -19709.192754954085,
-   "economia_diaria": -28.78677322673616,
+   "beneficio_econ_anual": 14963.325942473723,
+   "economia_diaria": 61.1908125879437,
    "barras_resolvidas": []
   },
   {
@@ -10321,9 +10308,9 @@
    "kwh": 500,
    "custo_brl": 1300000,
    "beneficio": 0,
-   "beneficio_severidade": -3.2123646288009744,
-   "beneficio_econ_anual": -184574.82129433975,
-   "economia_diaria": -571.2358287587217,
+   "beneficio_severidade": -3.212364628800974,
+   "beneficio_econ_anual": -54292.451301673944,
+   "economia_diaria": -202.91878728261747,
    "barras_resolvidas": []
   },
   {
@@ -10334,8 +10321,8 @@
    "custo_brl": 2500000,
    "beneficio": 0,
    "beneficio_severidade": -4.397218517690992,
-   "beneficio_econ_anual": 9510.314529748015,
-   "economia_diaria": 37.84868389773226,
+   "beneficio_econ_anual": 5023.321522687051,
+   "economia_diaria": 25.998301115287745,
    "barras_resolvidas": []
   },
   {
@@ -10346,14 +10333,14 @@
    "custo_brl": 4700000,
    "beneficio": 0,
    "beneficio_severidade": -4.397218517690992,
-   "beneficio_econ_anual": -854111.0090771446,
-   "economia_diaria": -634.8519198230058,
+   "beneficio_econ_anual": -238951.35730210048,
+   "economia_diaria": -390.0402086208701,
    "barras_resolvidas": []
   }
  ],
  "meta": {
-  "tempo_estudo_s": 25.906,
-  "tempo_total_s": 25.906,
+  "tempo_estudo_s": 29.221,
+  "tempo_total_s": 29.221,
   "candidatos_avaliados": 48,
   "mudanca_metodo": {
    "data": "2026-11-11",
@@ -10395,6 +10382,10 @@
   "correcao_colapso": {
    "data": "2026-10-30",
    "resumo": "Correcao de 2 bugs no pipeline de afundamento (estudo_afundamento.rodar_estudo): (1) ASSIMETRIA DE CAUSA — as chaves de barra agora sao normalizadas para minusculas em TODOS os resultados (captura normal e ramo de nao-convergencia), eliminando credito falso de barras mitigadas por diferenca de caixa ('B4' vs 'b4'); (2) SEMANTICA DE COLAPSO — o cenario divergente do solver (falta + injecao de BESS) recebe SENTINEL pu = limite_inferior (0,1) em cada barra monitorada (exceto a faltosa), mantendo todas na janela de sag (binario = nada resolvido) e com profundidade de janela completa (S_i <= 0): divergir passa a ser PENALIZADO, nunca creditado. O campo novo 'convergiu' (baseline.cenarios / conjunto.cenarios) distingue medicao real (true) de sentinel de colapso (false). Efeito: o vencedor anterior (B5 Utility 500kW/1000kWh) divergia em 4/4 cenarios e era creditado com S_i=0.4028 por artefato; agora os candidatos divergentes recebem S_i negativo e o MILP seleciona um vencedor convergente."
+  },
+  "correcao_regime_permanente": {
+   "data": "2026-11-13",
+   "resumo": "SoC inicial do dia representativo passa a 100% (regime permanente: a bateria recarrega a 100% ao fim do dia e o dia seguinte recomeca cheio; a recarga de comissionamento era custo unico de implantacao contado 365x). O despacho passa a dimensionar o bloco horario pela energia disponivel (%charge/%discharge escalonados por hora), eliminando a compra de bloco cheio com tanque no teto e a entrega de bloco cheio cruzando o piso dentro do passo (o motor clampa o SoC reportado sem limitar a potencia no passo). Estudo re-simulado integralmente."
   }
  }
 }

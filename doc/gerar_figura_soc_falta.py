@@ -51,7 +51,7 @@ MASTER = os.path.abspath(os.path.join(RAIZ, "tcc_opendss", "projetos",
                                       "teste", "rede", "Master.dss"))
 SAIDA = os.path.join(RAIZ, "doc", "fig_soc_falta_dados.json")
 
-BUS_FALTA = "B4"
+BUS_FALTA = "B5"
 TIPO_FALTA = "trifasica"
 R_FALTA = 0.05
 DIA = "Quinta"
@@ -59,9 +59,7 @@ BARRAS_MONITORADAS = ["b1", "b2", "b3", "b4", "b5", "b6"]
 LIMITE_INFERIOR = 0.1
 LIMITE_SUPERIOR = 0.9
 
-# Portes comparados: o selecionado pelo PLIM e o maior do catalogo.
 BESS_SELECIONADO = {"bus": BUS_FALTA, "kw": 50, "kwh": 100}
-BESS_MAIOR = {"bus": BUS_FALTA, "kw": 1000, "kwh": 2000}
 
 # Ordem do painel (b) da Fig. de curvas da semana. A chave JSON nao leva
 # acento (seguranca de identificador); o rotulo do grafico leva, e fica no
@@ -206,32 +204,6 @@ def simular_rodar_estudo(bess_list):
     return detalhe["pu"], detalhe["barras_em_sag"]
 
 
-def simular_maior_porte():
-    """BESS de 1000 kW/2000 kWh na barra da falta -- demonstracao do limite
-    superior do catalogo. Reaproveita a mesma sequencia do estudo
-    (recompilar -> New Storage -> Solve -> falta -> Solve)."""
-    motor = MotorReutilizavel()
-    try:
-        motor.recompilar(MASTER)
-        motor.dssCircuit.SetActiveBus(BUS_FALTA)
-        kv_linha = motor.dssCircuit.ActiveBus.kVBase * math.sqrt(3)
-        motor.dssText.Command = (
-            f"New Storage.BESS_FIG bus1={BUS_FALTA} phases=3 "
-            f"kv={kv_linha:.4f} kwrated={BESS_MAIOR['kw']} "
-            f"kwhrated={BESS_MAIOR['kwh']} kva={BESS_MAIOR['kw']} "
-            f"%stored=50 state=discharging model=1 "
-            f"Vminpu={VMINPU_STORAGE_PADRAO} dispmode=default"
-        )
-        motor.dssSolution.Solve()
-        _aplicar_falta(motor, BUS_FALTA, TIPO_FALTA, R_FALTA)
-        motor.dssSolution.Solve()
-        if not motor.dssSolution.Converged:
-            raise RuntimeError("falta trifasica com o maior porte nao convergiu")
-        return _capturar_pu_todas_barras(motor.dssCircuit)
-    finally:
-        motor.finalizar()
-
-
 def serie_pgfplots(pontos):
     """String de coordenadas pgfplots pronta: '(x,y) (x,y) ...'.
 
@@ -337,13 +309,10 @@ def main():
     # (ii') selecionado com %stored do ponto de otimizacao -- o cenario da
     # figura.
     pu_sel_fig = simular_com_motor(soc_falta_pct)
-    # (iii) maior porte do catalogo.
-    pu_maior = simular_maior_porte()
 
     min_base = _pu_minimo_por_barra(pu_base)
     min_sel_estudo = _pu_minimo_por_barra(pu_sel_estudo)
     min_sel_fig = _pu_minimo_por_barra(pu_sel_fig)
-    min_maior = _pu_minimo_por_barra(pu_maior)
 
     # Validacao: a tensao nao pode depender do %stored inicial. Se depender,
     # o modelo do Storage estaria acoplando tensao a energia armazenada e a
@@ -364,7 +333,6 @@ def main():
     classificacao = {
         "base": classificar_sag(min_base),
         "selecionado_50kw": classificar_sag(min_sel_fig),
-        "maior_porte_1000kw": classificar_sag(min_maior),
     }
 
     # Coordenadas pgfplots: painel (a) SoC, painel (b) tensao.
@@ -372,7 +340,6 @@ def main():
     px = {barra: i + 1 for i, barra in enumerate(BARRAS_MONITORADAS)}
     coords_base = serie_pgfplots([(px[b], min_base[b]) for b in BARRAS_MONITORADAS])
     coords_sel = serie_pgfplots([(px[b], min_sel_fig[b]) for b in BARRAS_MONITORADAS])
-    coords_maior = serie_pgfplots([(px[b], min_maior[b]) for b in BARRAS_MONITORADAS])
 
     # Carga da barra B4 por dia -- painel (b) da Fig. de curvas da semana.
     carga_b4 = serie_carga_b4_por_dia(dump)
@@ -413,7 +380,6 @@ def main():
             "pu_minimo": {
                 "base": min_base,
                 "selecionado_50kw": min_sel_fig,
-                "maior_porte_1000kw": min_maior,
             },
             "classificacao_sag": classificacao,
             "excluida_da_classificacao": _nome_base_barra(BUS_FALTA),
@@ -431,7 +397,6 @@ def main():
             "soc": coords_soc,
             "tensao_base": coords_base,
             "tensao_selecionado": coords_sel,
-            "tensao_maior_porte": coords_maior,
             "eixo_x_tensao": ["{}={}".format(b, px[b]) for b in BARRAS_MONITORADAS],
         },
         "carga_b4_por_dia": carga_b4,
@@ -443,12 +408,7 @@ def main():
         fh.write("\n")
 
     # ---- tabela-resumo no stdout ----
-    marcas = {
-        "base": lambda b: "",
-        "sel": lambda b: "",
-        "maior": lambda b: "",
-    }
-    cabecalho = ("barra | base   | 50kW   | 1000kW | classificacao (base/50kW/1000kW)")
+    cabecalho = "barra | base   | 50kW   | classificacao (base/50kW)"
     print(cabecalho)
     print("-" * len(cabecalho))
     for barra in BARRAS_MONITORADAS:
@@ -456,9 +416,9 @@ def main():
             if barra == _nome_base_barra(BUS_FALTA):
                 return "excl"
             return "sag" if barra in classificacao[chave] else "ok"
-        print("{:5s} | {:.4f} | {:.4f} | {:.4f} | {:4s} / {:4s} / {:4s}".format(
-            barra, min_base[barra], min_sel_fig[barra], min_maior[barra],
-            marca("base"), marca("selecionado_50kw"), marca("maior_porte_1000kw"),
+        print("{:5s} | {:.4f} | {:.4f} | {:4s} / {:4s}".format(
+            barra, min_base[barra], min_sel_fig[barra],
+            marca("base"), marca("selecionado_50kw"),
         ))
     print()
     print("SoC em {} h{:02d} = {:.1f}% | janela de ponta = h{:02d}-h{:02d}".format(

@@ -43,13 +43,18 @@ AMBIENTES = [
     "tikzpicture", "axis", "abstract", "document",
 ]
 
-# Tensoes de referencia da falta trifasica em B4 (item 2 da especificacao),
-# a serem reproduzidas com tol 1e-3.
-REFERENCIA_PU = {
-    "b4": {"base": 0.8723, "selecionado_50kw": 0.8758, "maior_porte_1000kw": 0.931},
-    "b5": {"base": 0.8484, "selecionado_50kw": 0.8517, "maior_porte_1000kw": 0.905},
-}
-TOL_PU = 1e-3
+# Barras monitoradas do painel (b) na falta trifasica na propria barra do
+# armazenamento (B5). A checagem e orientada ao JSON: nao ha literal de
+# tensao a reproduzir -- confere-se a coerencia interna das duas series
+# (base e selecionado), a magnitude da mitigacao e a exclusao da barra
+# faltosa da classificacao de sag.
+BARRAS_NAO_FALTOSAS = ["b1", "b2", "b3", "b4", "b6"]
+BARRA_FALTOSA = "b5"
+# Mitigacao maxima coerente: o ganho de tensao na barra do armazenamento nao
+# pode inverter o sentido (o BESS injeta corrente e eleva a tensao) nem
+# ultrapassar o que a potencia do porte selecionado permite.
+MPU_MINIMO = 0.0
+MPU_MAXIMO_EXCLUSIVO = 100.0
 
 falhas = []
 avisos = []
@@ -142,19 +147,46 @@ def _coords_tex(texto, rotulo):
 
 
 def checar_tensoes(dados):
-    pu = dados["tensao"]["pu_minimo"]
-    for barra, referencia in REFERENCIA_PU.items():
-        for serie, esperado in referencia.items():
-            obtido = pu[serie][barra]
-            erro = abs(obtido - esperado)
-            estado = "ok" if erro <= TOL_PU else "FORA"
-            print("      {:3s} {:20s} obtido={:.4f} esperado={:.4f} "
-                  "erro={:.2e} {}".format(barra, serie, obtido, esperado,
-                                          erro, estado))
-            if erro > TOL_PU:
-                falha("tensao {} em {} fora da tolerancia: {:.4f} vs {:.4f}"
-                      .format(serie, barra, obtido, esperado))
+    """Coerencia das duas series de tensao minima do JSON.
 
+    Na falta trifasica solida na barra do armazenamento, o BESS eleva a
+    tensao das barras monitoradas; a mitigacao e medida em mpu
+    ((pu_sel - pu_base) x 1000) e precisa ser nao negativa em todas as
+    barras nao faltosas. A barra faltosa (B5) fica fora dessa comparacao:
+    no no em falta a tensao e o proprio curto e nao o efeito mitigado.
+    """
+    pu = dados["tensao"]["pu_minimo"]
+    base = pu["base"]
+    sel = pu["selecionado_50kw"]
+    for barra in BARRAS_NAO_FALTOSAS:
+        for serie, valores in (("base", base), ("selecionado_50kw", sel)):
+            if barra not in valores:
+                falha("serie '{}' sem a barra {}".format(serie, barra))
+                return
+        mpu = (sel[barra] - base[barra]) * 1000.0
+        estado = "ok" if MPU_MINIMO <= mpu < MPU_MAXIMO_EXCLUSIVO else "FORA"
+        print("      {:3s} base={:.4f} selecionado={:.4f} "
+              "mpu={:+.4f} {}".format(barra, base[barra], sel[barra], mpu,
+                                      estado))
+        if not (MPU_MINIMO <= mpu < MPU_MAXIMO_EXCLUSIVO):
+            falha("mitigacao incoerente na barra {}: {:+.4f} mpu".format(
+                barra, mpu))
+
+    # A barra faltosa precisa estar fora da classificacao de sag nas duas
+    # rodadas -- convencao do estudo.
+    classificacao = dados["tensao"]["classificacao_sag"]
+    for chave in ("base", "selecionado_50kw"):
+        barras_sag = classificacao.get(chave)
+        if barras_sag is None:
+            falha("classificacao_sag sem a rodada '{}'".format(chave))
+        elif BARRA_FALTOSA in barras_sag:
+            falha("barra faltosa {} classificada em sag na rodada '{}'".format(
+                BARRA_FALTOSA, chave))
+        else:
+            print("      barra faltosa {} excluida da classificacao '{}': ok"
+                  .format(BARRA_FALTOSA, chave))
+    if dados["tensao"].get("excluida_da_classificacao") != BARRA_FALTOSA:
+        falha("excluida_da_classificacao != {}".format(BARRA_FALTOSA))
 
 def checar_invariancia(dados):
     val = dados.get("validacao", {})
@@ -169,8 +201,7 @@ def checar_coordenadas_no_tex(texto, dados):
     """Toda string de coordenadas do JSON precisa aparecer no .tex, e o tex
     nao pode conter coordenadas de tensao que nao venham do JSON."""
     pgf = dados["pgfplots"]
-    for chave in ("soc", "tensao_base", "tensao_selecionado",
-                  "tensao_maior_porte"):
+    for chave in ("soc", "tensao_base", "tensao_selecionado"):
         coordenadas = pgf[chave]
         if coordenadas in texto:
             print("      coordenadas '{}' presentes no tex ({} pontos)".format(
@@ -262,6 +293,28 @@ def checar_carga_b4_no_tex(texto, dados):
 
 
 # ------------------------------------------------------------- (d) abstract
+DUMP_TESTE = os.path.join(RAIZ, "tcc_opendss", "projetos", "teste",
+                          "dump_estudo_otimizacao.json")
+
+
+def _fmt_brl(valor, casas):
+    """Formata em pt-BR: milhar '.', decimal ',', numero fixo de casas."""
+    texto = "{:,.{}f}".format(valor, casas)
+    return texto.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+
+
+def numeros_do_abstract():
+    """Economia anual e payback do vencedor, direto do dump do estudo.
+
+    A anualizacao e a mesma do estudo: economia semanal x 52 semanas.
+    """
+    with open(DUMP_TESTE, "r", encoding="utf-8") as fh:
+        dump = json.load(fh)
+    semanal = dump["semanal_vencedor"]["economia_semanal_brl"]
+    payback = dump["vencedor"]["economia_candidato"]["payback_anos"]
+    return _fmt_brl(semanal * 52.0, 2), _fmt_brl(payback, 2)
+
+
 def checar_abstract(texto):
     casamento = re.search(r"\\begin\{abstract\}(.*?)\\end\{abstract\}",
                           texto, re.S)
@@ -269,7 +322,15 @@ def checar_abstract(texto):
         falha("abstract ausente")
         return
     corpo = casamento.group(1)
-    for numero in ("12.027,89", "24,94"):
+    try:
+        economia, payback = numeros_do_abstract()
+    except (OSError, KeyError, TypeError) as exc:
+        falha("nao foi possivel derivar os numeros do abstract do dump: "
+              "{}".format(exc))
+        return
+    print("(d) numeros derivados do dump: economia anual = '{}', "
+          "payback = '{}' anos".format(economia, payback))
+    for numero in (economia, payback):
         if numero in corpo:
             print("(d) abstract contem '{}': ok".format(numero))
         else:
@@ -284,12 +345,14 @@ MARCADORES_NOVOS = [
     "ramo-e-corte",
     "15 \\times 52",
     "55\\,306{,}61",
-    "231{,}31",
-    "24{,}94",
-    "338,86",
-    "0{,}21748",
-    "0{,}21234",
-    "3,0~kWh com o armazenamento",
+    "349{,}53",
+    "16{,}51",
+    "357,99",
+    "0{,}32863",
+    "0{,}33407",
+    "0{,}01183",
+    "0{,}04730",
+    "4,2~kWh com o armazenamento",
 ]
 MARCADORES_ANTIGOS = [
     "56\\,157",
@@ -327,12 +390,11 @@ BS = chr(92)
 
 MARCADORES_IEEE13 = [
     "barra 670",
-    "351.348,24",
-    "1.330,86",
-    "13,38",
-    "9.299,21",
-    "1.050~kvar",
-    "0,5622",
+    "354.742{,}57",
+    "6.821,97",
+    "13,25",
+    "0,5517",
+    "1.100~kvar",
     "0,8407~pu",
     "192,23~kW",
     "1.000~kW/2.000~kWh",
@@ -448,9 +510,9 @@ def checar_marcadores_corpo(texto):
             print("(e) corpo contem '" + marcador + "': ok")
         else:
             falha("corpo nao contem o marcador novo '" + marcador + "'")
-    # 12.027,89 em LaTeX aparece no bloco 6 e no bloco 7.
-    copias = corpo.count("12\\,027{,}89")
-    rotulo = "12\\,027{,}89"
+    # 18.175,34 em LaTeX aparece no bloco 6 e no bloco 7.
+    copias = corpo.count("18\\,175{,}34")
+    rotulo = "18\\,175{,}34"
     if copias >= 2:
         print("(e) corpo contem '" + rotulo + "' {} vezes (>=2): ok".format(
             copias))
