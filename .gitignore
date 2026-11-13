@@ -16,3 +16,6 @@ dist/
 conference_101719.tex
 referencias.bib
 exe_empacotado/TccOpendss.spec
+
+# --- Trabalho do artigo (fluxo tex -> pdf), fora da distribuicao ---
+tex_trabalho/
